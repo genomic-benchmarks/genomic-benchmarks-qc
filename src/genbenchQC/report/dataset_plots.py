@@ -3,35 +3,48 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import logging
 
-def plot_lengths(stats1, stats2, result, dist_thresh, plot_type='boxen'):
+def plot_lengths(stats1, stats2, plot_type='boxen', result=None, dist_thresh=None):
     """
     Plot the sequence lengths of two sequences.
     """
     return plot_one_stat(
         stats1, stats2, 
         'Sequence lengths', 
-        result, 
-        dist_thresh, 
+        plot_type=plot_type,
         x_label='Sequence length', 
         title='Sequence Length Distribution', 
-        plot_type=plot_type
+        result=result, 
+        dist_thresh=dist_thresh
     )
-    
-def plot_gc_content(stats1, stats2, result, dist_thresh, plot_type='boxen'):
+
+def plot_gc_content(stats1, stats2, plot_type='boxen', result=None, dist_thresh=None):
     """
     Plot the GC content of two sequences.
     """
     return plot_one_stat(
         stats1, stats2, 
         'Per sequence GC content', 
-        result, 
-        dist_thresh, 
         x_label='GC content', 
         title='GC Content Distribution',
-        plot_type=plot_type
+        plot_type=plot_type,
+        result=result, 
+        dist_thresh=dist_thresh, 
     )
 
-def plot_nucleotides(stats1, stats2, result, dist_thresh, nucleotides, plot_type):
+def plot_nucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_thresh=None):
+    """
+    Plot the nucleotide content of two sets of sequences.
+
+    @param stats1: Statistics for the first set of sequences.
+    @param stats2: Statistics for the second set of sequences.
+    @param nucleotides: List of nucleotides to plot.
+    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
+    @param result: Optional results from a previous analysis. Tuple (distances, passed), where distances is a dict with nucleotides as keys
+                   and distances between their distributions as values. Passed is bool indicating if the test passed.
+                   If provided, nucleotide plots with distance > dist_thresh will be flagged.
+    @param dist_thresh: Optional distance threshold for flagging significant differences.
+    @return: Matplotlib figure object.
+    """
 
     df = melt_stats(stats1, stats2, 'Per sequence nucleotide content', var_name='Nucleotide', value_name='Frequency')
     min_y = df['Frequency'].min()
@@ -68,11 +81,12 @@ def plot_nucleotides(stats1, stats2, result, dist_thresh, nucleotides, plot_type
         logging.error(f"Unknown plot type: {plot_type}")
 
     red_flag = False
-    for index, nt in enumerate(nucleotides):
-        if result[0][nt] > dist_thresh:
-            red_flag = True
-            # draw a red rectangle around the violins
-            ax.add_patch(make_red_flag_rectangle(index, min_y, max_y))
+    if result and dist_thresh:
+        for index, nt in enumerate(nucleotides):
+            if result[0][nt] > dist_thresh:
+                red_flag = True
+                # draw a red rectangle around the violins
+                ax.add_patch(make_red_flag_rectangle(index, min_y, max_y))
 
     ax.set_title('Nucleotide content', fontsize=16)
     ax.set_xlabel('Nucleotide', fontsize=14)
@@ -83,7 +97,7 @@ def plot_nucleotides(stats1, stats2, result, dist_thresh, nucleotides, plot_type
 
     return fig
 
-def plot_dinucleotides(stats1, stats2, result, dist_thresh, nucleotides, plot_type):
+def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_thresh=None):
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
     min_y = df['Frequency'].min()
@@ -134,18 +148,19 @@ def plot_dinucleotides(stats1, stats2, result, dist_thresh, nucleotides, plot_ty
         axs[index].tick_params(axis='x', labelsize=12)
         axs[index].tick_params(axis='y', labelsize=12)
 
-        for di_index, dint in enumerate(dinucleotides):
-            if result[0][dint] > dist_thresh:
-                red_flag = True
-                # draw a red rectangle around the violins, put it behind the violins
-                axs[index].add_patch(make_red_flag_rectangle(di_index, min_y, max_y))
+        if result and dist_thresh:
+            for di_index, dint in enumerate(dinucleotides):
+                if result[0][dint] > dist_thresh:
+                    red_flag = True
+                    # draw a red rectangle around the violins, put it behind the violins
+                    axs[index].add_patch(make_red_flag_rectangle(di_index, min_y, max_y))
 
     axs[index] = prepare_legend(axs[index], red_flag, dist_thresh)
     axs[index].set_xlabel('Dinucleotide', fontsize=14)
 
     return fig
 
-def plot_one_stat(stats1, stats2, stats_name, result, dist_thresh, plot_type, x_label='', title=''):
+def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', result=None, dist_thresh=None):
     """
     Plot a single statistic from two stats objects.
     """
@@ -153,9 +168,10 @@ def plot_one_stat(stats1, stats2, stats_name, result, dist_thresh, plot_type, x_
     # make dataframe with two columns: label and values
     df1 = stats1.stats[stats_name]
     df2 = stats2.stats[stats_name]
-    df1['label'] = str(stats1.label)
-    df2['label'] = str(stats2.label)
-    df = pd.concat([df1, df2], ignore_index=True)
+    df = pd.concat([
+        df1.assign(label=str(stats1.label)),
+        df2.assign(label=str(stats2.label))
+    ], ignore_index=True)
     
     min_y = df[stats_name].min()
     max_y = df[stats_name].max()
@@ -189,10 +205,11 @@ def plot_one_stat(stats1, stats2, stats_name, result, dist_thresh, plot_type, x_
     
     # result is a tuple of (distances, passed)
     red_flag = False
-    if result and result[0] > dist_thresh:
-        red_flag = True
-        # draw a red rectangle around the violins
-        ax.add_patch(make_red_flag_rectangle(0, min_y, max_y))
+    if result and dist_thresh:
+        if result[0] > dist_thresh:
+            red_flag = True
+            # draw a red rectangle around the violins
+            ax.add_patch(make_red_flag_rectangle(0, min_y, max_y))
 
     ax.set_title(title, fontsize=16)
     ax.set_xlabel(x_label, fontsize=14)
@@ -207,7 +224,7 @@ def plot_one_stat(stats1, stats2, stats_name, result, dist_thresh, plot_type, x_
 
     return fig
 
-def plot_per_base_sequence_comparison(stats1, stats2, stats_name, result, p_value_thresh, nucleotides, end_position, x_label='', title=''):
+def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', result=None, p_value_thresh=None):
 
     df1 = stats1.stats[stats_name]
     df2 = stats2.stats[stats_name]
@@ -240,7 +257,7 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, result, p_valu
             axs[index].set_title(f'{title}', fontsize=16)
 
 
-        if result:
+        if result and p_value_thresh:
             for i in range(end_position):
                 
                 p_value = result[0][nt][i]
@@ -280,13 +297,14 @@ def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value'
     """
     df1 = stats1.stats[stats_name]
     df1 = df1.melt(value_vars=df1.columns, var_name=var_name, value_name=value_name)
-    df1['label'] = stats1.label
 
     df2 = stats2.stats[stats_name]
     df2 = df2.melt(value_vars=df2.columns, var_name=var_name, value_name=value_name)
-    df2['label'] = stats2.label
 
-    df = pd.concat([df1, df2], ignore_index=True)
+    df = pd.concat([
+        df1.assign(label=str(stats1.label)),
+        df2.assign(label=str(stats2.label))
+    ], ignore_index=True)
 
     return df
 
