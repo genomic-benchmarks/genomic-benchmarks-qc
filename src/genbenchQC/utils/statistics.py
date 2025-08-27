@@ -1,10 +1,11 @@
 import logging
 from collections import Counter
+from typing import Optional
 import numpy as np
 import pandas as pd
 
 class SequenceStatistics:
-    def __init__(self, sequences, filename, label, seq_column=None, end_position=None):
+    def __init__(self, sequences: list[str], filename: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None):
         self.filename = filename
         self.label = label
         self.seq_column = seq_column
@@ -21,7 +22,7 @@ class SequenceStatistics:
             - Number of bases: int
             - Unique bases: list of str
             - %GC content: float
-            - number of sequences left after deduplication: int
+            - Number of sequences left after deduplication: int
             - Per sequence nucleotide content: pd.DataFrame
               (index: sequence_id, columns: nucleotides, values: frequency)
             - Per sequence dinucleotide content: pd.DataFrame
