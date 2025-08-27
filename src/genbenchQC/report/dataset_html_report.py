@@ -325,7 +325,7 @@ def escape_str(s):
     """
     return '"' + s + '"'
 
-def get_dataset_html_template(stats1, stats2, plots_path, results):
+def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs):
     """
     Returns the HTML template for the report.
     """
@@ -355,14 +355,14 @@ def get_dataset_html_template(stats1, stats2, plots_path, results):
     html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}", str(plots_path['Per position reversed nucleotide content']))
     html_template = put_data(html_template, "{{per-sequence-gc-content}}", str(plots_path['Per sequence GC content']))
 
-    # take max 10 sequences for sequence duplication levels, results['Sequence duplication levels'][0] is a list of sequences
-    sequence_duplication_levels = results['Duplication between labels'][0][:10]
+    # take max 10 sequences for sequence duplication levels
+    sequence_duplication_levels = duplicate_seqs[:10]
     html_template = put_data(html_template, "{{sequence_duplication_levels}}",
                              '[' + ', '.join(escape_str(seq) for seq in sequence_duplication_levels) + ']')
-    if len(results['Duplication between labels'][0]) > 10:
+    if len(duplicate_seqs) > 10:
         # If there are more than 10 sequences, we show how many more there are
         # and set the rest to a placeholder
-        html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", str(len(results['Duplication between labels'][0]) - 10))
+        html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", str(len(duplicate_seqs) - 10))
     else:
         # If there are 10 or fewer sequences, we set the rest to 0
         html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", "0")
