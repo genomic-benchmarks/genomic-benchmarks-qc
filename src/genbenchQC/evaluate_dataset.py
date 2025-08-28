@@ -10,7 +10,7 @@ from genbenchQC.utils.testing import flag_significant_differences
 from genbenchQC.report.report_generator import generate_json_report, generate_sequence_html_report, generate_simple_report, generate_dataset_html_report
 from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_multisequence_df, read_csv_file, setup_logger
 
-def run_analysis(input_statistics, out_folder, report_types, seq_report_types, plot_type, flag_threshold):
+def run_analysis(input_statistics, out_folder, report_types, seq_report_types, plot_type):
    
     out_folder = Path(out_folder)
 
@@ -52,10 +52,7 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
                 f"Comparing datasets: {stat1.filename} vs {stat2.filename}")
 
         results = flag_significant_differences(
-            stat1.sequences, stat1.stats, 
-            stat2.sequences, stat2.stats, 
-            threshold=flag_threshold, 
-            end_position=min(stat1.end_position, stat2.end_position)
+            stat1, stat2, 
         )
         
         if 'simple' in report_types:
@@ -66,12 +63,12 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
             html_report_path = out_folder / Path(f'{filename}.html')
             plots_path = out_folder / Path(f'{filename}_plots')
             generate_dataset_html_report(
-                stat1, stat2, results, 
+                stat1, stat2, 
                 html_report_path, 
                 plots_path=plots_path, 
-                threshold=flag_threshold,
                 end_position=min(stat1.end_position, stat2.end_position),
-                plot_type=plot_type
+                plot_type=plot_type,
+                results=results, threshold=None
             )
 
 def run(input, 
@@ -107,7 +104,6 @@ def run(input,
     @param end_position: End position of the sequences to consider in per position statistics. 
                          If not provided, 75th percentile of sequence lengths will be used. Default: None.
     @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is recommended. Default: 'boxen'.
-    @param flag_threshold: Threshold for flagging significant differences in sequence statistics. Default: 0.015
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
@@ -133,8 +129,7 @@ def run(input,
             out_folder = out_folder, 
             report_types = report_types, 
             seq_report_types = seq_report_types, 
-            plot_type = plot_type, 
-            flag_threshold = flag_threshold
+            plot_type = plot_type
         )
 
     # we have CSV/TSV
@@ -160,7 +155,7 @@ def run(input,
                 labels = df[label_column].unique().tolist()
                 logging.debug(f"Inferred labels: {labels}")
             else:
-                labels = label_list
+                labels = [str(label) for label in label_list]
 
             # loop over sequences with specific label and run statistics
             for seq_col in sequence_column:
@@ -176,7 +171,6 @@ def run(input,
                     report_types = report_types, 
                     seq_report_types = seq_report_types, 
                     plot_type = plot_type, 
-                    flag_threshold = flag_threshold
                 )
 
             # handle multiple sequence columns by concatenating sequences and running statistics on them
@@ -192,7 +186,6 @@ def run(input,
                     report_types = report_types, 
                     seq_report_types = seq_report_types, 
                     plot_type = plot_type, 
-                    flag_threshold = flag_threshold
                 )
 
         # we have multiple files with one label each
@@ -212,7 +205,6 @@ def run(input,
                     report_types = report_types, 
                     seq_report_types = seq_report_types, 
                     plot_type = plot_type, 
-                    flag_threshold = flag_threshold
                 )
 
             # handle multiple sequence columns
@@ -228,7 +220,6 @@ def run(input,
                     report_types = report_types, 
                     seq_report_types = seq_report_types, 
                     plot_type = plot_type, 
-                    flag_threshold = flag_threshold
                 )
 
     logging.info("Dataset evaluation successfully completed.")
@@ -254,8 +245,6 @@ def parse_args():
                         help='End position of the sequences to consider in per position statistics. If not provided, 75th percentile of sequence lengths will be used.')
     parser.add_argument('--plot_type', type=str, help='Type of plot to use for visualizations. For bigger datasets, "boxen" in recommended. Default: boxen.',
                         choices=['boxen', 'violin'], default='boxen')
-    parser.add_argument('--flag_threshold', type=float, default=0.015,
-                        help='Threshold for flagging significant differences in sequence statistics. Default: 0.015')
     parser.add_argument('--log_level', type=str, help='Logging level, default to INFO.', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
     parser.add_argument('--log_file', type=str, help='Path to the log file. If provided, logs will be written to this file as well as to the console.', default=None)
     args = parser.parse_args()
@@ -278,7 +267,6 @@ def main():
         seq_report_types = args.seq_report_types,
         end_position = args.end_position,
         plot_type = args.plot_type,
-        flag_threshold = args.flag_threshold,
         log_level = args.log_level,
         log_file = args.log_file
     )
