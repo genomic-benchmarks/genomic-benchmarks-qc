@@ -24,9 +24,9 @@ STATS_TO_TRAIN_PRECOMPUTED = [
 ]
 
 def flag_on_avg_precision(avg_precision):
-    if avg_precision > 0.9:
+    if avg_precision > 0.8:
         return "Fail"
-    elif avg_precision > 0.75:
+    elif avg_precision > 0.7:
         return "Major Warning"
     elif avg_precision > 0.6:
         return "Warning"
