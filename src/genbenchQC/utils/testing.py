@@ -22,7 +22,7 @@ def flag_significant_differences(stats1, stats2):
         stats1.sequences, stats2.sequences
     )
 
-    results = pd.DataFrame.from_dict(results, orient='index', columns=['Average Precision', 'Flag'])
+    results = pd.DataFrame.from_dict(results, orient='index')
     results.index.name = 'Statistic'
 
     return results
