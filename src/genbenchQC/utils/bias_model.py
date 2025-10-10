@@ -44,6 +44,10 @@ def model(stats1, stats2, max_class_size=None):
 
         X = pd.concat([stats1.stats[stat], stats2.stats[stat]], axis=0)
         X.fillna(0, inplace=True)
+
+        if stat == 'Sequence lengths':
+            X = np.log1p(X)
+
         y = pd.Series([1] * len(stats1.stats[stat]) + [0] * len(stats2.stats[stat]))
 
         avg_precisions, accuracies = cross_validation(X, y, cv=5, max_size=max_class_size)
