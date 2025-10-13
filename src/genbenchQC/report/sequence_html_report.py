@@ -113,6 +113,9 @@ HTML_TEMPLATE = """
                 <a href="#seq_column">Sequence column</a>
                 <a href="#num-sequences">Number of sequences</a>
                 <a href="#dedup-sequences">Unique sequences</a>
+                <a href="#min-length">Minimum length</a>
+                <a href="#mean-length">Mean length</a>
+                <a href="#max-length">Maximum length</a>
                 <a href="#num-bases">Number of bases</a>
                 <a href="#unique-bases">Unique bases</a>
                 <a href="#gc-content">%GC content</a>
@@ -151,6 +154,15 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="data-item" id="dedup-sequences">
                     <span>Unique sequences:</span> {{dedup_sequences}} <!-- Number of sequences left after deduplication will be displayed here -->
+                </div>
+                <div class="data-item" id="min-length">
+                    <span>Minimum length:</span> {{min_length}} <!-- Minimum length will be displayed here -->
+                </div>
+                <div class="data-item" id="mean-length">
+                    <span>Mean length:</span> {{mean_length}} <!-- Mean length will be displayed here -->
+                </div>
+                <div class="data-item" id="max-length">
+                    <span>Maximum length:</span> {{max_length}} <!-- Maximum length will be displayed here -->
                 </div>
                 <div class="data-item" id="num-bases">
                     <span>Number of bases:</span> {{number_of_bases}} <!-- Number of bases will be displayed here -->
@@ -293,10 +305,13 @@ def get_sequence_html_template(stats, plots_path):
     html_template = put_data(html_template, "{{label}}", stats['Label'] if stats['Label'] else "N/A")
     html_template = put_data(html_template, "{{seq_column}}", stats['Sequence column'] if stats['Sequence column'] else "N/A")
     html_template = put_data(html_template, "{{number_of_sequences}}", str(stats['Number of sequences']))
+    html_template = put_data(html_template, "{{dedup_sequences}}", str(stats['Number of sequences left after deduplication']))
+    html_template = put_data(html_template, "{{min_length}}", str(int(stats['Sequence lengths']['Sequence lengths'].min())))
+    html_template = put_data(html_template, "{{max_length}}", str(int(stats['Sequence lengths']['Sequence lengths'].max())))
+    html_template = put_data(html_template, "{{mean_length}}", f"{stats['Sequence lengths']['Sequence lengths'].mean():.2f}")
     html_template = put_data(html_template, "{{number_of_bases}}", str(stats['Number of bases']))
     html_template = put_data(html_template, "{{unique_bases}}", ', '.join(x for x in stats['Unique bases']))
     html_template = put_data(html_template, "{{gc_content}}", f"{(stats['%GC content']*100):.2f}")  
-    html_template = put_data(html_template, "{{dedup_sequences}}", str(stats['Number of sequences left after deduplication']))  
 
     html_template = put_data(html_template, "{{sequence_length_plot}}", str(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-nucleotide-content}}", str(plots_path['Per sequence nucleotide content']))

@@ -140,6 +140,9 @@ HTML_TEMPLATE = """
                 <a href="#seq_column">Sequence column</a>
                 <a href="#num-sequences">Number of sequences</a>
                 <a href="#dedup-sequences">Unique sequences</a>
+                <a href="#min-length">Minimum length</a>
+                <a href="#mean-length">Mean length</a>
+                <a href="#max-length">Maximum length</a>
                 <a href="#num-bases">Number of bases</a>
                 <a href="#unique-bases">Unique bases</a>
                 <a href="#gc-content">%GC content</a>
@@ -189,6 +192,21 @@ HTML_TEMPLATE = """
                         <td><span>Unique sequences</span></td>
                         <td style="text-align: center;">{{dedup_sequences1}}</td>
                         <td style="text-align: center;">{{dedup_sequences2}}</td>
+                    </tr>
+                    <tr id="min-length">
+                        <td><span>Minimum length</span></td>
+                        <td style="text-align: center;">{{min_length1}}</td>
+                        <td style="text-align: center;">{{min_length2}}</td>
+                    </tr>
+                    <tr id="mean-length">
+                        <td><span>Mean length</span></td>
+                        <td style="text-align: center;">{{mean_length1}}</td>
+                        <td style="text-align: center;">{{mean_length2}}</td>
+                    </tr>
+                    <tr id="max-length">
+                        <td><span>Maximum length</span></td>
+                        <td style="text-align: center;">{{max_length1}}</td>
+                        <td style="text-align: center;">{{max_length2}}</td>
                     </tr>
                     <tr id="num-bases">
                         <td><span>Number of bases</span></td>
@@ -341,6 +359,12 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs):
     html_template = put_data(html_template, "{{number_of_sequences2}}", str(stats2.stats['Number of sequences']))
     html_template = put_data(html_template, "{{dedup_sequences1}}", str(stats1.stats['Number of sequences left after deduplication']))
     html_template = put_data(html_template, "{{dedup_sequences2}}", str(stats2.stats['Number of sequences left after deduplication']))
+    html_template = put_data(html_template, "{{min_length1}}", str(int(stats1.stats['Sequence lengths']['Sequence lengths'].min())))
+    html_template = put_data(html_template, "{{min_length2}}", str(int(stats2.stats['Sequence lengths']['Sequence lengths'].min())))
+    html_template = put_data(html_template, "{{mean_length1}}", f"{stats1.stats['Sequence lengths']['Sequence lengths'].mean():.2f}")
+    html_template = put_data(html_template, "{{mean_length2}}", f"{stats2.stats['Sequence lengths']['Sequence lengths'].mean():.2f}")
+    html_template = put_data(html_template, "{{max_length1}}", str(int(stats1.stats['Sequence lengths']['Sequence lengths'].max())))
+    html_template = put_data(html_template, "{{max_length2}}", str(int(stats2.stats['Sequence lengths']['Sequence lengths'].max())))
     html_template = put_data(html_template, "{{number_of_bases1}}", str(stats1.stats['Number of bases']))
     html_template = put_data(html_template, "{{number_of_bases2}}", str(stats2.stats['Number of bases']))
     html_template = put_data(html_template, "{{unique_bases1}}", ', '.join(x for x in stats1.stats['Unique bases']))
