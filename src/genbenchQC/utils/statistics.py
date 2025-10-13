@@ -119,10 +119,24 @@ class SequenceStatistics:
     
     def _compute_dinucleotide_content(self, sequence, dinucleotides):
         dinucleotides_per_sequence = {dinucleotide: 0 for dinucleotide in dinucleotides}
-        for i in range(len(sequence) - 1):
+        seq_len = len(sequence)
+
+        # No dinucleotides possible for sequences shorter than 2 -> return zeros
+        if seq_len < 2:
+            return dinucleotides_per_sequence
+
+        for i in range(seq_len - 1):
             dinucleotide = sequence[i:i + 2]
-            dinucleotides_per_sequence[dinucleotide] = dinucleotides_per_sequence.get(dinucleotide, 0) + 1
+            # increment only known dinucleotides, but track unexpected ones too
+            if dinucleotide in dinucleotides_per_sequence:
+                dinucleotides_per_sequence[dinucleotide] += 1
+            else:
+                dinucleotides_per_sequence[dinucleotide] = dinucleotides_per_sequence.get(dinucleotide, 0) + 1
+
         total = sum(dinucleotides_per_sequence.values())
+        if total == 0:
+            return dinucleotides_per_sequence
+        
         dinucleotides_per_sequence = {dinucleotide: count / total for dinucleotide, count in dinucleotides_per_sequence.items()}
 
         return dinucleotides_per_sequence
