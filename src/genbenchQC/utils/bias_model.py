@@ -86,10 +86,9 @@ def add_result(results, key, avg_score, acc_score):
 
     return results
 
-def train_model(X, y):
-    # in n_sample < n_features, use dual formulation
-    use_dual = X.shape[0] < X.shape[1]
-    model = LogisticRegression(random_state=42, solver='liblinear', dual=use_dual, max_iter=200, C=0.1)
+def train_model(X, y, use_dual=False, C=1.0):
+
+    model = LogisticRegression(random_state=42, solver='liblinear', dual=use_dual, max_iter=200, C=C)
     model.fit(X, y)
 
     return model
@@ -137,13 +136,25 @@ def balanced_kfold_splits(y, cv=5, max_size=None) -> List[Tuple[np.ndarray, np.n
 
 def cross_validation(X, y, cv=5, max_size=None):
 
+    # in n_sample < n_features, use dual formulation and stronger regularization
+    if X.shape[0] < X.shape[1]:
+        use_dual = True
+        logging.debug(f"Using dual formulation for Logistic Regression as n_samples < n_features ({X.shape[0]} < {X.shape[1]})")
+        C = 0.1
+        logging.debug(f"Using stronger regularization (C={C})")
+    else:
+        use_dual = False
+        logging.debug(f"Using primal formulation for Logistic Regression as n_samples >= n_features ({X.shape[0]} >= {X.shape[1]})")
+        C = 1.0
+        logging.debug(f"Using weaker regularization (C={C})")
+
     avg_precisions = []
     accuracies = []
     for train_idx, val_idx in balanced_kfold_splits(y, cv=cv, max_size=max_size):
         X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
-        model = train_model(X_train, y_train)
+        model = train_model(X_train, y_train, use_dual=use_dual, C=C)
         avg_precision, accuracy = eval_model(model, X_val, y_val)
         avg_precisions.append(avg_precision)
         accuracies.append(accuracy)
