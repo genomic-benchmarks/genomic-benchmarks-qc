@@ -115,8 +115,11 @@ class SequenceStatistics:
         self.stats['Sequence lengths'] = pd.DataFrame(lengths_per_sequence, columns=['Sequence lengths'])
 
     def _compute_nucleotide_content(self, sequence, nucleotides):
-        return {nucleotide: sequence.count(nucleotide) / len(sequence) for nucleotide in nucleotides}
-    
+        seq_len = len(sequence)
+        if seq_len == 0:
+            return {nucleotide: 0 for nucleotide in nucleotides}
+        return {nucleotide: sequence.count(nucleotide) / seq_len for nucleotide in nucleotides}   
+     
     def _compute_dinucleotide_content(self, sequence, dinucleotides):
         dinucleotides_per_sequence = {dinucleotide: 0 for dinucleotide in dinucleotides}
         seq_len = len(sequence)
