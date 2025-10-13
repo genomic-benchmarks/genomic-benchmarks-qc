@@ -89,7 +89,7 @@ def add_result(results, key, avg_score, acc_score):
 def train_model(X, y):
     # in n_sample < n_features, use dual formulation
     use_dual = X.shape[0] < X.shape[1]
-    model = LogisticRegression(random_state=42, solver='liblinear', dual=use_dual)
+    model = LogisticRegression(random_state=42, solver='liblinear', dual=use_dual, max_iter=200, C=0.1)
     model.fit(X, y)
 
     return model
