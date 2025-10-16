@@ -74,8 +74,8 @@ def run(train_files, test_files, format,
         out_folder: Optional[str] = '.', 
         sequence_column: Optional[list[str]] = ['sequence'], 
         report_types: Optional[list[str]] = ['html', 'simple'], 
-        identity_threshold: Optional[float] = 0.95, 
-        alignment_coverage: Optional[float] = 0.95,
+        identity_threshold: Optional[float] = 0.8, 
+        alignment_coverage: Optional[float] = 0.8,
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
@@ -91,8 +91,8 @@ def run(train_files, test_files, format,
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
                             Default: ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param identity_threshold: Identity threshold for clustering. Default: 0.95.
-    @param alignment_coverage: Alignment coverage for clustering. Default: 0.95.
+    @param identity_threshold: Identity threshold for clustering. Default: 0.8.
+    @param alignment_coverage: Alignment coverage for clustering. Default: 0.8.
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
@@ -162,8 +162,8 @@ def parse_args():
     parser.add_argument('--out_folder', type=str, help='Path to the output folder.', default='.')
     parser.add_argument('--report_types', type=str, nargs='+', choices=['json', 'html', 'simple'],
                         help='Types of reports to generate. Default: [html]', default=['html', 'simple'])
-    parser.add_argument('--identity_threshold', type=float, help='Identity threshold for clustering. Default: 0.95', default=0.95)
-    parser.add_argument('--alignment_coverage', type=float, help='Alignment coverage for clustering. Default: 0.95', default=0.95)
+    parser.add_argument('--identity_threshold', type=float, help='Identity threshold for clustering. Default: 0.8', default=0.8)
+    parser.add_argument('--alignment_coverage', type=float, help='Alignment coverage for clustering. Default: 0.8', default=0.8)
     parser.add_argument('--log_level', type=str, help='Logging level, default to INFO.', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
     parser.add_argument('--log_file', type=str, help='Path to the log file. If provided, logs will be written to this file as well as to the console.', default=None)
     args = parser.parse_args()
