@@ -1,6 +1,6 @@
 import logging
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, accuracy_score
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
@@ -24,17 +24,20 @@ STATS_TO_TRAIN_PRECOMPUTED = [
     'Sequence lengths',
 ]
 
+METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
+
 def flag_on_score(score):
-    if score > 0.8:
+    if score > 0.7:
         return "Fail"
-    elif score > 0.7:
-        return "Major Warning"
     elif score > 0.6:
         return "Warning"
     else:
         return "Pass"
 
-def model(stats1, stats2, max_class_size=None):
+def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
+
+    if metric_to_flag not in METRICS_TO_COMPUTE:
+        raise ValueError(f"metric_to_flag must be one of {METRICS_TO_COMPUTE}, got {metric_to_flag}")
 
     results = {}
 
@@ -50,12 +53,10 @@ def model(stats1, stats2, max_class_size=None):
 
         y = pd.Series([1] * len(stats1.stats[stat]) + [0] * len(stats2.stats[stat]))
 
-        avg_precisions, accuracies = cross_validation(X, y, cv=5, max_size=max_class_size)
-        avg_score = avg_precisions.mean()
-        acc_score = accuracies.mean()
+        metrics = cross_validation(X, y, cv=5, max_size=max_class_size)
 
-        logging.debug(f"Accuracy scores for {stat}: {accuracies}")
-        results = add_result(results, stat, avg_score, acc_score)
+        logging.debug(f"{metric_to_flag} scores for {stat}: {metrics[metric_to_flag]}")
+        results = add_result(results, stat, metrics, metric_to_flag)
 
     common_nts = list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
@@ -68,21 +69,20 @@ def model(stats1, stats2, max_class_size=None):
             X = pd.DataFrame(features)
             y = pd.Series([1] * len(stats1.sequences) + [0] * len(stats2.sequences))
 
-            avg_precisions, accuracies = cross_validation(X, y, cv=5, max_size=max_class_size)
-            avg_score = avg_precisions.mean()
-            acc_score = accuracies.mean()
+            metrics = cross_validation(X, y, cv=5, max_size=max_class_size)
 
             flag_name = f"Per position nucleotide content - {nt}" if not reverse else f"Per reverse position nucleotide content - {nt}"
-            logging.debug(f"Accuracy scores for {flag_name}: {accuracies}")
-            results = add_result(results, flag_name, avg_score, acc_score)
+            logging.debug(f"{metric_to_flag} scores for {flag_name}: {metrics[metric_to_flag]}")
+            results = add_result(results, flag_name, metrics, metric_to_flag)
 
     return results
 
-def add_result(results, key, avg_score, acc_score):
+def add_result(results, key, metrics, metric_to_flag):
     results[key] = {}
-    results[key]['Average Precision'] = avg_score
-    results[key]['Accuracy'] = acc_score
-    results[key]['Flag'] = flag_on_score(acc_score)
+    for metric_name, scores in metrics.items():
+        avg_score = scores.mean()
+        results[key][metric_name] = avg_score
+    results[key]['Flag'] = flag_on_score(metrics[metric_to_flag].mean())
 
     return results
 
@@ -95,11 +95,17 @@ def train_model(X, y, use_dual=False, C=1.0):
 
 def eval_model(model, X, y):
     y_prob = model.predict_proba(X)[:, 1]
-    avg_precision = average_precision_score(y, y_prob)
-    y_pred = y_prob >= 0.5
-    accuracy = accuracy_score(y, y_pred)
+    metrics = {}
 
-    return avg_precision, accuracy
+    metrics['AU-ROC'] = roc_auc_score(y, y_prob)
+
+    precision, recall, _ = precision_recall_curve(y, y_prob)
+    metrics['AU-PR'] = auc(recall, precision)
+
+    y_pred = y_prob >= 0.5
+    metrics['Accuracy'] = accuracy_score(y, y_pred)
+
+    return metrics
 
 def balanced_kfold_splits(y, cv=5, max_size=None) -> List[Tuple[np.ndarray, np.ndarray]]:
    
@@ -148,15 +154,18 @@ def cross_validation(X, y, cv=5, max_size=None):
         C = 1.0
         logging.debug(f"Using weaker regularization (C={C})")
 
-    avg_precisions = []
-    accuracies = []
+    metrics = {metric: [] for metric in METRICS_TO_COMPUTE}
     for train_idx, val_idx in balanced_kfold_splits(y, cv=cv, max_size=max_size):
         X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
         model = train_model(X_train, y_train, use_dual=use_dual, C=C)
-        avg_precision, accuracy = eval_model(model, X_val, y_val)
-        avg_precisions.append(avg_precision)
-        accuracies.append(accuracy)
+        eval_metrics = eval_model(model, X_val, y_val)
+        
+        for metric_name, score in eval_metrics.items():
+            metrics[metric_name].append(score)
 
-    return np.array(avg_precisions), np.array(accuracies)
+    for metric_name in metrics:
+        metrics[metric_name] = np.array(metrics[metric_name])
+
+    return metrics
