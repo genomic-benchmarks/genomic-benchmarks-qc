@@ -116,8 +116,14 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
 
     # find duplicate sequences between labels
     duplicate_seqs = list(set(stats1.sequences).intersection(stats2.sequences))
+
+    # Make dictionary of summary statuses
+    if results is not None:
+        summary_statuses = results['Flag'].to_dict()
+    else:
+        summary_statuses = None
     # Load the HTML template
-    template = get_dataset_html_template(stats1, stats2, plots_paths, duplicate_seqs)
+    template = get_dataset_html_template(stats1, stats2, plots_paths, duplicate_seqs, summary_statuses=summary_statuses)
 
     with open(output_path, 'w') as file:
         file.write(template)

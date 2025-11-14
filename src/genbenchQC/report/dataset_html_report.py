@@ -25,11 +25,51 @@ HTML_TEMPLATE = """
             overflow-y: auto;
             z-index: 1000; /* Ensures it stays above other elements */
         }
+
+        /* Each sidebar entry (icon + link) is a horizontal row */
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        /* Icon that appears before each sidebar link. Rendered as a colored circle. */
+        .status-icon {
+            display: inline-flex;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            border-radius: 50%;
+            color: white;
+            font-size: 30px;
+            font-family:verdana;
+            text-align: center;
+            justify-content: center;
+        }
+
+        /* Visual classes for icon states */
+        .status-pass {
+            background-color: #2e7d32; /* green */
+            color: #ffffff; /* white check */
+        }
+
+        .status-warn {
+            background-color: #f57f17; /* orange */
+            color: #ffffff; /* white */
+        }
+
+        .status-fail {
+            background-color: #c62828; /* red */
+            color: #ffffff; /* white */
+        }
+        /* keep the <a> inline inside the flex row so the icon sits beside it */
         .sidebar a {
-            display: block;
-            margin: 10px 0;
+            display: inline-block;
             text-decoration: none;
             color: #333;
+            margin-left: 10px;
+            width: 175px;
+
         }
         .content {
             margin-left: 300px;
@@ -131,35 +171,16 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-        <div class="sidebar">
-            <h2>Navigation</h2>
-            <a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a>
-            <div style="margin-left: 15px;">
-                <a href="#filename">Filename</a>
-                <a href="#label">Label</a>
-                <a href="#seq_column">Sequence column</a>
-                <a href="#num-sequences">Number of sequences</a>
-                <a href="#dedup-sequences">Unique sequences</a>
-                <a href="#min-length">Minimum length</a>
-                <a href="#mean-length">Mean length</a>
-                <a href="#max-length">Maximum length</a>
-                <a href="#num-bases">Number of bases</a>
-                <a href="#unique-bases">Unique bases</a>
-                <a href="#gc-content">%GC content</a>
-            </div>
-            <a href="#general-descriptive-statistics">General Descriptive Statistics</a>
-            <div style="margin-left: 15px;">
-                <a href="#sequence-lengths">Sequence lengths</a>
-                <a href="#sequence-duplication-levels">Duplicate sequences</a>
-            </div>
-            <a href="#per-sequence-descriptive-stats">Per Sequence Descriptive Stats</a>
-            <div style="margin-left: 15px;">
-                <a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a>
-                <a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a>
-                <a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a>
-                <a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a>
-                <a href="#per-sequence-gc-content">Per Sequence GC Content</a>
-            </div>
+            <div class="sidebar">
+            <h2>Summary</h2>
+            <div class="sidebar-item">{{icon_basic_descriptive_statistics}}<a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
+            <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
+            <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate sequences</a></div>
+            <div class="sidebar-item">{{icon_per_sequence_nucleotide_content}}<a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
+            <div class="sidebar-item">{{icon_per_sequence_dinucleotide_content}}<a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a></div>
+            <div class="sidebar-item">{{icon_per_position_nucleotide_content}}<a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
+            <div class="sidebar-item">{{icon_per_position_reversed_nucleotide_content}}<a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a></div>
+            <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
         </div>
 
         <div class="content">
@@ -226,49 +247,48 @@ HTML_TEMPLATE = """
                 </table>
             </section>
 
-            <section id="general-descriptive-statistics">
-                <h2>General Descriptive Statistics</h2>
+            <section id="sequence-lengths">
+                <h2>Sequence lengths</h2>
 
-                <h3 id="sequence-lengths">Sequence lengths</h3>
                 <!-- This will be populated with png plot --->
                 <img src={{sequence_length_plot}} alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
-
-                <div id="sequence-duplication-levels">
-                    <h3>Duplicate sequences</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="sequence_column">Sequence</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Table rows will be dynamically populated -->
-                        </tbody>
-                    </table>
-                    <div id="sequence-duplication-levels-info">
-                        <p>And {{sequence_duplication_levels_rest}} more</p>
-                    </div>
+            </section>
+            <section id="sequence-duplication-levels">
+                <h2>Duplicate sequences</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sequence_column">Sequence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table rows will be dynamically populated -->
+                    </tbody>
+                </table>
+                <div id="sequence-duplication-levels-info">
+                    <p>And {{sequence_duplication_levels_rest}} more</p>
                 </div>
             </section>
 
-            <section id="per-sequence-descriptive-stats">
-                <h2>Per Sequence Descriptive Stats</h2>
-
-                <h3 id="per-sequence-nucleotide-content">Per Sequence Nucleotide Content</h3>
+            <section id="per-sequence-nucleotide-content">
+                <h2>Per Sequence Nucleotide Content</h2>
                 <img src={{per-sequence-nucleotide-content}} alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</h3>
+            </section>
+            <section id="per-sequence-dinucleotide-content">
+                <h2>Per Sequence Dinucleotide Content</h2>
                 <img src={{per-sequence-dinucleotide-content}} alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-position-nucleotide-content">Per Position Nucleotide Content</h3>
+            </section>
+            <section id="per-position-nucleotide-content">
+                <h2>Per Position Nucleotide Content</h2>
                 <img src={{per-position-nucleotide-content}} alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</h3>
+            </section>
+            <section id="per-position-reversed-nucleotide-content">
+                <h2>Per Position Reversed Nucleotide Content</h2>
                 <img src={{per-position-reversed-nucleotide-content}} alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-sequence-gc-content">Per Sequence GC Content</h3>
+            </section>
+            <section id="per-sequence-gc-content">
+                <h2>Per Sequence GC Content</h2>
                 <img src={{per-sequence-gc-content}} alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
-
             </section>
         </div>
     </div>
@@ -343,9 +363,18 @@ def escape_str(s):
     """
     return '"' + s + '"'
 
-def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs):
+def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summary_statuses=None):
     """
     Returns the HTML template for the report.
+
+    Args:
+        stats1, stats2: objects containing dataset statistics (unchanged API).
+        plots_path: dict with plot image paths.
+        duplicate_seqs: list of duplicate sequences.
+        summary_statuses: optional pd.DataFrame mapping status keys to HTML/text snippets for
+                          the sidebar placeholders.
+
+    Backwards compatible: if summary_statuses is None, placeholders are left empty.
     """
     html_template = HTML_TEMPLATE
 
@@ -378,6 +407,37 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs):
     html_template = put_data(html_template, "{{per-position-nucleotide-content}}", str(plots_path['Per position nucleotide content']))
     html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}", str(plots_path['Per position reversed nucleotide content']))
     html_template = put_data(html_template, "{{per-sequence-gc-content}}", str(plots_path['Per sequence GC content']))
+
+    # Populate sidebar icon placeholders (if provided). summary_statuses may contain
+    # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
+    # returns the HTML for the small circular icon shown before each section link.
+    def _icon_html(key):
+        if summary_statuses is None:
+            return ''
+        val = summary_statuses.get(key, '')
+        if not val:
+            return ''
+        s = str(val).strip()
+        lv = s.lower()
+        if lv in ('pass', 'ok', 'good', 'success'):
+            return '<span class="status-icon status-pass">✔</span>'
+        if lv in ('warn', 'warning'):
+            return '<span class="status-icon status-warn">!</span>'
+        if lv in ('fail', 'failed', 'error'):
+            return '<span class="status-icon status-fail">✖</span>'
+        # Otherwise assume the value is an HTML snippet or a custom symbol and return as-is
+        return s
+
+    print(summary_statuses)
+
+    html_template = put_data(html_template, "{{icon_basic_descriptive_statistics}}", _icon_html('Unique bases'))
+    html_template = put_data(html_template, "{{icon_sequence_lengths}}", _icon_html('Sequence lengths'))
+    html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", _icon_html('Duplication between labels'))
+    html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", _icon_html('Per sequence nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_sequence_dinucleotide_content}}", _icon_html('Per sequence dinucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_position_nucleotide_content}}", _icon_html('Per position nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", _icon_html('Per position reversed nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_sequence_gc_content}}", _icon_html('Per sequence GC content'))
 
     # take max 10 sequences for sequence duplication levels
     sequence_duplication_levels = duplicate_seqs[:10]
