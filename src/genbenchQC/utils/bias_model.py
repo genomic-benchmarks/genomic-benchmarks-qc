@@ -60,9 +60,12 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
 
     common_nts = list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
-    for nt in common_nts:
-        logging.info(f"Training bias detection model for per position nucleotide: {nt}")
-        for reverse in [False, True]:
+    for reverse in [False, True]:
+        # Compute aggregate metrics for per position nucleotides - take worst case
+        worse_metrics = {metric: [] for metric in METRICS_TO_COMPUTE}
+        for nt in common_nts:
+            log_msg = "Training bias detection model for per position nucleotide" if not reverse else "Training bias detection model for per reverse position nucleotide"
+            logging.info(f"{log_msg}: {nt}")
 
             features = extract_per_position_base(stats1.sequences + stats2.sequences, base=nt, reverse=reverse)
 
@@ -74,6 +77,14 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
             flag_name = f"Per position nucleotide content - {nt}" if not reverse else f"Per reverse position nucleotide content - {nt}"
             logging.debug(f"{metric_to_flag} scores for {flag_name}: {metrics[metric_to_flag]}")
             results = add_result(results, flag_name, metrics, metric_to_flag)
+
+            for metric_name in METRICS_TO_COMPUTE:
+                worse_metrics[metric_name].append(metrics[metric_name].mean())
+
+        # Add worst case metrics
+        worst_case_metrics = {metric: np.array([max(worse_metrics[metric])]) for metric in METRICS_TO_COMPUTE}
+        flag_name = "Per position nucleotide content" if not reverse else "Per reverse position nucleotide content"
+        results = add_result(results, flag_name, worst_case_metrics, metric_to_flag)
 
     return results
 
