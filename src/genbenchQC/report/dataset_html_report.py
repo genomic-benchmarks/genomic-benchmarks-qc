@@ -172,7 +172,11 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-            <div class="sidebar">
+        <div class="sidebar">
+            <div class="logo" style="text-align: center; margin-bottom: 20px;">
+                <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent_small.png" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
+                <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
+            </div>
             <h2>Summary</h2>
             <div class="sidebar-item">{{icon_basic_descriptive_statistics}}<a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
             <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
@@ -402,6 +406,10 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     Backwards compatible: if summary_statuses is None, placeholders are left empty.
     """
     html_template = HTML_TEMPLATE
+
+    # add version info
+    from genbenchQC import __version__
+    html_template = put_data(html_template, "{{version}}", __version__)
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
