@@ -16,9 +16,9 @@ HTML_TEMPLATE = """
             max-width: 100%; /* Prevents content from exceeding the viewport width */
         }
         .sidebar {
-            width: 250px;
+            width: 220px;
             background: #f4f4f4;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             height: 100vh; /* Full height */
             position: fixed; /* Fixed position */
@@ -30,18 +30,18 @@ HTML_TEMPLATE = """
         .sidebar-item {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         /* Icon that appears before each sidebar link. Rendered as a colored circle. */
         .status-icon {
             display: inline-flex;
-            width: 50px;
-            height: 50px;
-            line-height: 50px;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
             border-radius: 50%;
             color: white;
-            font-size: 30px;
+            font-size: 25px;
             font-family:verdana;
             text-align: center;
             justify-content: center;
@@ -120,6 +120,7 @@ HTML_TEMPLATE = """
             color: #333;
             border-bottom: 2px solid #ddd;
             padding-bottom: 5px;
+            margin-left: 10px;
         }
 
         h3 {
@@ -187,7 +188,10 @@ HTML_TEMPLATE = """
         <h1>HTML Report Output</h1>
 
             <section id="basic-descriptive-statistics">
-                <h2>Basic Descriptive Statistics</h2>
+                <div class="sidebar-item">
+                    {{icon_basic_descriptive_statistics}}
+                    <h2>Basic Descriptive Statistics</h2>
+                </div>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr id="filename">
                         <td><span>Filename</span></td>
@@ -248,13 +252,19 @@ HTML_TEMPLATE = """
             </section>
 
             <section id="sequence-lengths">
-                <h2>Sequence lengths</h2>
+                <div class="sidebar-item">
+                    {{icon_sequence_lengths}}
+                    <h2>Sequence Lengths</h2>
+                </div>
 
                 <!-- This will be populated with png plot --->
                 <img src={{sequence_length_plot}} alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
             <section id="sequence-duplication-levels">
-                <h2>Duplicate sequences</h2>
+                <div class="sidebar-item">
+                    {{icon_sequence_duplication_levels}}
+                    <h2>Duplicate sequences</h2>
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -271,23 +281,38 @@ HTML_TEMPLATE = """
             </section>
 
             <section id="per-sequence-nucleotide-content">
-                <h2>Per Sequence Nucleotide Content</h2>
+                <div class="sidebar-item">
+                    {{icon_per_sequence_nucleotide_content}}
+                    <h2>Per Sequence Nucleotide Content</h2>
+                </div>
                 <img src={{per-sequence-nucleotide-content}} alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
             <section id="per-sequence-dinucleotide-content">
-                <h2>Per Sequence Dinucleotide Content</h2>
+                <div class="sidebar-item">
+                    {{icon_per_sequence_dinucleotide_content}}
+                    <h2>Per Sequence Dinucleotide Content</h2>
+                </div>
                 <img src={{per-sequence-dinucleotide-content}} alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
             </section>
             <section id="per-position-nucleotide-content">
-                <h2>Per Position Nucleotide Content</h2>
+                <div class="sidebar-item">
+                    {{icon_per_position_nucleotide_content}}
+                    <h2>Per Position Nucleotide Content</h2>
+                </div>
                 <img src={{per-position-nucleotide-content}} alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
             <section id="per-position-reversed-nucleotide-content">
-                <h2>Per Position Reversed Nucleotide Content</h2>
+                <div class="sidebar-item">
+                    {{icon_per_position_reversed_nucleotide_content}}
+                    <h2>Per Position Reversed Nucleotide Content</h2>
+                </div>
                 <img src={{per-position-reversed-nucleotide-content}} alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
             <section id="per-sequence-gc-content">
-                <h2>Per Sequence GC Content</h2>
+                <div class="sidebar-item">
+                    {{icon_per_sequence_gc_content}}
+                    <h2>Per Sequence GC Content</h2>
+                </div>
                 <img src={{per-sequence-gc-content}} alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
         </div>
@@ -428,15 +453,13 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
         # Otherwise assume the value is an HTML snippet or a custom symbol and return as-is
         return s
 
-    print(summary_statuses)
-
     html_template = put_data(html_template, "{{icon_basic_descriptive_statistics}}", _icon_html('Unique bases'))
     html_template = put_data(html_template, "{{icon_sequence_lengths}}", _icon_html('Sequence lengths'))
     html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", _icon_html('Duplication between labels'))
     html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", _icon_html('Per sequence nucleotide content'))
     html_template = put_data(html_template, "{{icon_per_sequence_dinucleotide_content}}", _icon_html('Per sequence dinucleotide content'))
     html_template = put_data(html_template, "{{icon_per_position_nucleotide_content}}", _icon_html('Per position nucleotide content'))
-    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", _icon_html('Per position reversed nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", _icon_html('Per reverse position nucleotide content'))
     html_template = put_data(html_template, "{{icon_per_sequence_gc_content}}", _icon_html('Per sequence GC content'))
 
     # take max 10 sequences for sequence duplication levels
