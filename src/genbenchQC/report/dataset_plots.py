@@ -251,7 +251,7 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     ticks = [1]
     ticks.extend(range(end_position // 10, end_position + 1, end_position // 10))
     axs[last_index].set_xticks(ticks)
-    axs[last_index] = prepare_legend(axs[index], box_to_anchor=(0.5, -1))
+    axs[last_index] = prepare_legend(axs[last_index], box_to_anchor=(0.5, -1))
 
     return fig
 
