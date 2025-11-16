@@ -241,14 +241,21 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
 
         df1_base = df1[nt][:end_position]
         df2_base = df2[nt][:end_position]
-        axs[index].plot(df1.index[:end_position], df1_base, label=f"{stats1.label}", color=HuePalette()[0], alpha=0.7)
-        axs[index].plot(df2.index[:end_position], df2_base, label=f"{stats2.label}", color=HuePalette()[1], alpha=0.7)
+        # +1 so the position starts from 1
+        axs[index].plot(df1.index[:end_position] + 1, df1_base, label=f"{stats1.label}", color=HuePalette()[0], alpha=0.7)
+        axs[index].plot(df2.index[:end_position] + 1, df2_base, label=f"{stats2.label}", color=HuePalette()[1], alpha=0.7)
 
         axs[index].set_ylim(-0.1, 1.1)
         axs[index].set_ylabel('Frequency', fontsize=14)
         axs[index].legend().set_visible(False)
         axs[index].tick_params(axis='x', labelsize=12)
         axs[index].tick_params(axis='y', labelsize=12)
+        axs[index].ticklabel_format(axis='both', style='plain')
+
+        # set x ticks
+        ticks = [1]
+        ticks.extend(range(end_position // 10, end_position + 1, end_position // 10))
+        axs[index].set_xticks(ticks)
 
         # add text to the plot with the nucleotide name
         axs[index].text(0.9, 0.8, f'Nucleotide: {nt}', ha='center', va='bottom', fontsize=14, transform=axs[index].transAxes)
@@ -265,8 +272,6 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
                     axs[index].axvspan(i-0.45, i+0.45, facecolor='red', alpha=0.2)
                     red_flag = True
 
-    axs[index].ticklabel_format(axis='both', style='plain')
-
     seq_lengths = list(stats1.stats['Sequence lengths'].values.flatten()) + list(stats2.stats['Sequence lengths'].values.flatten())
     # Plot the number of sequences with length at least that position
     length_counts = [sum(1 for length in seq_lengths if length >= pos) for pos in range(end_position)]
@@ -274,9 +279,10 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     if length_counts:
         length_counts = [count / max(length_counts) for count in length_counts]
 
+    # plot length counts in the last subplot
     last_index = len(nucleotides)
-    axs[last_index].fill_between(range(end_position), length_counts, color='lightblue', alpha=0.5)
-    axs[last_index].plot(range(end_position), length_counts, color='lightblue', linewidth=2)
+    axs[last_index].fill_between(range(1, end_position + 1), length_counts, color='lightblue', alpha=0.5)
+    axs[last_index].plot(range(1, end_position + 1), length_counts, color='lightblue', linewidth=2)
     axs[last_index].set_xlabel(f"{x_label}", fontsize=14)
     axs[last_index].set_ylabel('Proportion of\nsequences', fontsize=14)
     axs[last_index].yaxis.set_label_position("right")
@@ -286,6 +292,12 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     axs[last_index].set_yticklabels(['0', '0.5', '1'], fontsize=12)
     axs[last_index].tick_params(axis='x', labelsize=12)
     axs[last_index].tick_params(axis='y', labelsize=12)
+
+    # set x ticks
+    ticks = [1]
+    ticks.extend(range(end_position // 10, end_position + 1, end_position // 10))
+    axs[last_index].set_xticks(ticks)
+
 
     axs[last_index] = prepare_legend(axs[index], red_flag, p_value_thresh, box_to_anchor=(0.5, -1), metric='p-value <')
 
