@@ -43,8 +43,6 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
     """
 
     df = melt_stats(stats1, stats2, 'Per sequence nucleotide content', var_name='Nucleotide', value_name='Frequency')
-    min_y = df['Frequency'].min()
-    max_y = df['Frequency'].max()
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 4), dpi=300)
     if plot_type == 'violin':
@@ -56,7 +54,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
             data=df[df['Nucleotide'].isin(nucleotides)],
             gap=.1,
             order=nucleotides,
-            hue_order=[stats1.label, stats2.label],
+            hue_order=[str(stats1.label), str(stats2.label)],
             density_norm='width',
             palette=HuePalette(),
             cut=0
@@ -68,7 +66,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
             y='Frequency', 
             hue="label", 
             order=nucleotides,
-            hue_order=[stats1.label, stats2.label],
+            hue_order=[str(stats1.label), str(stats2.label)],
             ax=ax,
             palette=HuePalette(),
             width=0.8
@@ -88,11 +86,8 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
 def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
-    min_y = df['Frequency'].min()
-    max_y = df['Frequency'].max()
     
     fig, axs = plt.subplots(len(nucleotides), 1, figsize=(10, len(nucleotides) * 3 + 2), sharey=True, dpi=300)
-    red_flag = False
     for index, nt in enumerate(nucleotides):
         dinucleotides = [nt + nt2 for nt2 in nucleotides]
         row = df[df['Dinucleotide'].isin(dinucleotides)]
@@ -106,7 +101,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
                 data=row,
                 gap=.1,
                 order=dinucleotides,
-                hue_order=[stats1.label, stats2.label],
+                hue_order=[str(stats1.label), str(stats2.label)],
                 ax=axs[index],
                 density_norm='width',
                 palette=HuePalette(),
@@ -119,7 +114,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
                 hue="label", 
                 data=row,
                 order=dinucleotides,
-                hue_order=[stats1.label, stats2.label],
+                hue_order=[str(stats1.label), str(stats2.label)],
                 ax=axs[index],
                 palette=HuePalette(),
                 width=0.8
@@ -209,7 +204,6 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         sharey=True, dpi=300
     )
 
-    red_flag = False
     for index, nt in enumerate(nucleotides):
 
         df1_base = df1[nt][:end_position]
