@@ -35,10 +35,6 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
     @param stats2: Statistics for the second set of sequences.
     @param nucleotides: List of nucleotides to plot.
     @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-    @param result: Optional results from a previous analysis. Tuple (distances, passed), where distances is a dict with nucleotides as keys
-                   and distances between their distributions as values. Passed is bool indicating if the test passed.
-                   If provided, nucleotide plots with distance > dist_thresh will be flagged.
-    @param dist_thresh: Optional distance threshold for flagging significant differences.
     @return: Matplotlib figure object.
     """
 
