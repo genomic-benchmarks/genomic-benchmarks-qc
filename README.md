@@ -52,18 +52,6 @@ evaluate_sequences \
   --out_folder example_outputs/G4_dataset_positives
 ```
 
-The same evaluation would be executed from Python as follows:
-
-```python
-from genbenchQC import evaluate_sequences
-
-evaluate_sequences.run(
-  input='example_datasets/G4_positives.fasta', 
-  format='fasta',
-  out_folder='example_outputs/G4_dataset_positives'
-)
-```
-
 Outputs with their description are in [example_outputs/G4_dataset_positives](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset_positives).
 
 ### Evaluate Dataset
@@ -78,6 +66,37 @@ evaluate_dataset \
 ```
 
 Outputs with their description are in [example_outputs/G4_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset).
+
+### Evaluate Split
+
+```bash
+evaluate_split \
+  --train_input example_datasets/enhancers_train.csv \
+  --test_input example_datasets/enhancers_test.csv \
+  --format csv \
+  --sequence_column sequence \
+  --out_folder example_outputs/enhancers_dataset
+```
+
+Outputs with their description are in [example_outputs/enhancers_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/enhancers_dataset).
+
+## Python Execution
+
+The same commands can be executed from Python.
+
+### Evaluate Sequences
+
+```python
+from genbenchQC import evaluate_sequences
+
+evaluate_sequences.run(
+  input='example_datasets/G4_positives.fasta', 
+  format='fasta',
+  out_folder='example_outputs/G4_dataset_positives'
+)
+```
+
+### Evaluate Dataset
 
 Running from Python with CSV file with multiple sequence columns:
 
@@ -98,17 +117,6 @@ Outputs with their description are in [example_outputs/miRNA_mRNA_dataset](https
 
 ### Evaluate Split
 
-```bash
-evaluate_split \
-  --train_input example_datasets/enhancers_train.csv \
-  --test_input example_datasets/enhancers_test.csv \
-  --format csv \
-  --sequence_column sequence \
-  --out_folder example_outputs/enhancers_dataset
-```
-
-The same evaluation would be executed from Python as follows:
-
 ```python
 from genbenchQC import evaluate_split
 
@@ -120,8 +128,6 @@ evaluate_split.run(
   out_folder='example_outputs/enhancers_dataset'
 )
 ```
-
-Outputs with their description are in [example_outputs/enhancers_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/enhancers_dataset).
 
 ## Supported input file formats
 
