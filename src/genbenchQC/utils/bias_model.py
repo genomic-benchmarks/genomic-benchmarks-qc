@@ -6,8 +6,14 @@ import pandas as pd
 from typing import List, Tuple
 
 
-def extract_per_position_base(sequences, base, reverse):
-    max_len = max([len(seq) for seq in sequences])
+def extract_per_position_base(sequences, base, reverse, end_position=None):
+    if not sequences:  
+        return np.zeros((0, 0))
+    if end_position is not None:
+        sequences = [seq[:end_position] for seq in sequences]
+        max_len = end_position
+    else:
+        max_len = max([len(seq) for seq in sequences])
     features = np.zeros((len(sequences), max_len))
     for i, seq in enumerate(sequences):
         if reverse:
@@ -67,7 +73,8 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
             log_msg = "Training bias detection model for per position nucleotide" if not reverse else "Training bias detection model for per reverse position nucleotide"
             logging.info(f"{log_msg}: {nt}")
 
-            features = extract_per_position_base(stats1.sequences + stats2.sequences, base=nt, reverse=reverse)
+            end_position=min(stats1.end_position, stats2.end_position)
+            features = extract_per_position_base(stats1.sequences + stats2.sequences, base=nt, reverse=reverse, end_position=end_position)
 
             X = pd.DataFrame(features)
             y = pd.Series([1] * len(stats1.sequences) + [0] * len(stats2.sequences))
