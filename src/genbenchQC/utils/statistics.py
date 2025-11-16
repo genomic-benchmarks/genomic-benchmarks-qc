@@ -81,6 +81,7 @@ class SequenceStatistics:
 
     def _compute_basic_statistics(self):
         self.stats['Filename'] = self.filename
+        self.stats['Filepath'] = self.filepath
         self.stats['Label'] = self.label if self.label is not None else 'N/A'
         self.stats['Sequence column'] = self.seq_column if self.seq_column is not None else 'N/A'
         self.stats['Number of sequences'] = len(self.sequences)

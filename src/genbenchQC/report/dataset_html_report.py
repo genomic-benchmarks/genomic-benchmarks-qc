@@ -1,4 +1,6 @@
 from datetime import datetime
+from genbenchQC import __version__
+from genbenchQC.report.report_common import put_data, put_file_details, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -7,168 +9,7 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML Report Output</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            max-width: 100%; /* Prevents content from exceeding the viewport width */
-        }
-        .sidebar {
-            width: 220px;
-            background: #f4f4f4;
-            padding: 15px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            height: 100vh; /* Full height */
-            position: fixed; /* Fixed position */
-            overflow-y: auto;
-            z-index: 1000; /* Ensures it stays above other elements */
-        }
-
-        /* Each sidebar entry (icon + link) is a horizontal row */
-        .sidebar-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        /* Icon that appears before each sidebar link. Rendered as a colored circle. */
-        .status-icon {
-            display: inline-flex;
-            width: 40px;
-            height: 40px;
-            line-height: 40px;
-            border-radius: 50%;
-            color: white;
-            font-size: 25px;
-            font-family:verdana;
-            text-align: center;
-            justify-content: center;
-        }
-
-        /* Visual classes for icon states */
-        .status-pass {
-            background-color: #2e7d32; /* green */
-            color: #ffffff; /* white check */
-        }
-
-        .status-warn {
-            background-color: #f57f17; /* orange */
-            color: #ffffff; /* white */
-        }
-
-        .status-fail {
-            background-color: #c62828; /* red */
-            color: #ffffff; /* white */
-        }
-        /* keep the <a> inline inside the flex row so the icon sits beside it */
-        .sidebar a {
-            display: inline-block;
-            text-decoration: none;
-            color: #333;
-            margin-left: 10px;
-            width: 175px;
-
-        }
-        .content {
-            margin-left: 300px;
-            padding: 20px;
-            width: calc(100% - 350px); /* Adjust width to avoid overlap */
-            overflow-x: hidden;
-        }
-        #sequence-duplication-levels table {
-            table-layout: fixed; /* Ensures columns respect defined widths */
-            width: 100%; /* Makes the table take up the full width of its container */
-            border-collapse: collapse; /* Optional: Makes the table look cleaner */
-        }
-
-        #sequence-duplication-levels table th,
-        #sequence-duplication-levels table td {
-            padding: 8px; /* Adds padding for better readability */
-            border: 1px solid #ddd; /* Adds a border for clarity */
-        }
-
-        #sequence-duplication-levels table td {
-            white-space: nowrap; /* Prevents text from wrapping */
-            overflow: hidden; /* Hides overflowing text */
-            text-overflow: ellipsis; /* Adds "..." to indicate clipped text */
-        }
-
-        #sequence-duplication-levels table th {
-            text-align: left; /* Aligns header text to the left */
-        }
-
-        .count_column {
-            width: 45px; /* Fixed width for the first column */
-        }
-
-        .sequence_column {
-            width: 95%; /* Fixed width for the second column */
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        section {
-            margin-bottom: 50px;
-        }
-
-        h2 {
-            color: #333;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
-            margin-left: 10px;
-        }
-
-        h3 {
-            color: #555;
-            margin-bottom: 15px;
-        }
-
-        .chart-container {
-            margin-bottom: 30px;
-        }
-
-        .data-item {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-        }
-
-        .data-item span {
-            font-weight: bold;
-            font-size: 1em;
-        }
-
-        /* Style basic descriptive statistics table */
-        #basic-descriptive-statistics table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        #basic-descriptive-statistics table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-        #basic-descriptive-statistics table td:first-child {
-            text-align: left;
-            width: 200px;
-        }
-        #basic-descriptive-statistics table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        #basic-descriptive-statistics table tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        #basic-descriptive-statistics table span {
-            font-weight: bold;
-        }
-
-    </style>
+    <style>{{common_css}}</style>
 </head>
 <body>
     <div class="container">
@@ -191,11 +32,7 @@ HTML_TEMPLATE = """
         <div class="content">
 
             <!-- Report header: logo, short description and generated-on/data source info -->
-            <div class="report-header" style="text-align: left; margin-bottom: 30px;">
-                <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent.png" alt="GenBenchQC Logo" style="max-width: 350px; height: auto; margin: 0 auto 10px;">
-                <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">{{tool_description}}</div>
-                <div style="font-size: 0.9em; color: #666;">Report generated on {{generated_on}} based on data: {{input_paths}}</div>
-            </div>
+            {{report_header}}
 
             <section id="basic-descriptive-statistics">
                 <div class="sidebar-item">
@@ -351,53 +188,6 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def put_file_details(html_template, filename):
-    """
-    Populates the placeholders {{filename}} and {{date}} in the HTML template.
-
-    Args:
-        html_template (str): The HTML template as a string.
-        filename (str): The name of the file to insert into the template.
-
-    Returns:
-        str: The updated HTML template with placeholders replaced.
-    """
-    # Replace {{filename}} with the stripped filename
-    html_template = html_template.replace("{{filename}}", filename)
-
-    # Replace {{date}} with the current date and time
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    html_template = html_template.replace("{{date}}", current_time)
-
-    return html_template
-
-def put_data(html_template, placeholder, data):
-    """
-    Replaces all occurrences of a placeholder in the HTML template with the provided data.
-
-    Args:
-        html_template (str): The HTML template as a string.
-        placeholder (str): The placeholder to replace (e.g., "{{placeholder}}").
-        data (str): The data to replace the placeholder with.
-
-    Returns:
-        str: The updated HTML template with placeholders replaced.
-
-    Raises:
-        ValueError: If the placeholder is not found in the HTML template.
-    """
-    if placeholder not in html_template:
-        raise ValueError(f"Placeholder not found: {placeholder}")
-
-    # Replace all occurrences of the placeholder with the data
-    return html_template.replace(placeholder, data)
-
-def escape_str(s):
-    """
-    Add \" around the string to escape it for HTML.
-    """
-    return '"' + s + '"'
-
 def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summary_statuses=None,
                              tool_description=None):
     """
@@ -414,9 +204,9 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     """
     html_template = HTML_TEMPLATE
 
-    # add version info
-    from genbenchQC import __version__
-    html_template = put_data(html_template, "{{version}}", __version__)
+    # insert shared CSS and header fragment
+    html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
+    html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
 
     # populate header placeholders: tool description, generated timestamp and input paths
     # Provide sensible defaults when values are not supplied
@@ -434,6 +224,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
+    html_template = put_data(html_template, "{{version}}", __version__)
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
@@ -468,31 +259,14 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
     # returns the HTML for the small circular icon shown before each section link.
-    def _icon_html(key):
-        if summary_statuses is None:
-            return ''
-        val = summary_statuses.get(key, '')
-        if not val:
-            return ''
-        s = str(val).strip()
-        lv = s.lower()
-        if lv in ('pass', 'ok', 'good', 'success'):
-            return '<span class="status-icon status-pass">✔</span>'
-        if lv in ('warn', 'warning'):
-            return '<span class="status-icon status-warn">!</span>'
-        if lv in ('fail', 'failed', 'error'):
-            return '<span class="status-icon status-fail">✖</span>'
-        # Otherwise assume the value is an HTML snippet or a custom symbol and return as-is
-        return s
-
-    html_template = put_data(html_template, "{{icon_basic_descriptive_statistics}}", _icon_html('Unique bases'))
-    html_template = put_data(html_template, "{{icon_sequence_lengths}}", _icon_html('Sequence lengths'))
-    html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", _icon_html('Duplication between labels'))
-    html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", _icon_html('Per sequence nucleotide content'))
-    html_template = put_data(html_template, "{{icon_per_sequence_dinucleotide_content}}", _icon_html('Per sequence dinucleotide content'))
-    html_template = put_data(html_template, "{{icon_per_position_nucleotide_content}}", _icon_html('Per position nucleotide content'))
-    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", _icon_html('Per reverse position nucleotide content'))
-    html_template = put_data(html_template, "{{icon_per_sequence_gc_content}}", _icon_html('Per sequence GC content'))
+    html_template = put_data(html_template, "{{icon_basic_descriptive_statistics}}", icon_html(summary_statuses, 'Unique bases'))
+    html_template = put_data(html_template, "{{icon_sequence_lengths}}", icon_html(summary_statuses, 'Sequence lengths'))
+    html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", icon_html(summary_statuses, 'Duplication between labels'))
+    html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", icon_html(summary_statuses, 'Per sequence nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_sequence_dinucleotide_content}}", icon_html(summary_statuses, 'Per sequence dinucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_position_nucleotide_content}}", icon_html(summary_statuses, 'Per position nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", icon_html(summary_statuses, 'Per reverse position nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_sequence_gc_content}}", icon_html(summary_statuses, 'Per sequence GC content'))
 
     # take max 10 sequences for sequence duplication levels
     sequence_duplication_levels = duplicate_seqs[:10]
