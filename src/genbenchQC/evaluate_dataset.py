@@ -68,7 +68,7 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
                 plots_path=plots_path, 
                 end_position=min(stat1.end_position, stat2.end_position),
                 plot_type=plot_type,
-                results=results, threshold=None
+                results=results
             )
 
 def run(input, 

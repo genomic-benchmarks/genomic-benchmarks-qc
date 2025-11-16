@@ -105,14 +105,14 @@ def generate_train_test_html_report(clusters, train_filename, train_seq, test_fi
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results=None, threshold=None):
+def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results):
     """
     Generate an HTML report comparing the statistics of two datasets.
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
     # generate 
-    plots_paths = generate_dataset_plots(stats1, stats2, plots_path, end_position, plot_type, results=None, threshold=None)
+    plots_paths = generate_dataset_plots(stats1, stats2, plots_path, end_position, plot_type)
 
     # find duplicate sequences between labels
     duplicate_seqs = list(set(stats1.sequences).intersection(stats2.sequences))
@@ -147,7 +147,7 @@ def generate_simple_report(results, output_path):
         results = pd.DataFrame.from_dict(results, orient='index')
     results.to_csv(output_path)
 
-def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', results=None, threshold=None):
+def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen'):
 
     logging.info(f"Generating PNG plots at: {output_path}")
 
@@ -160,8 +160,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats1,
         stats2,
         nucleotides = bases_overlap,
-        result=results['Per sequence nucleotide content'] if results else None,
-        dist_thresh=threshold,
         plot_type=plot_type
     )
     plots_paths['Per sequence nucleotide content'] = Path(output_path.name) / 'per_sequence_nucleotide_content.png'
@@ -173,8 +171,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats1,
         stats2,
         nucleotides = bases_overlap,
-        result=results['Per sequence dinucleotide content'] if results else None,
-        dist_thresh=threshold,
         plot_type=plot_type
     )
     plots_paths['Per sequence dinucleotide content'] = Path(output_path.name) / 'per_sequence_dinucleotide_content.png'
@@ -186,8 +182,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats1,
         stats2,
         stats_name='Per position nucleotide content',
-        result=results['Per position nucleotide content'] if results else None,
-        p_value_thresh=threshold,
         nucleotides = bases_overlap,
         end_position=end_position,
         x_label='Position in sequence',
@@ -202,8 +196,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats1,
         stats2,
         stats_name='Per position reversed nucleotide content',
-        result=results['Per position reversed nucleotide content'] if results else None,
-        p_value_thresh=threshold,
         nucleotides = bases_overlap,
         end_position=end_position,
         x_label='Position in reversed sequence',
@@ -217,8 +209,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     fig = dataset_plots.plot_lengths(
         stats1,
         stats2,
-        result=results['Sequence lengths'] if results else None,
-        dist_thresh=threshold,
         plot_type=plot_type,
     )
     plots_paths['Sequence lengths'] = Path(output_path.name) / 'sequence_lengths.png'
@@ -229,8 +219,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     fig = dataset_plots.plot_gc_content(
         stats1,
         stats2,
-        result=results['Per sequence GC content'] if results else None,
-        dist_thresh=threshold,
         plot_type=plot_type,
     )
     plots_paths['Per sequence GC content'] = Path(output_path.name) / 'per_sequence_gc_content.png'

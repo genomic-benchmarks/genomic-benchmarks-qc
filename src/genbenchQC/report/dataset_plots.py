@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import logging
 
-def plot_lengths(stats1, stats2, plot_type='boxen', result=None, dist_thresh=None):
+def plot_lengths(stats1, stats2, plot_type='boxen'):
     """
     Plot the sequence lengths of two sequences.
     """
@@ -12,12 +12,10 @@ def plot_lengths(stats1, stats2, plot_type='boxen', result=None, dist_thresh=Non
         'Sequence lengths', 
         plot_type=plot_type,
         x_label='Sequence length', 
-        title='Sequence Length Distribution', 
-        result=result, 
-        dist_thresh=dist_thresh
+        title='Sequence Length Distribution'
     )
 
-def plot_gc_content(stats1, stats2, plot_type='boxen', result=None, dist_thresh=None):
+def plot_gc_content(stats1, stats2, plot_type='boxen'):
     """
     Plot the GC content of two sequences.
     """
@@ -26,12 +24,10 @@ def plot_gc_content(stats1, stats2, plot_type='boxen', result=None, dist_thresh=
         'Per sequence GC content', 
         x_label='GC content', 
         title='GC Content Distribution',
-        plot_type=plot_type,
-        result=result, 
-        dist_thresh=dist_thresh, 
+        plot_type=plot_type
     )
 
-def plot_nucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_thresh=None):
+def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
     """
     Plot the nucleotide content of two sets of sequences.
 
@@ -80,24 +76,16 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_t
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
-    red_flag = False
-    if result and dist_thresh:
-        for index, nt in enumerate(nucleotides):
-            if result[0][nt] > dist_thresh:
-                red_flag = True
-                # draw a red rectangle around the violins
-                ax.add_patch(make_red_flag_rectangle(index, min_y, max_y))
-
     ax.set_title('Nucleotide content', fontsize=16)
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
     ax.tick_params(axis='x', labelsize=12)
     ax.tick_params(axis='y', labelsize=12)
-    ax = prepare_legend(ax, red_flag, dist_thresh)
+    ax = prepare_legend(ax)
 
     return fig
 
-def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_thresh=None):
+def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
     min_y = df['Frequency'].min()
@@ -148,19 +136,12 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist
         axs[index].tick_params(axis='x', labelsize=12)
         axs[index].tick_params(axis='y', labelsize=12)
 
-        if result and dist_thresh:
-            for di_index, dint in enumerate(dinucleotides):
-                if result[0][dint] > dist_thresh:
-                    red_flag = True
-                    # draw a red rectangle around the violins, put it behind the violins
-                    axs[index].add_patch(make_red_flag_rectangle(di_index, min_y, max_y))
-
-    axs[index] = prepare_legend(axs[index], red_flag, dist_thresh)
+    axs[index] = prepare_legend(axs[index])
     axs[index].set_xlabel('Dinucleotide', fontsize=14)
 
     return fig
 
-def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', result=None, dist_thresh=None):
+def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
     """
     Plot a single statistic from two stats objects.
     """
@@ -202,14 +183,6 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', r
         )
     else:
         logging.error(f"Unknown plot type: {plot_type}")
-    
-    # result is a tuple of (distances, passed)
-    red_flag = False
-    if result and dist_thresh:
-        if result[0] > dist_thresh:
-            red_flag = True
-            # draw a red rectangle around the violins
-            ax.add_patch(make_red_flag_rectangle(0, min_y, max_y))
 
     ax.set_title(title, fontsize=16)
     ax.set_xlabel(x_label, fontsize=14)
@@ -220,11 +193,11 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', r
         # show only one value
         ax.set_yticks([min_y])
     ax.ticklabel_format(axis='y', style='plain')
-    ax = prepare_legend(ax, red_flag, dist_thresh) 
+    ax = prepare_legend(ax) 
 
     return fig
 
-def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', result=None, p_value_thresh=None):
+def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title=''):
 
     df1 = stats1.stats[stats_name]
     df2 = stats2.stats[stats_name]
@@ -263,15 +236,6 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         if title and index == 0:
             axs[index].set_title(f'{title}', fontsize=16)
 
-
-        if result and p_value_thresh:
-            for i in range(end_position):
-                
-                p_value = result[0][nt][i]
-                if p_value < p_value_thresh:
-                    axs[index].axvspan(i-0.45, i+0.45, facecolor='red', alpha=0.2)
-                    red_flag = True
-
     seq_lengths = list(stats1.stats['Sequence lengths'].values.flatten()) + list(stats2.stats['Sequence lengths'].values.flatten())
     # Plot the number of sequences with length at least that position
     length_counts = [sum(1 for length in seq_lengths if length >= pos) for pos in range(end_position)]
@@ -297,9 +261,7 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     ticks = [1]
     ticks.extend(range(end_position // 10, end_position + 1, end_position // 10))
     axs[last_index].set_xticks(ticks)
-
-
-    axs[last_index] = prepare_legend(axs[index], red_flag, p_value_thresh, box_to_anchor=(0.5, -1), metric='p-value <')
+    axs[last_index] = prepare_legend(axs[index], box_to_anchor=(0.5, -1))
 
     return fig
 
@@ -320,15 +282,12 @@ def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value'
 
     return df
 
-def prepare_legend(ax, red_flag, dist_thresh, box_to_anchor=(0.5, -0.2), metric='Distance >'):
+def prepare_legend(ax, box_to_anchor=(0.5, -0.2)):
     """
     Prepare the legend for the plot.
     """
     legend_handles = ax.get_legend_handles_labels()[0]
     legend_labels = ax.get_legend_handles_labels()[1]
-    if red_flag:
-        legend_handles += [plt.Rectangle((0, 0), 1, 1, color='red', alpha=0.2)]
-        legend_labels += [f'{metric} {dist_thresh}']
     ax.legend(
         handles = legend_handles,
         labels = legend_labels,
@@ -340,14 +299,6 @@ def prepare_legend(ax, red_flag, dist_thresh, box_to_anchor=(0.5, -0.2), metric=
         ncol=3,
     )
     return ax
-
-def make_red_flag_rectangle(index, min_y, max_y, margin=0.02):
-    """
-    Create a red rectangle to highlight the violins that are above the threshold.
-    """
-    flag_box_width = 1 - 2 * margin
-    flag_box_hight = max_y - min_y + 2 * margin
-    return plt.Rectangle((index - 0.5 + margin, min_y - margin), flag_box_width, flag_box_hight, color='red', alpha=0.2, zorder=-1)
 
 class HuePalette:
 
