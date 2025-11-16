@@ -5,8 +5,9 @@ import numpy as np
 import pandas as pd
 
 class SequenceStatistics:
-    def __init__(self, sequences: list[str], filename: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None):
+    def __init__(self, sequences: list[str], filename: str, filepath: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None):
         self.filename = filename
+        self.filepath = filepath
         self.label = label
         self.seq_column = seq_column
         self.sequences = sequences
@@ -84,6 +85,7 @@ class SequenceStatistics:
         self.stats['Unique bases'] = list(set(''.join(self.sequences)))
         self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / sum(len(sequence) for sequence in self.sequences)
         self.stats['Number of sequences left after deduplication'] = len(set(self.sequences))
+        self.stats['Empty sequences'] = sum(1 for sequence in self.sequences if len(sequence) == 0)
 
     def _compute_per_sequence_statistics(self):
 
@@ -102,7 +104,8 @@ class SequenceStatistics:
             dinucleotides_per_sequence[id] = self._compute_dinucleotide_content(sequence, dinucleotides)
             self._compute_per_position_nucleotide_content(nucleotides_per_position, sequence)
             self._compute_per_position_nucleotide_content(nucleotides_per_position_reversed, sequence[::-1])
-            gc_content_per_sequence[id] = (sequence.count('G') + sequence.count('C')) / len(sequence) * 100
+            seq_len = len(sequence)
+            gc_content_per_sequence[id] = (sequence.count('G') + sequence.count('C')) / seq_len * 100 if seq_len > 0 else 0.0
             lengths_per_sequence[id] = len(sequence)
 
         self.stats['Per sequence nucleotide content'] = pd.DataFrame(nucleotides_per_sequence).T
