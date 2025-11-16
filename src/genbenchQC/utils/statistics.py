@@ -54,6 +54,9 @@ class SequenceStatistics:
         return self.stats, self.end_position
 
     def _adjust_end_position(self):
+
+        col_info = f" for {self.seq_column} comparison" if self.seq_column is not None else ""
+
         if self.end_position is None:
 
             # get second end position - where one of the stats contains less then 75% values
@@ -63,7 +66,7 @@ class SequenceStatistics:
             self.end_position = int(np.round(lengths_75th))
 
             logging.info(
-                f"End position not provided. Using end position: {self.end_position} for {self.seq_column} comparison. "
+                f"End position not provided. Using end position: {self.end_position}{col_info}. "
                  "This is the 75th percentile of sequence lengths."
             )
         else:
@@ -74,7 +77,7 @@ class SequenceStatistics:
                 logging.warning(f"end_position {self.end_position} is greater than the maximum sequence length {max_length}. Setting end_position to {max_length}.")
                 self.end_position = max_length
 
-            logging.info(f"Using end position: {self.end_position} for {self.seq_column} comparison.")
+            logging.info(f"Using end position: {self.end_position}{col_info}.")
 
     def _compute_basic_statistics(self):
         self.stats['Filename'] = self.filename
