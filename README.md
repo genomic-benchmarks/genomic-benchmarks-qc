@@ -1,3 +1,5 @@
+![](assets/logo_with_text_transparent.png)
+
 # Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets
 
 Genomic Benchmarks QC is a Python package and CLI toolkit for automated quality control of genomic datasets used in machine learning.
