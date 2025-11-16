@@ -41,7 +41,7 @@ def flag_duplicate_sequences(stats1, stats2):
     return 'Pass'
 
 def flag_duplication_between_datasets(sequences1, sequences2):
-    return "Fail" if list(set(sequences1).intersection(sequences2)) else "Pass"
+    return "Fail" if bool(set(sequences1) & set(sequences2)) else "Pass"
 
 # def flag_per_sequence_content(stats1, stats2, column, threshold):
     
