@@ -7,6 +7,17 @@ from typing import List, Tuple
 
 
 def extract_per_position_base(sequences, base, reverse):
+    """
+    Build a per-position binary feature matrix indicating where a given nucleotide/base occurs in each sequence.
+    
+    Parameters:
+        sequences (Iterable[str]): Collection of sequences to encode. Sequences may have varying lengths.
+        base (str): Single-character nucleotide/base to mark in the output features.
+        reverse (bool): If True, treat each sequence in reverse-complement orientation by reversing its order before encoding.
+    
+    Returns:
+        numpy.ndarray: 2D array of shape (n_sequences, max_sequence_length) where each element is 1 if the sequence has `base` at that position (after optional reversal) and 0 otherwise. Positions beyond a sequence's length are 0.
+    """
     max_len = max([len(seq) for seq in sequences])
     features = np.zeros((len(sequences), max_len))
     for i, seq in enumerate(sequences):
@@ -27,6 +38,15 @@ STATS_TO_TRAIN_PRECOMPUTED = [
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
 def flag_on_score(score):
+    """
+    Map a numeric metric score to a categorical flag indicating bias level.
+    
+    Parameters:
+        score (float): Metric value (expected between 0 and 1) used to determine the flag.
+    
+    Returns:
+        str: `"Fail"` if score > 0.7, `"Warning"` if score > 0.6, `"Pass"` otherwise.
+    """
     if score > 0.7:
         return "Fail"
     elif score > 0.6:
@@ -36,6 +56,23 @@ def flag_on_score(score):
 
 def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
 
+    """
+    Train bias-detection classifiers comparing two datasets and return aggregated cross-validated metrics and flags.
+    
+    This function trains logistic regression models to detect dataset-specific signal for each statistic named in STATS_TO_TRAIN_PRECOMPUTED and for per-position nucleotide presence for bases common to both inputs (both forward and reversed). For each model it computes cross-validated metrics via cross_validation, aggregates mean scores and a flag using add_result, and returns a dictionary of results keyed by statistic or feature name.
+    
+    Parameters:
+        stats1: An object exposing `.stats` (a mapping of statistic name -> Series/DataFrame) and `.sequences` (list of sequences) for the first dataset.
+        stats2: An object exposing `.stats` and `.sequences` for the second dataset.
+        max_class_size: Optional maximum number of samples per class to use when balancing folds; if None no additional cap is applied.
+        metric_to_flag: Name of the metric from METRICS_TO_COMPUTE whose mean value is used to derive the 'Flag' entry for each result.
+    
+    Raises:
+        ValueError: If `metric_to_flag` is not one of METRICS_TO_COMPUTE.
+    
+    Returns:
+        dict: Mapping from statistic/feature name to a dict containing mean metric values and a 'Flag' derived from the mean of `metric_to_flag`.
+    """
     if metric_to_flag not in METRICS_TO_COMPUTE:
         raise ValueError(f"metric_to_flag must be one of {METRICS_TO_COMPUTE}, got {metric_to_flag}")
 
@@ -78,6 +115,20 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
     return results
 
 def add_result(results, key, metrics, metric_to_flag):
+    """
+    Aggregate per-fold metric arrays into mean scores under the given key and attach a quality flag.
+    
+    Parameters:
+        results (dict): Mutable mapping to update with aggregated metrics for `key`.
+        key (hashable): Dictionary key under which the aggregated metrics and flag will be stored.
+        metrics (Mapping[str, array-like]): Mapping from metric names to numeric sequences (e.g., NumPy arrays)
+            containing per-fold scores; each value must support computing the mean.
+        metric_to_flag (str): Name of the metric in `metrics` whose mean will be used to derive the 'Flag'.
+    
+    Returns:
+        dict: The same `results` mapping after inserting or replacing results[key] with the aggregated
+        metric means and a 'Flag' computed from the mean of `metrics[metric_to_flag]`.
+    """
     results[key] = {}
     for metric_name, scores in metrics.items():
         avg_score = scores.mean()
@@ -88,12 +139,38 @@ def add_result(results, key, metrics, metric_to_flag):
 
 def train_model(X, y, use_dual=False, C=1.0):
 
+    """
+    Train a logistic regression classifier on the provided feature matrix and labels.
+    
+    Parameters:
+        X (array-like or pandas.DataFrame): Feature matrix with shape (n_samples, n_features).
+        y (array-like or pandas.Series): Target labels for each sample.
+        use_dual (bool): Whether to use the dual formulation of the solver.
+        C (float): Inverse of regularization strength; smaller values specify stronger regularization.
+    
+    Returns:
+        sklearn.linear_model.LogisticRegression: Fitted LogisticRegression model.
+    """
     model = LogisticRegression(random_state=42, solver='liblinear', dual=use_dual, max_iter=200, C=C)
     model.fit(X, y)
 
     return model
 
 def eval_model(model, X, y):
+    """
+    Compute discrimination and classification metrics for a fitted binary classifier on the provided dataset.
+    
+    Parameters:
+        model: A fitted classifier implementing `predict_proba(X)` and returning probability estimates for the positive class.
+        X: Feature matrix for evaluation (array-like or DataFrame).
+        y: True binary labels corresponding to X (array-like, values interpreted as 0/1).
+    
+    Returns:
+        dict: Mapping metric names to float scores:
+            - 'AU-ROC': Area under the receiver operating characteristic curve.
+            - 'AU-PR': Area under the precision–recall curve.
+            - 'Accuracy': Fraction of correct predictions using a 0.5 probability threshold.
+    """
     y_prob = model.predict_proba(X)[:, 1]
     metrics = {}
 
@@ -110,6 +187,20 @@ def eval_model(model, X, y):
 def balanced_kfold_splits(y, cv=5, max_size=None) -> List[Tuple[np.ndarray, np.ndarray]]:
    
     # Create custom balanced k-fold splits
+    """
+    Generate balanced k-fold train/validation index pairs by subsampling classes to equal sizes.
+    
+    Parameters:
+        y (array-like): Array of class labels for each sample; used to construct balanced splits.
+        cv (int): Number of folds to produce.
+        max_size (int | None): If provided, cap the per-class sample count to this value before folding.
+    
+    Returns:
+        List[Tuple[np.ndarray, np.ndarray]]: A list of length `cv` where each element is a tuple (train_idx, val_idx).
+        Each `train_idx` and `val_idx` is a NumPy array of sample indices. Classes are balanced by
+        subsampling to the minimum class size (or `max_size` if smaller), the indices are shuffled,
+        and the final fold receives any remainder when samples do not divide evenly.
+    """
     unique_labels = np.unique(y)
     min_class_size = min([sum(y == label) for label in unique_labels])
     if max_size is not None:
@@ -143,6 +234,18 @@ def balanced_kfold_splits(y, cv=5, max_size=None) -> List[Tuple[np.ndarray, np.n
 def cross_validation(X, y, cv=5, max_size=None):
 
     # in n_sample < n_features, use dual formulation and stronger regularization
+    """
+    Perform cross-validated evaluation of logistic regression models using balanced folds.
+    
+    Parameters:
+        X (pd.DataFrame): Feature matrix where rows are samples and columns are features.
+        y (pd.Series): Binary labels aligned with X's rows.
+        cv (int): Number of cross-validation folds to produce.
+        max_size (int, optional): Maximum number of samples per class to use when balancing folds; if None, use full class sizes.
+    
+    Returns:
+        dict: Mapping metric names (e.g., 'AU-ROC', 'AU-PR', 'Accuracy') to NumPy arrays of scores across the CV folds.
+    """
     if X.shape[0] < X.shape[1]:
         use_dual = True
         logging.debug(f"Using dual formulation for Logistic Regression as n_samples < n_features ({X.shape[0]} < {X.shape[1]})")

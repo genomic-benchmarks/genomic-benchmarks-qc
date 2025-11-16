@@ -79,24 +79,24 @@ def run(train_files, test_files, format,
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
-    """Run the train-test split evaluation.
-
-    This function reads sequences from the provided training and testing files, performs clustering using CD-HIT, 
-    and generates reports about potential data leakage between the training and testing datasets.
-
-    @param train_files: List of paths to training files.
-    @param test_files: List of paths to testing files.
-    @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder. Default: '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
-                            Default: ['sequence'].
-    @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param identity_threshold: Identity threshold for clustering. Default: 0.8.
-    @param alignment_coverage: Alignment coverage for clustering. Default: 0.8.
-    @param log_level: Logging level, default to INFO.
-    @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
-    @return: None
     """
+        Detect mixed clusters between training and testing sequences and write requested reports.
+        
+        Reads sequences from the provided training and testing inputs, runs CD-HIT clustering to identify clusters that contain members from both sets, and generates reports (simple CSV, JSON, and/or HTML) describing any detected leakage. Temporary files are created under `out_folder/tmp` and removed before returning.
+        
+        Parameters:
+            train_files (list[str]): Paths to one or more training input files.
+            test_files (list[str]): Paths to one or more testing input files.
+            format (str): Input format: 'fasta', 'csv', 'csv.gz', 'tsv', or 'tsv.gz'.
+            out_folder (str, optional): Directory to write reports and temporary files. Default: '.'.
+            sequence_column (list[str], optional): Column name(s) containing sequences for CSV/TSV inputs. Default: ['sequence'].
+            report_types (list[str], optional): Report types to generate. Supported values: 'html', 'json', 'simple'. Default: ['html', 'simple'].
+            identity_threshold (float, optional): Sequence identity threshold in [0, 1] used by CD-HIT to form clusters. Default: 0.8.
+            alignment_coverage (float, optional): Alignment coverage in [0, 1] required by CD-HIT for clustering. Default: 0.8.
+            log_level (str, optional): Logging level name (e.g., 'INFO', 'DEBUG'). Default: 'INFO'.
+            log_file (str, optional): Path to a log file to also write logs to; if None, logs are only written to the console.
+        
+        """
 
     setup_logger(log_level, log_file)
     logging.info("Starting train-test split evaluation.")
@@ -152,6 +152,24 @@ def run(train_files, test_files, format,
     logging.info("Train-test split evaluation successfully completed.")
 
 def parse_args():
+    """
+    Parse command-line arguments for the train/test data-leakage check CLI.
+    
+    Parameters:
+        None
+    
+    Notes:
+        Recognized CLI options include:
+          - --train_input / --test_input: one or more input files for training and testing datasets.
+          - --format: input file format; one of 'fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz'.
+          - --sequence_column: name(s) of the column(s) containing sequences for CSV/TSV inputs (default: ['sequence']).
+          - --report_types: which reports to generate; choices are 'json', 'html', 'simple' (default: ['html', 'simple']).
+          - --identity_threshold and --alignment_coverage: clustering thresholds used to detect sequence overlap (defaults: 0.8).
+          - --out_folder, --log_level, --log_file: output and logging configuration.
+    
+    Returns:
+        argparse.Namespace: Parsed command-line arguments with attributes corresponding to the defined options.
+    """
     parser = argparse.ArgumentParser(description='Check data leakage in dataset train-test split.')
     parser.add_argument('--train_input', type=str, help='Path to the dataset file with training data. Can be multiple files that will be evaluated as one dataset part.', nargs='+', required=True)
     parser.add_argument('--test_input', type=str, help='Path to the dataset file with testing data. Can be multiple files that will be evaluated as one dataset part.', nargs='+',

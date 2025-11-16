@@ -97,7 +97,17 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
 
 def generate_train_test_html_report(clusters, train_filename, train_seq, test_filename, test_seq, output_path, identity_threshold, alignment_coverage):
     """
-    Generate an HTML report listing mixed clusters.
+    Create an HTML report that lists mixed clusters between training and test sets.
+    
+    Parameters:
+        clusters (Sequence[Mapping]): Collection of cluster records that include membership from both datasets.
+        train_filename (str): Filename or label for the training dataset.
+        train_seq (Mapping): Mapping of training sequence identifiers to sequence data or metadata.
+        test_filename (str): Filename or label for the test dataset.
+        test_seq (Mapping): Mapping of test sequence identifiers to sequence data or metadata.
+        output_path (str or Path): Path to write the rendered HTML report.
+        identity_threshold (float): Sequence identity threshold used to define cluster membership.
+        alignment_coverage (float): Alignment coverage threshold used to define cluster membership.
     """
     # Load the HTML template
     template = get_train_test_html_template(clusters, train_filename, train_seq, test_filename, test_seq, identity_threshold, alignment_coverage)
@@ -107,7 +117,21 @@ def generate_train_test_html_report(clusters, train_filename, train_seq, test_fi
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results=None, threshold=None):
     """
-    Generate an HTML report comparing the statistics of two datasets.
+    Generate an HTML report that compares two dataset statistics and writes the report (and any duplicate sequences) to disk.
+    
+    Parameters:
+        stats1: Statistics object for the first dataset containing at least `.sequences` and metadata used by the template.
+        stats2: Statistics object for the second dataset containing at least `.sequences` and metadata used by the template.
+        output_path (str | Path): File path where the rendered HTML report will be written.
+        plots_path (str | Path): Directory where comparison plots will be generated and saved.
+        end_position (int): End position index used when generating per-position plots.
+        plot_type (str): Plot style to use when generating figures (for example, 'boxen').
+        results (optional): Optional results object used to annotate plots (may be None).
+        threshold (optional): Optional threshold value passed to plotting routines (may be None).
+    
+    Notes:
+        - This function creates plots in `plots_path`, renders an HTML template that embeds those plots, and writes the HTML to `output_path`.
+        - If any sequence labels appear in both `stats1` and `stats2`, those duplicate sequence identifiers are written to a separate file next to `output_path` with a "_duplicates.txt" suffix.
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
@@ -135,6 +159,15 @@ def generate_json_report(stats_dict, output_path):
 
 def generate_simple_report(results, output_path):
 
+    """
+    Write a simple CSV report from the provided results.
+    
+    If `results` is a dict, it is converted to a pandas DataFrame using orient='index' before writing. The resulting DataFrame is written to `output_path` as a CSV file.
+    
+    Parameters:
+        results (dict or pandas.DataFrame): Data to write to CSV. If a dict, keys become rows (index).
+        output_path (str or pathlib.Path): Destination file path for the CSV.
+    """
     logging.info(f"Generating simple report: {output_path}")
 
     if isinstance(results, dict):
@@ -143,6 +176,22 @@ def generate_simple_report(results, output_path):
 
 def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', results=None, threshold=None):
 
+    """
+    Generate a set of comparison PNG plots for two sequence datasets and return their file paths.
+    
+    Parameters:
+        stats1: An object containing summary statistics for the first dataset (must expose .stats with 'Unique bases').
+        stats2: An object containing summary statistics for the second dataset (must expose .stats with 'Unique bases').
+        output_path (Path): Directory where generated PNG files will be written.
+        end_position (int): Last sequence position to include in per-position plots.
+        plot_type (str): Plot style to use for distribution plots (default: 'boxen').
+        results (dict, optional): Optional dictionary of prior statistical results keyed by plot name; specific entries
+            (e.g., 'Per sequence nucleotide content') will be passed to plotting helpers when present.
+        threshold (float, optional): Optional significance or distance threshold forwarded to plotting helpers.
+    
+    Returns:
+        dict: Mapping from descriptive plot names to Path objects pointing to the generated PNG files (paths are based on output_path.name).
+    """
     logging.info(f"Generating PNG plots at: {output_path}")
 
     plots_paths = {}

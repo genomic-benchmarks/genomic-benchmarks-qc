@@ -6,6 +6,19 @@ import pandas as pd
 
 class SequenceStatistics:
     def __init__(self, sequences: list[str], filename: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None):
+        """
+        Initialize a SequenceStatistics instance with input sequences and associated metadata.
+        
+        Parameters:
+            sequences (list[str]): List of sequence strings to analyze.
+            filename (str): Source filename associated with the sequences.
+            label (str): Human-readable label for the sequence set.
+            seq_column (Optional[str]): Optional name of the sequence column (if sequences were read from tabular data).
+            end_position (Optional[int]): Optional end position to use for per-position comparisons; if None, an appropriate end position will be determined later.
+        
+        Initializes:
+            stats (dict): Empty dictionary to be populated with computed statistics.
+        """
         self.filename = filename
         self.label = label
         self.seq_column = seq_column
@@ -15,27 +28,26 @@ class SequenceStatistics:
 
     def compute(self):
         """
-        Compute various statistics from the given list of sequences.
-        @return: A dictionary containing the following statistics:
-            - Filename: str
-            - Number of sequences: int
-            - Number of bases: int
-            - Unique bases: list of str
-            - %GC content: float
-            - Number of sequences left after deduplication: int
-            - Per sequence nucleotide content: pd.DataFrame
-              (index: sequence_id, columns: nucleotides, values: frequency)
-            - Per sequence dinucleotide content: pd.DataFrame
-              (index: sequence_id, columns: dinucleotides, values: frequency)
-            - Per position nucleotide content: pd.DataFrame
-              (index: position, columns: nucleotides, values: frequency)
-            - Per position reversed nucleotide content: pd.DataFrame
-              (index: position, columns: nucleotides, values: frequency)
-            - Per sequence GC content: dict pd.DataFrame
-              (index: sequence_id, columns: GC content (%), values: GC content)
-            - Sequence lengths: pd.DataFrame
-              (index: sequence_id, columns: Length, values: length of the sequence)
-            - Sequence duplication levels: dict {sequence: count}
+        Aggregate sequence-level and position-level statistics for the stored sequences.
+        
+        Populates self.stats with computed values (examples and typical types shown):
+        - 'Filename', 'Label', 'Sequence column' (str)
+        - 'Number of sequences' (int)
+        - 'Number of bases' (int)
+        - 'Unique bases' (list[str])
+        - '%GC content' (float)
+        - 'Number of sequences left after deduplication' (int)
+        - 'Per sequence nucleotide content' (pd.DataFrame): frequencies per nucleotide for each sequence
+        - 'Per sequence dinucleotide content' (pd.DataFrame): frequencies per dinucleotide for each sequence
+        - 'Per position nucleotide content' (pd.DataFrame) and 'Per position reversed nucleotide content' (pd.DataFrame): nucleotide frequencies by position
+        - 'Per sequence GC content' (pd.DataFrame)
+        - 'Sequence lengths' (pd.DataFrame)
+        - 'Sequence duplication levels' (dict): mapping duplicated sequence -> count
+        
+        Returns:
+            tuple: (stats, end_position)
+            - stats (dict): dictionary of computed statistics described above.
+            - end_position (int | None): finalized end position used for position-based comparisons (may be None if not set).
         """
         message = f"Computing statistics for {self.filename}"
         if self.label is not None:
@@ -87,6 +99,19 @@ class SequenceStatistics:
 
     def _compute_per_sequence_statistics(self):
 
+        """
+        Compute per-sequence and per-position nucleotide and dinucleotide statistics and store them in self.stats.
+        
+        Populates self.stats with:
+        - 'Per sequence nucleotide content': DataFrame of nucleotide frequency per sequence.
+        - 'Per sequence dinucleotide content': DataFrame of dinucleotide frequency per sequence.
+        - 'Per position nucleotide content': DataFrame of nucleotide frequency at each position (forward orientation).
+        - 'Per position reversed nucleotide content': DataFrame of nucleotide frequency at each position for reversed sequences.
+        - 'Per sequence GC content': DataFrame with per-sequence GC percentage.
+        - 'Sequence lengths': DataFrame with per-sequence lengths.
+        
+        The method derives the nucleotide alphabet from existing stats ('Unique bases') if available, otherwise from the input sequences. It updates internal arrays and maps and writes the resulting pandas DataFrames into self.stats; it does not return a value.
+        """
         nucleotides = self.stats['Unique bases'] if 'Unique bases' in self.stats else list(set(''.join(self.sequences)))
         dinucleotides = [n1 + n2 for n1 in nucleotides for n2 in nucleotides]
 
@@ -115,12 +140,34 @@ class SequenceStatistics:
         self.stats['Sequence lengths'] = pd.DataFrame(lengths_per_sequence, columns=['Sequence lengths'])
 
     def _compute_nucleotide_content(self, sequence, nucleotides):
+        """
+        Compute per-nucleotide frequencies for a single sequence.
+        
+        Parameters:
+            sequence (str): The nucleotide sequence to analyze.
+            nucleotides (Iterable[str]): The nucleotides to report frequencies for.
+        
+        Returns:
+            dict: Mapping of each nucleotide from `nucleotides` to its frequency (count divided by sequence length). If `sequence` is empty, all frequencies are 0. Values are in the range [0.0, 1.0].
+        """
         seq_len = len(sequence)
         if seq_len == 0:
             return {nucleotide: 0 for nucleotide in nucleotides}
         return {nucleotide: sequence.count(nucleotide) / seq_len for nucleotide in nucleotides}   
      
     def _compute_dinucleotide_content(self, sequence, dinucleotides):
+        """
+        Compute the frequency distribution of dinucleotides observed in a sequence.
+        
+        This returns normalized frequencies for dinucleotides found in `sequence`. The result always includes entries for the provided `dinucleotides` (initialized to 0). If the sequence is shorter than 2, the initialized mapping is returned unchanged. Any dinucleotide not present in the initial `dinucleotides` iterable but observed in `sequence` will also be included in the returned mapping.
+        
+        Parameters:
+            sequence (str): Nucleotide sequence to analyze.
+            dinucleotides (iterable[str]): Known dinucleotides to initialize in the result.
+        
+        Returns:
+            dict[str, float]: Mapping from dinucleotide string to its relative frequency (count / total). Values sum to 1 when at least one dinucleotide is counted; otherwise the mapping contains zeros for the initialized dinucleotides.
+        """
         dinucleotides_per_sequence = {dinucleotide: 0 for dinucleotide in dinucleotides}
         seq_len = len(sequence)
 

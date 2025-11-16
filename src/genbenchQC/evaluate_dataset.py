@@ -12,6 +12,18 @@ from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, rea
 
 def run_analysis(input_statistics, out_folder, report_types, seq_report_types, plot_type):
    
+    """
+    Generate sequence-level and dataset-level reports and plots for the given SequenceStatistics objects.
+    
+    Creates per-sequence reports (JSON and/or HTML with plots) for each statistics object when requested, and for every pair of statistics objects generates comparison reports (CSV "simple" and/or HTML with plots). All output files and plot directories are written under out_folder.
+    
+    Parameters:
+        input_statistics (Iterable[SequenceStatistics]): SequenceStatistics objects to analyze. Each object must provide computed statistics and an end_position via its compute() method, and expose filename, seq_column, label, and end_position attributes.
+        out_folder (str | pathlib.Path): Destination directory for reports and plot directories; will be created if it does not exist.
+        report_types (Iterable[str]): Dataset-level report types to produce (e.g., 'simple', 'html').
+        seq_report_types (Iterable[str]): Sequence-level report types to produce (e.g., 'json', 'html').
+        plot_type (str | None): Plot style/type to use when generating HTML reports and plots; passed through to report generators.
+    """
     out_folder = Path(out_folder)
 
     # run individual analysis
@@ -86,28 +98,25 @@ def run(input,
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
-    """Run the dataset evaluation.
-
-    This function reads sequences from the provided input files, performs analysis, and generates reports about the sequences.
-
-    @param input: List of paths to input files. Can be a list of files, each containing sequences from one class.
-    @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder. Default: '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
-                            Either one column or list of columns. Default: ['sequences']
-    @param label_column: Name of the label column for datasets in CSV/TSV format. Default: 'label'.
-    @param label_list: List of label classes to consider or "infer" to parse different labels automatically from label column.
-                      For datasets in CSV/TSV format.
-    @param regression: If True, label column is considered as a regression target and values are split into 2 classes.
-    @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param seq_report_types: Types of reports to generate for individual groups of sequences. Default: None.
-    @param end_position: End position of the sequences to consider in per position statistics. 
-                         If not provided, 75th percentile of sequence lengths will be used. Default: None.
-    @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is recommended. Default: 'boxen'.
-    @param log_level: Logging level, default to INFO.
-    @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
-    @return: None
     """
+        Orchestrates reading sequence input(s), building SequenceStatistics for groups or labels, running analyses, and writing the requested reports to the output folder.
+        
+        Parameters:
+            input (list[str]): Paths to one or more input files. For FASTA mode, each file is treated as a separate label; for tabular formats a single file may contain multiple labels.
+            format (str): Input file format: 'fasta', 'csv', 'csv.gz', 'tsv', or 'tsv.gz'.
+            out_folder (str): Destination folder for generated reports and plots.
+            sequence_column (list[str] | str): Column name or list of column names in tabular inputs that contain sequences to analyze.
+            label_column (str): Column name in tabular inputs that contains label values.
+            label_list (list[str] | ['infer']): Explicit list of labels to analyze, or ['infer'] to derive labels from the label column.
+            regression (bool): If True, treat the label column as a numeric regression target and split it into 'high'/'low' classes using the median.
+            report_types (list[str]): Dataset-level report formats to generate (e.g., 'html', 'simple').
+            seq_report_types (list[str] | None): Sequence-group-level report formats to generate for each label/group.
+            end_position (int | None): Maximum sequence position to include in per-position statistics; if None a length-based heuristic is used.
+            plot_type (str): Plot style used for visualizations (e.g., 'boxen').
+            log_level (str): Logging level passed to the logger.
+            log_file (str | None): Optional path to a log file to also write logs.
+        
+        """
 
     setup_logger(log_level, log_file)
     logging.info("Starting dataset evaluation.")
@@ -226,6 +235,27 @@ def run(input,
 
 
 def parse_args():
+    """
+    Parse command-line arguments for the dataset evaluation tool.
+    
+    Performs validation (for example, when format is 'fasta' at least two input files are required) and returns the populated argument namespace.
+    
+    Returns:
+        argparse.Namespace: Parsed CLI options with fields:
+            - input: list[str] paths to input files
+            - format: input file format ('fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz')
+            - sequence_column: list[str] sequence column name(s)
+            - label_column: str label column name
+            - label_list: list[str] labels to consider or ['infer']
+            - regression: bool whether to treat label column as regression target
+            - out_folder: str output directory
+            - report_types: list[str] dataset report types to generate
+            - seq_report_types: list[str] per-sequence-group report types to generate
+            - end_position: int|None end position to consider for per-position stats
+            - plot_type: str plot style ('boxen' or 'violin')
+            - log_level: str logging level
+            - log_file: str|None path to optional log file
+    """
     parser = argparse.ArgumentParser(description='A tool for evaluating sequence datasets.')
     parser.add_argument('--input', type=str, help='Path to the dataset file. '
                                                   'Can be a list of files, each containing sequences from one class.', nargs='+', required=True)
@@ -255,6 +285,11 @@ def parse_args():
     return args
 
 def main():
+    """
+    Entry point for the command-line tool that parses CLI arguments and invokes `run` with those arguments.
+    
+    This function reads command-line options, validates them via `parse_args()`, and dispatches execution to `run()` using the parsed values.
+    """
     args = parse_args()
     run(input = args.input, 
         format = args.format, 

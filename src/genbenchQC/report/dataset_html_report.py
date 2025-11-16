@@ -339,13 +339,28 @@ def put_data(html_template, placeholder, data):
 
 def escape_str(s):
     """
-    Add \" around the string to escape it for HTML.
+    Wrap the given string in double quotes for inclusion in JavaScript arrays.
+    
+    Parameters:
+        s (str): The string to quote.
+    
+    Returns:
+        quoted (str): The input string surrounded by double quotes. No additional escaping is performed.
     """
     return '"' + s + '"'
 
 def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs):
     """
-    Returns the HTML template for the report.
+    Populate the HTML report template with values from two dataset statistics objects, plot file paths, and sequence duplication information.
+    
+    Parameters:
+        stats1: Dataset statistics object for the first dataset. Must provide attributes used by the template: `filename`, `label`, `seq_column`, and a `stats` mapping containing keys such as 'Number of sequences', 'Number of sequences left after deduplication', 'Sequence lengths' (with a 'Sequence lengths' series exposing min/mean/max), 'Number of bases', 'Unique bases', and '%GC content'.
+        stats2: Dataset statistics object for the second dataset (same shape and keys as `stats1`).
+        plots_path (dict): Mapping from plot names (strings used in the template) to their file path strings.
+        duplicate_seqs (iterable): Sequence duplication entries to include in the report; up to the first 10 entries are embedded and the template receives a count of any remaining entries.
+    
+    Returns:
+        str: The HTML template string with all report placeholders replaced by the provided dataset values, plot paths, and sequence duplication data.
     """
     html_template = HTML_TEMPLATE
 

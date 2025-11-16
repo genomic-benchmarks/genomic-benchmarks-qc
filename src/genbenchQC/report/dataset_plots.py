@@ -5,7 +5,17 @@ import logging
 
 def plot_lengths(stats1, stats2, plot_type='boxen', result=None, dist_thresh=None):
     """
-    Plot the sequence lengths of two sequences.
+    Plot comparative sequence-length distributions for two stats objects.
+    
+    Parameters:
+        stats1: First stats object; its `.stats` and `.label` are used to build the plot.
+        stats2: Second stats object; its `.stats` and `.label` are used to build the plot.
+        plot_type (str): Plot style to use, e.g. 'boxen' or 'violin'.
+        result (optional): Metric values used to mark significant differences; when provided with `dist_thresh`, values above the threshold will be highlighted.
+        dist_thresh (optional): Threshold for `result` above which parts of the plot are flagged as significant.
+    
+    Returns:
+        figure: Matplotlib Figure containing the sequence length comparison plot.
     """
     return plot_one_stat(
         stats1, stats2, 
@@ -19,7 +29,17 @@ def plot_lengths(stats1, stats2, plot_type='boxen', result=None, dist_thresh=Non
 
 def plot_gc_content(stats1, stats2, plot_type='boxen', result=None, dist_thresh=None):
     """
-    Plot the GC content of two sequences.
+    Plot GC content distributions for two stats objects.
+    
+    Parameters:
+        stats1: Stats-like object containing a 'Per sequence GC content' dataframe and a `label` attribute.
+        stats2: Stats-like object containing a 'Per sequence GC content' dataframe and a `label` attribute.
+        plot_type (str): Plot style to use; supported values include 'boxen' and 'violin'.
+        result (optional): Optional analysis result used to flag significant differences (expects indexable structure where relevant metric values are at result[0]).
+        dist_thresh (optional): Numeric threshold; when provided with `result`, values above this threshold are highlighted on the plot.
+    
+    Returns:
+        matplotlib.figure.Figure: Figure containing the GC content comparison plot.
     """
     return plot_one_stat(
         stats1, stats2, 
@@ -33,17 +53,18 @@ def plot_gc_content(stats1, stats2, plot_type='boxen', result=None, dist_thresh=
 
 def plot_nucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_thresh=None):
     """
-    Plot the nucleotide content of two sets of sequences.
-
-    @param stats1: Statistics for the first set of sequences.
-    @param stats2: Statistics for the second set of sequences.
-    @param nucleotides: List of nucleotides to plot.
-    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-    @param result: Optional results from a previous analysis. Tuple (distances, passed), where distances is a dict with nucleotides as keys
-                   and distances between their distributions as values. Passed is bool indicating if the test passed.
-                   If provided, nucleotide plots with distance > dist_thresh will be flagged.
-    @param dist_thresh: Optional distance threshold for flagging significant differences.
-    @return: Matplotlib figure object.
+    Plot per-sequence nucleotide frequency distributions for two stats objects.
+    
+    Plots either violin or boxen distributions for the specified nucleotides from stats1 and stats2, optionally highlighting nucleotides whose distance in `result` exceeds `dist_thresh` with a red flag and adding a legend entry.
+    
+    Parameters:
+        nucleotides (Sequence[str]): Ordered list of nucleotide labels to include on the x-axis.
+        plot_type (str): Plot style to use; recognized values are 'violin' and 'boxen'.
+        result (tuple|None): Optional analysis result where result[0] is a mapping of nucleotide -> distance. If provided together with `dist_thresh`, distances greater than the threshold will be flagged.
+        dist_thresh (float|None): Distance threshold used to decide which nucleotides to flag when `result` is provided.
+    
+    Returns:
+        matplotlib.figure.Figure: Figure containing the nucleotide-content plot.
     """
 
     df = melt_stats(stats1, stats2, 'Per sequence nucleotide content', var_name='Nucleotide', value_name='Frequency')
@@ -99,6 +120,22 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_t
 
 def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist_thresh=None):
 
+    """
+    Plot dinucleotide frequency distributions for each nucleotide as stacked subplots comparing two stats objects.
+    
+    Each subplot shows frequencies for dinucleotides starting with a given nucleotide using either violin or boxen plots colored by the two input labels. If both `result` and `dist_thresh` are provided, dinucleotides whose corresponding value in `result[0]` exceeds `dist_thresh` are highlighted with a translucent red rectangle and an entry is added to the legend.
+    
+    Parameters:
+        stats1: Object providing a `.stats` mapping and a `.label` used to source and label the first dataset.
+        stats2: Object providing a `.stats` mapping and a `.label` used to source and label the second dataset.
+        nucleotides (list[str]): Ordered list of single-character nucleotides to build dinucleotide groups (each subplot corresponds to one nucleotide as the first base).
+        plot_type (str): Plot style to use; supported values are `'violin'` and `'boxen'`. Unknown values are logged as errors.
+        result (optional): Mapping-like structure where `result[0][dinucleotide]` yields a numeric metric used for significance highlighting.
+        dist_thresh (optional, numeric): Threshold applied to `result[0][dinucleotide]` to determine which dinucleotides receive a red highlight.
+    
+    Returns:
+        matplotlib.figure.Figure: Figure containing one subplot per input nucleotide with dinucleotide frequency comparisons.
+    """
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
     min_y = df['Frequency'].min()
     max_y = df['Frequency'].max()
@@ -162,7 +199,30 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, result=None, dist
 
 def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', result=None, dist_thresh=None):
     """
-    Plot a single statistic from two stats objects.
+    Plot the distribution of a named statistic for two stats objects.
+    
+    Creates a single matplotlib figure showing the distribution of stats_name from both stats1 and stats2 using either a violin or boxen plot. If result and dist_thresh are provided and the reported distance exceeds the threshold, the plot is annotated with a translucent red highlight and the legend is updated to indicate the significance.
+    
+    Parameters:
+        stats1: object
+            First stats object containing a mapping-like attribute `stats` and a `label` used for the plot legend.
+        stats2: object
+            Second stats object containing a mapping-like attribute `stats` and a `label` used for the plot legend.
+        stats_name (str):
+            Key/name of the statistic in each stats object's `stats` mapping to plot.
+        plot_type (str):
+            Plot style to use; supported values are `'violin'` and `'boxen'`. Unknown values result in an error being logged.
+        x_label (str, optional):
+            Label for the x-axis.
+        title (str, optional):
+            Plot title.
+        result (optional):
+            Optional tuple-like result where the first element is a distance value to compare against dist_thresh; when provided and greater than dist_thresh, the plot is highlighted.
+        dist_thresh (optional):
+            Threshold used with `result` to determine whether to add a red highlight for significant difference.
+    
+    Returns:
+        matplotlib.figure.Figure: The created figure containing the plotted statistic.
     """
 
     # make dataframe with two columns: label and values
@@ -226,6 +286,33 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', r
 
 def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', result=None, p_value_thresh=None):
 
+    """
+    Plot per-base sequence comparisons for the given nucleotides and include a bottom subplot showing the proportion of sequences at each position.
+    
+    Parameters:
+        stats1: object
+            First statistics container; must expose .stats (a mapping of DataFrames) and .label (string).
+        stats2: object
+            Second statistics container; must expose .stats and .label.
+        stats_name: str
+            Key in each .stats mapping whose DataFrame contains per-base columns named by `nucleotides`.
+        nucleotides: Sequence[str]
+            Sequence of nucleotide column names to plot (one subplot per nucleotide).
+        end_position: int
+            Number of positions (columns/indices) from the start to include in the plots.
+        x_label: str, optional
+            Label for the x-axis of the bottom subplot.
+        title: str, optional
+            Title to place above the first nucleotide subplot when provided.
+        result: optional
+            Optional structure providing per-position p-values accessible as result[0][nt][i]; when provided, positions with p < p_value_thresh are shaded.
+        p_value_thresh: float, optional
+            Threshold for p-value significance; positions with p-values below this value are highlighted and cause an entry to be added to the legend.
+    
+    Returns:
+        matplotlib.figure.Figure
+            Figure containing vertically stacked subplots: one per nucleotide showing frequency curves for each stats object, and a bottom subplot showing the normalized proportion of sequences with length at least each position.
+    """
     df1 = stats1.stats[stats_name]
     df2 = stats2.stats[stats_name]
 
@@ -293,7 +380,21 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
 
 def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value', keep_positions=False):
     """
-    Melt the stats DataFrame to long format and add a label column.
+    Convert two stats DataFrames into a long-form DataFrame suitable for plotting.
+    
+    Each input's stats table is taken from statsX.stats[stats_name], melted into long format using the provided `var_name` and `value_name`, then concatenated into a single DataFrame with an added `label` column set to str(statsX.label) for each row.
+    
+    Parameters:
+        stats1: Object with a `stats` mapping and a `label` attribute; its stats table at `stats_name` will be melted.
+        stats2: Object with a `stats` mapping and a `label` attribute; its stats table at `stats_name` will be melted.
+        stats_name (str): Key name of the stats table to extract from each object's `stats`.
+        var_name (str): Column name to use for variable names in the melted output (default 'Metric').
+        value_name (str): Column name to use for values in the melted output (default 'Value').
+        keep_positions (bool): Present for API compatibility but not used by this implementation.
+    
+    Returns:
+        pandas.DataFrame: Long-form DataFrame containing the melted rows from both inputs with columns
+        [var_name, value_name, 'label'] where 'label' identifies the source (stats1 or stats2).
     """
     df1 = stats1.stats[stats_name]
     df1 = df1.melt(value_vars=df1.columns, var_name=var_name, value_name=value_name)

@@ -297,7 +297,26 @@ def escape_str(s):
 
 def get_sequence_html_template(stats, plots_path):
     """
-    Returns the HTML template for the report.
+    Populate the HTML report template with provided statistics and plot paths.
+    
+    Parameters:
+        stats (dict): Mapping with keys required to fill the template, including:
+            - 'Filename' (str): file name to display
+            - 'Label' (str or None)
+            - 'Sequence column' (str or None)
+            - 'Number of sequences' (int)
+            - 'Number of sequences left after deduplication' (int)
+            - 'Sequence lengths' (object with a `Sequence lengths` numeric array supporting min(), max(), mean())
+            - 'Number of bases' (int)
+            - 'Unique bases' (iterable of str)
+            - '%GC content' (numeric fraction, e.g., 0.42)
+            - 'Sequence duplication levels' (dict mapping sequence -> count)
+        plots_path (dict): Mapping of plot placeholder names to their rendered paths or HTML snippets. Expected keys include:
+            'Sequence lengths', 'Per sequence nucleotide content', 'Per sequence dinucleotide content',
+            'Per position nucleotide content', 'Per position reversed nucleotide content', 'Per sequence GC content'.
+    
+    Returns:
+        str: HTML text with template placeholders replaced by the corresponding values from `stats` and `plots_path`.
     """
     html_template = HTML_TEMPLATE
 

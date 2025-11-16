@@ -6,6 +6,19 @@ from genbenchQC.utils.bias_model import model
 
 def flag_significant_differences(stats1, stats2):
 
+    """
+    Assemble per-statistic flag results by running the bias model on two stats objects and adding additional dataset-level flags.
+    
+    Parameters:
+        stats1: An object containing summary statistics and a `sequences` attribute for the first dataset.
+        stats2: An object containing summary statistics and a `sequences` attribute for the second dataset.
+    
+    Returns:
+        pandas.DataFrame: A DataFrame indexed by statistic name (index name 'Statistic') where each row contains the model-derived fields augmented with a 'Flag' column for:
+            - "Unique bases": comparison of unique-base sets between inputs.
+            - "Duplicate sequences": consistency of sequence counts before/after deduplication within each input.
+            - "Duplication between labels": overlap of sequences between the two inputs.
+    """
     results = model(stats1, stats2)
     results['Unique bases'] = {}
     results['Unique bases']['Flag'] = flag_unique_bases(
@@ -28,12 +41,35 @@ def flag_significant_differences(stats1, stats2):
     return results
 
 def flag_unique_bases(stats1, stats2):
+    """
+    Check whether the sets of reported unique bases are identical between two statistics objects.
+    
+    Parameters:
+        stats1: An object with a `.stats` mapping containing a 'Unique bases' iterable of base identifiers.
+        stats2: An object with a `.stats` mapping containing a 'Unique bases' iterable of base identifiers.
+    
+    Returns:
+        'Pass' if the set of values in `stats1.stats['Unique bases']` equals the set of values in `stats2.stats['Unique bases']`, 'Fail' otherwise.
+    """
     if set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases']):
         return 'Pass'
     else:
         return 'Fail'
     
 def flag_duplicate_sequences(stats1, stats2):
+    """
+    Determine whether either dataset contains duplicate sequences that were removed by deduplication.
+    
+    Parameters:
+        stats1: an object exposing a `.stats` mapping containing 'Number of sequences' and
+            'Number of sequences left after deduplication' for the first dataset.
+        stats2: an object exposing a `.stats` mapping containing 'Number of sequences' and
+            'Number of sequences left after deduplication' for the second dataset.
+    
+    Returns:
+        str: `'Warning'` if either dataset's total sequence count differs from its post-deduplication
+        count, indicating duplicates were removed; `'Pass'` otherwise.
+    """
     if stats1.stats['Number of sequences'] != stats1.stats['Number of sequences left after deduplication']:
         return 'Warning'
     if stats2.stats['Number of sequences'] != stats2.stats['Number of sequences left after deduplication']:
@@ -41,6 +77,16 @@ def flag_duplicate_sequences(stats1, stats2):
     return 'Pass'
 
 def flag_duplication_between_datasets(sequences1, sequences2):
+    """
+    Determine whether two sequence collections share any sequence identifiers.
+    
+    Parameters:
+        sequences1 (Iterable[str]): First collection of sequence identifiers.
+        sequences2 (Iterable[str]): Second collection of sequence identifiers.
+    
+    Returns:
+        str: "`Fail` if any identifier appears in both `sequences1` and `sequences2`, `Pass` otherwise."
+    """
     return "Fail" if list(set(sequences1).intersection(sequences2)) else "Pass"
 
 # def flag_per_sequence_content(stats1, stats2, column, threshold):

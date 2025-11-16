@@ -8,6 +8,14 @@ def read_fasta(fasta_file):
     return [str(record.seq).upper() for record in SeqIO.parse(fasta_file, 'fasta')]
 
 def write_fasta(sequences, output_file, indices=None):
+    """
+    Write a list of nucleotide or amino-acid sequences to a FASTA file, assigning stable record IDs.
+    
+    Parameters:
+    	sequences (Iterable[str]): Sequence strings to write (will be written in the given order).
+    	output_file (str or os.PathLike): Path to the output FASTA file.
+    	indices (Optional[Iterable[int]]): If provided, IDs are assigned as `seq_<index>` using values from this iterable (one per sequence); otherwise IDs are assigned as `seq_0`, `seq_1`, ... corresponding to each sequence in order.
+    """
     if indices is None:
         records = [SeqRecord.SeqRecord(Seq.Seq(seq), id=f'seq_{i}', description="") for i, seq in enumerate(sequences)]
     else:
@@ -16,6 +24,20 @@ def write_fasta(sequences, output_file, indices=None):
     SeqIO.write(records, output_file, 'fasta')
 
 def read_csv_file(file_path, input_format, seq_columns, label_column=None):
+    """
+    Read a CSV or TSV file and return a DataFrame containing specified sequence (and optional label) columns.
+    
+    Reads the file as text (strings), auto-detects delimiter from input_format ('tsv' or 'tsv.gz' → tab, otherwise comma), and applies gzip decompression when the file path ends with '.gz'. If label_column is provided, rows with missing values in that column are removed. All columns named in seq_columns are converted to uppercase.
+    
+    Parameters:
+        file_path (str): Path to the input CSV/TSV file; may end with '.gz' for gzip-compressed files.
+        input_format (str): Input format indicator; use 'tsv' or 'tsv.gz' to force tab delimiter, otherwise comma is used.
+        seq_columns (list[str]): Column names containing sequence data to read and convert to uppercase.
+        label_column (str | None): Optional name of a label column to include; when provided, rows with missing labels are dropped.
+    
+    Returns:
+        pandas.DataFrame: DataFrame containing the requested columns (sequence columns uppercased). If label_column was provided, the DataFrame excludes rows with missing label values.
+    """
     delim = '\t' if input_format == 'tsv' or input_format == 'tsv.gz' else ','
     compression = 'gzip' if file_path.endswith('.gz') else None
 
