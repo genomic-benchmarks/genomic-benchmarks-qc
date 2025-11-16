@@ -122,14 +122,14 @@ def run(input,
         for input_file in input:
             sequences = read_fasta(input_file)
             logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
-            seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, 
+            seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
                                              label=Path(input_file).stem, end_position=end_position)]
         run_analysis(
-            input_statistics = seq_stats, 
-            out_folder = out_folder, 
-            report_types = report_types, 
-            seq_report_types = seq_report_types, 
-            plot_type = plot_type
+            input_statistics=seq_stats,
+            out_folder=out_folder,
+            report_types=report_types,
+            seq_report_types=seq_report_types,
+            plot_type=plot_type
         )
 
     # we have CSV/TSV
@@ -163,14 +163,14 @@ def run(input,
                 for label in labels:
                     sequences = read_sequences_from_df(df, seq_col, label_column, label)
                     logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{seq_col}'.")
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, label=label, 
-                                                     seq_column=seq_col, end_position=end_position)]
+                    seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, label=label,
+                                                     filepath=input[0], seq_column=seq_col, end_position=end_position)]
                 run_analysis(
-                    input_statistics = seq_stats, 
-                    out_folder = out_folder, 
-                    report_types = report_types, 
-                    seq_report_types = seq_report_types, 
-                    plot_type = plot_type, 
+                    input_statistics=seq_stats,
+                    out_folder=out_folder,
+                    report_types=report_types,
+                    seq_report_types=seq_report_types,
+                    plot_type=plot_type,
                 )
 
             # handle multiple sequence columns by concatenating sequences and running statistics on them
@@ -178,14 +178,14 @@ def run(input,
                 seq_stats = []
                 for label in labels:
                     sequences = read_multisequence_df(df, sequence_column, label_column, label)
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, label=label,
-                                                     seq_column='_'.join(sequence_column))]
+                    seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, filepath=input[0],
+                                                     label=label, seq_column='_'.join(sequence_column))]
                 run_analysis(
-                    input_statistics = seq_stats, 
-                    out_folder = out_folder, 
-                    report_types = report_types, 
-                    seq_report_types = seq_report_types, 
-                    plot_type = plot_type, 
+                    input_statistics=seq_stats,
+                    out_folder=out_folder,
+                    report_types=report_types,
+                    seq_report_types=seq_report_types,
+                    plot_type=plot_type,
                 )
 
         # we have multiple files with one label each
@@ -196,15 +196,15 @@ def run(input,
                 for input_file in input:
                     sequences = read_sequences_from_df(read_csv_file(input_file, format, seq_col), seq_col)
                     logging.debug(f"Read {len(sequences)} sequences from file {input_file} in column '{seq_col}'.")
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, 
+                    seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
                                                      label=Path(input_file).stem, seq_column=seq_col,
                                                      end_position=end_position)]
                 run_analysis(
-                    input_statistics = seq_stats, 
-                    out_folder = out_folder, 
-                    report_types = report_types, 
-                    seq_report_types = seq_report_types, 
-                    plot_type = plot_type, 
+                    input_statistics=seq_stats,
+                    out_folder=out_folder,
+                    report_types=report_types,
+                    seq_report_types=seq_report_types,
+                    plot_type=plot_type,
                 )
 
             # handle multiple sequence columns
@@ -212,14 +212,15 @@ def run(input,
                 seq_stats = []
                 for input_file in input:
                     sequences = read_multisequence_df(read_csv_file(input_file, format, sequence_column), sequence_column)
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, label=Path(input_file).stem,
-                                                     seq_column='_'.join(sequence_column), end_position=end_position)]
+                    seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
+                                                     label=Path(input_file).stem, seq_column='_'.join(sequence_column), 
+                                                     end_position=end_position)]
                 run_analysis(
-                    input_statistics = seq_stats, 
-                    out_folder = out_folder, 
-                    report_types = report_types, 
-                    seq_report_types = seq_report_types, 
-                    plot_type = plot_type, 
+                    input_statistics=seq_stats,
+                    out_folder=out_folder,
+                    report_types=report_types,
+                    seq_report_types=seq_report_types,
+                    plot_type=plot_type,
                 )
 
     logging.info("Dataset evaluation successfully completed.")

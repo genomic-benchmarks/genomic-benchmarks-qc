@@ -189,7 +189,13 @@ HTML_TEMPLATE = """
         </div>
 
         <div class="content">
-        <h1>HTML Report Output</h1>
+
+            <!-- Report header: logo, short description and generated-on/data source info -->
+            <div class="report-header" style="text-align: left; margin-bottom: 30px;">
+                <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent.png" alt="GenBenchQC Logo" style="max-width: 350px; height: auto; margin: 0 auto 10px;">
+                <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">{{tool_description}}</div>
+                <div style="font-size: 0.9em; color: #666;">Report generated on {{generated_on}} based on data: {{input_paths}}</div>
+            </div>
 
             <section id="basic-descriptive-statistics">
                 <div class="sidebar-item">
@@ -392,7 +398,8 @@ def escape_str(s):
     """
     return '"' + s + '"'
 
-def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summary_statuses=None):
+def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summary_statuses=None,
+                             tool_description=None):
     """
     Returns the HTML template for the report.
 
@@ -410,6 +417,23 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     # add version info
     from genbenchQC import __version__
     html_template = put_data(html_template, "{{version}}", __version__)
+
+    # populate header placeholders: tool description, generated timestamp and input paths
+    # Provide sensible defaults when values are not supplied
+    if tool_description is None:
+        tool_description = \
+            """
+            Toolkit for automated quality control of genomic datasets used in machine learning. 
+            """
+    if stats1.filepath == stats2.filepath:
+        input_paths = stats1.filepath
+    else:
+        input_paths = f"{stats1.filepath}, {stats2.filepath}"
+    generated_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    html_template = put_data(html_template, "{{tool_description}}", tool_description)
+    html_template = put_data(html_template, "{{generated_on}}", generated_on)
+    html_template = put_data(html_template, "{{input_paths}}", input_paths)
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
