@@ -82,7 +82,6 @@ def run(input,
         seq_report_types: Optional[list[str]] = None,
         end_position: Optional[int] = None,
         plot_type: Optional[str] = 'boxen',
-        flag_threshold: Optional[float] = 0.015,
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
