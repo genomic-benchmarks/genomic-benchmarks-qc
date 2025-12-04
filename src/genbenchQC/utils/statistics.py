@@ -87,7 +87,8 @@ class SequenceStatistics:
         self.stats['Number of sequences'] = len(self.sequences)
         self.stats['Number of bases'] = sum(len(sequence) for sequence in self.sequences)
         self.stats['Unique bases'] = list(set(''.join(self.sequences)))
-        self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / sum(len(sequence) for sequence in self.sequences)
+        total_bases = sum(len(sequence) for sequence in self.sequences)
+        self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / total_bases if total_bases > 0 else 0.0
         self.stats['Number of sequences left after deduplication'] = len(set(self.sequences))
         self.stats['Empty sequences'] = sum(1 for sequence in self.sequences if len(sequence) == 0)
 
