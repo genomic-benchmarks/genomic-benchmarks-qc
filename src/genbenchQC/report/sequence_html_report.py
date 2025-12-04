@@ -1,6 +1,6 @@
 from datetime import datetime
 from genbenchQC import __version__
-from genbenchQC.report.report_common import put_data, put_file_details, escape_str, COMMON_CSS, REPORT_HEADER_HTML
+from genbenchQC.report.report_common import put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -108,7 +108,7 @@ HTML_TEMPLATE = """
                 <img src={{per-position-nucleotide-content}} alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
             <section id="per-position-reversed-nucleotide-content">
-                <h2 id=>Per Position Reversed Nucleotide Content</h2>
+                <h2>Per Position Reversed Nucleotide Content</h2>
                 <img src={{per-position-reversed-nucleotide-content}} alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
             <section id="per-sequence-gc-content">
