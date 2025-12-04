@@ -13,6 +13,7 @@ from genbenchQC.report.split_html_report import get_train_test_html_template
 from genbenchQC.utils.input_utils import write_stats_json
 from genbenchQC.report import dataset_plots
 from genbenchQC.report import sequences_plots
+from genbenchQC.report import split_plots
 
 def generate_sequence_plots(stats_dict, output_path, end_position, plot_type='boxen'):
     """
@@ -95,15 +96,30 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_train_test_html_report(clusters, train_filename, train_seq, test_filename, test_seq, output_path, identity_threshold, alignment_coverage):
+def generate_train_test_html_report(stratified_test_split, train_filename, train_sequences, test_filename, test_sequences, output_path, plots_path):
     """
-    Generate an HTML report listing mixed clusters.
+    Generate an HTML report visualising data leakage. 
     """
-    # Load the HTML template
-    template = get_train_test_html_template(clusters, train_filename, train_seq, test_filename, test_seq, identity_threshold, alignment_coverage)
+    plots_path.mkdir(parents=True, exist_ok=True)
+
+    plots_paths = generate_split_plots(stratified_test_split, plots_path)
+
+    template = get_train_test_html_template(stratified_test_split, train_filename, train_sequences, test_filename, test_sequences, plots_paths)
 
     with open(output_path, 'w') as file:
         file.write(template)
+
+def generate_split_plots(stratified_test_split, plots_path):
+
+    plots_paths = {}
+
+    # Plot distribution of test set maximum corrected alignment scores
+    fig = split_plots.plot_distribution_max_corr_alignment_scores(stratified_test_split)
+    plots_paths['Distribution of test set maximum corrected alignment scores'] = Path(plots_path.name) / 'distribution_test_set_max_corr_alignment_scores.png'
+    fig.savefig(plots_path / 'distribution_test_set_max_corr_alignment_scores.png', bbox_inches='tight')
+    plt.close(fig)
+
+    return plots_paths
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results):
     """

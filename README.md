@@ -29,12 +29,22 @@ Install Genomic Benchmarks QC using pip:
 pip install genbenchQC
 ```
 
-If you plan to use `evaluate_split`, install [cd-hit](https://www.bioinformatics.org/cd-hit/cd-hit-user-guide):
+If you plan to use `evaluate_split`, clone the [hashFrag repository](https://github.com/de-Boer-Lab/hashFrag):
 
 ```bash
-conda install -c bioconda cd-hit
-# or follow: https://github.com/weizhongli/cdhit/wiki/2.-Installation
+git clone https://github.com/de-Boer-Lab/hashFrag.git
 ```
+
+Export the source directory to your `PATH`:
+```bash
+export PATH="$PATH:./hashFrag/src"
+```
+(Optional) To avoid running the above command every time you open a terminal, add it to your shell configuration file (e.g., `~/.bashrc`) with the following command:
+```bash
+echo 'export PATH="$PATH:./hashFrag/src"' >> ~/.bashrc
+```
+
+ATTENTION: STILL TO ADD DEPENDENCIES TO DEV-REQUIREMENTS.YML AND TEST COMPATIBILITY, AND TO INCLUDE INSTRUCTIONS ON INSTALLING BLAST
 
 ## Quick Start
 
