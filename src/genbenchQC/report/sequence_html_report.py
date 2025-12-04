@@ -78,7 +78,7 @@ HTML_TEMPLATE = """
             </section>
 
             <section id="sequence-duplication-levels">
-                <h2>Sequence duplication levels</h3>
+                <h2>Sequence duplication levels</h2>
                 <table>
                     <thead>
                         <tr>
