@@ -24,10 +24,10 @@ def extract_per_position_base(sequences, base, reverse, end_position=None):
 
 
 STATS_TO_TRAIN_PRECOMPUTED = [
-    'Per sequence nucleotide content',
-    'Per sequence dinucleotide content',
-    'Per sequence GC content',
     'Sequence lengths',
+    'Per sequence GC content',
+    'Per sequence nucleotide content',
+    'Per sequence dinucleotide content'
 ]
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']

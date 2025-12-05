@@ -20,13 +20,13 @@ HTML_TEMPLATE = """
             </div>
             <h2>Summary</h2>
             <div class="sidebar-item">{{icon_basic_descriptive_statistics}}<a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
-            <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
             <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate sequences</a></div>
+            <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
+             <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
             <div class="sidebar-item">{{icon_per_sequence_nucleotide_content}}<a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_sequence_dinucleotide_content}}<a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_position_nucleotide_content}}<a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_position_reversed_nucleotide_content}}<a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a></div>
-            <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
         </div>
 
         <div class="content">
@@ -98,15 +98,6 @@ HTML_TEMPLATE = """
                 </table>
             </section>
 
-            <section id="sequence-lengths">
-                <div class="sidebar-item">
-                    {{icon_sequence_lengths}}
-                    <h2>Sequence Lengths</h2>
-                </div>
-
-                <!-- This will be populated with png plot --->
-                <img src={{sequence_length_plot}} alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
-            </section>
             <section id="sequence-duplication-levels">
                 <div class="sidebar-item">
                     {{icon_sequence_duplication_levels}}
@@ -127,6 +118,24 @@ HTML_TEMPLATE = """
                 </div>
             </section>
 
+            <section id="sequence-lengths">
+                <div class="sidebar-item">
+                    {{icon_sequence_lengths}}
+                    <h2>Sequence Lengths</h2>
+                </div>
+
+                <!-- This will be populated with png plot --->
+                <img src={{sequence_length_plot}} alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+            </section>
+
+            <section id="per-sequence-gc-content">
+                <div class="sidebar-item">
+                    {{icon_per_sequence_gc_content}}
+                    <h2>Per Sequence GC Content</h2>
+                </div>
+                <img src={{per-sequence-gc-content}} alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+            </section>
+
             <section id="per-sequence-nucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_sequence_nucleotide_content}}
@@ -134,6 +143,7 @@ HTML_TEMPLATE = """
                 </div>
                 <img src={{per-sequence-nucleotide-content}} alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
+
             <section id="per-sequence-dinucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_sequence_dinucleotide_content}}
@@ -141,6 +151,7 @@ HTML_TEMPLATE = """
                 </div>
                 <img src={{per-sequence-dinucleotide-content}} alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
             </section>
+
             <section id="per-position-nucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_position_nucleotide_content}}
@@ -148,19 +159,13 @@ HTML_TEMPLATE = """
                 </div>
                 <img src={{per-position-nucleotide-content}} alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
+
             <section id="per-position-reversed-nucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_position_reversed_nucleotide_content}}
                     <h2>Per Position Reversed Nucleotide Content</h2>
                 </div>
                 <img src={{per-position-reversed-nucleotide-content}} alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
-            </section>
-            <section id="per-sequence-gc-content">
-                <div class="sidebar-item">
-                    {{icon_per_sequence_gc_content}}
-                    <h2>Per Sequence GC Content</h2>
-                </div>
-                <img src={{per-sequence-gc-content}} alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
         </div>
     </div>
