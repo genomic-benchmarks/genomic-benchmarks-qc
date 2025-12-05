@@ -1,8 +1,18 @@
-Unique bases,Passed
-Per sequence nucleotide content,Passed
-Per sequence dinucleotide content,Passed
-Per position nucleotide content,Passed
-Per position reversed nucleotide content,Passed
-Per sequence GC content,Passed
-Sequence lengths,Passed
-Duplication between labels,Failed
+Statistic,Flag,AU-ROC,AU-PR,Accuracy
+Duplicate sequences,Warning,,,
+Unique bases,Pass,,,
+Duplication between labels,Fail,,,
+Sequence lengths,Pass,0.5779662698412699,0.6208563074352549,0.36000000000000004
+Per sequence GC content,Pass,0.44535624098124094,0.47136236647769164,0.36000000000000004
+Per sequence nucleotide content,Pass,0.3544200937950938,0.44572421125820244,0.36000000000000004
+Per sequence dinucleotide content,Pass,0.24435732323232323,0.37911407571282446,0.36000000000000004
+Per position nucleotide content - T,Pass,0.17979617604617606,0.3512971450156693,0.22999999999999998
+Per position nucleotide content - A,Pass,0.17334379509379508,0.35055354421550244,0.22999999999999998
+Per position nucleotide content - G,Pass,0.15266829004329002,0.3448941588215324,0.24
+Per position nucleotide content - C,Pass,0.16295616883116887,0.3706873041198377,0.22000000000000003
+Per position nucleotide content,Pass,0.17979617604617606,0.3706873041198377,0.24
+Per reverse position nucleotide content - T,Pass,0.15833658008658008,0.3562079194264437,0.22999999999999998
+Per reverse position nucleotide content - A,Pass,0.16813419913419914,0.34952809858914735,0.22999999999999998
+Per reverse position nucleotide content - G,Pass,0.14897059884559885,0.34147570036888925,0.22999999999999998
+Per reverse position nucleotide content - C,Pass,0.14103733766233767,0.35761597712191107,0.24000000000000005
+Per reverse position nucleotide content,Pass,0.16813419913419914,0.35761597712191107,0.24000000000000005

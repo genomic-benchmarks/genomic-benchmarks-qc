@@ -6,162 +6,167 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML Report Output</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            max-width: 100%; /* Prevents content from exceeding the viewport width */
-        }
-        .sidebar {
-            width: 250px;
-            background: #f4f4f4;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            height: 100vh; /* Full height */
-            position: fixed; /* Fixed position */
-            overflow-y: auto;
-            z-index: 1000; /* Ensures it stays above other elements */
-        }
-        .sidebar a {
-            display: block;
-            margin: 10px 0;
-            text-decoration: none;
-            color: #333;
-        }
-        .content {
-            margin-left: 300px;
-            padding: 20px;
-            width: calc(100% - 350px); /* Adjust width to avoid overlap */
-            overflow-x: hidden;
-        }
-        #sequence-duplication-levels table {
-            table-layout: fixed; /* Ensures columns respect defined widths */
-            width: 100%; /* Makes the table take up the full width of its container */
-            border-collapse: collapse; /* Optional: Makes the table look cleaner */
-        }
+/* Make sure the root uses border-box sizing and doesn't allow the
+   page to horizontally overflow. Individual <pre> blocks will
+   still allow internal horizontal scrolling. */
+html, body {
+    box-sizing: border-box;
+    overflow-x: hidden; /* prevent accidental page-wide horizontal scroll */
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    max-width: 100%; /* Prevents content from exceeding the viewport width */
+}
+.sidebar {
+    width: 220px;
+    background: #f4f4f4;
+    padding: 15px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    height: 100vh; /* Full height */
+    position: fixed; /* Fixed position */
+    overflow-y: auto;
+    z-index: 1000; /* Ensures it stays above other elements */
+}
+.sidebar a {
+    display: inline-block;
+    margin-left: 10px;
+    text-decoration: none;
+    color: #333;
+    width: 175px;
+}
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.status-icon {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 25px;
+    font-family: verdana;
+    text-align: center;
+    justify-content: center;
+}
+.status-pass { background-color: #2e7d32; color: #ffffff; }
+.status-warn { background-color: #f57f17; color: #ffffff; }
+.status-fail { background-color: #c62828; color: #ffffff; }
+.container {
+    /* in some layouts the flex parent can grow to fit unbreakable children;
+       make sure the container can shrink so .content's min-width:0 works */
+    min-width: 0;
+    box-sizing: border-box;
+}
+.content {
+    margin-left: 260px;
+    padding: 10px;
+    width: calc(100% - 260px); /* Adjust width to avoid overlap */
+    overflow-x: hidden;
+    /* allow flex child to shrink below its content width so long lines
+       inside (e.g. long sequences in <pre>) don't expand the whole page */
+    min-width: 0;
+    box-sizing: border-box;
+}
+#sequence-duplication-levels table {
+    table-layout: fixed; /* Ensures columns respect defined widths */
+    width: 100%;
+    border-collapse: collapse;
+}
+#sequence-duplication-levels table th,
+#sequence-duplication-levels table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+#sequence-duplication-levels table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.count_column { width: 45px; }
+.sequence_column { width: 95%; }
+h1 { text-align: center; margin-bottom: 50px; }
+section { margin-bottom: 50px; }
+h2 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-left: 10px; }
+h3 { color: #555; margin-bottom: 15px; }
+.chart-container { margin-bottom: 30px; }
+.data-item { font-size: 1.2em; margin-bottom: 10px; }
+.data-item span { font-weight: bold; font-size: 1em; }
 
-        #sequence-duplication-levels table th,
-        #sequence-duplication-levels table td {
-            padding: 8px; /* Adds padding for better readability */
-            border: 1px solid #ddd; /* Adds a border for clarity */
-        }
-
-        #sequence-duplication-levels table td {
-            white-space: nowrap; /* Prevents text from wrapping */
-            overflow: hidden; /* Hides overflowing text */
-            text-overflow: ellipsis; /* Adds "..." to indicate clipped text */
-        }
-
-        #sequence-duplication-levels table th {
-            text-align: left; /* Aligns header text to the left */
-        }
-
-        .count_column {
-            width: 45px; /* Fixed width for the first column */
-        }
-
-        .sequence_column {
-            width: 95%; /* Fixed width for the second column */
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        section {
-            margin-bottom: 50px;
-        }
-
-        h2 {
-            color: #333;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
-        }
-
-        h3 {
-            color: #555;
-            margin-bottom: 15px;
-        }
-
-        .chart-container {
-            margin-bottom: 30px;
-        }
-
-        .data-item {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-        }
-
-        .data-item span {
-            font-weight: bold;
-            font-size: 1em;
-        }
-
-        /* Style basic descriptive statistics table */
-        #basic-descriptive-statistics table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        #basic-descriptive-statistics table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-        #basic-descriptive-statistics table td:first-child {
-            text-align: left;
-            width: 200px;
-        }
-        #basic-descriptive-statistics table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        #basic-descriptive-statistics table tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        #basic-descriptive-statistics table span {
-            font-weight: bold;
-        }
-
-    </style>
+/* basic descriptive statistics table */
+#basic-descriptive-statistics table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+#basic-descriptive-statistics table td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+#basic-descriptive-statistics table td:first-child { text-align: left; width: 200px; }
+#basic-descriptive-statistics table tr:nth-child(even) { background-color: #f9f9f9; }
+#basic-descriptive-statistics table tr:hover { background-color: #f1f1f1; }
+#basic-descriptive-statistics table span { font-weight: bold; }
+.cluster { 
+    border: 1px solid #ccc; 
+    margin-bottom: 20px; 
+    padding: 15px; 
+    border-radius: 5px; 
+    background: #fff; 
+}
+pre {
+     background: #f9f9f9;
+     padding: 10px;
+     /* prevent <pre> from forcing page width; allow internal horizontal
+         scrolling when the sequence is longer than the content area */
+     max-width: 100%;
+     overflow-x: auto;
+     /* keep original whitespace formatting but don't let the pre tag
+         itself grow the parent container in flex layout */
+     white-space: pre;
+     box-sizing: border-box;
+}
+.report-header img { 
+    max-width: 350px; 
+    height: auto;
+    margin: 0 0 10px; 
+}
+</style>
 </head>
 <body>
     <div class="container">
         <div class="sidebar">
-            <h2>Navigation</h2>
-            <a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a>
-            <div style="margin-left: 15px;">
-                <a href="#filename">Filename</a>
-                <a href="#label">Label</a>
-                <a href="#seq_column">Sequence column</a>
-                <a href="#num-sequences">Number of sequences</a>
-                <a href="#dedup-sequences">Unique sequences</a>
-                <a href="#num-bases">Number of bases</a>
-                <a href="#unique-bases">Unique bases</a>
-                <a href="#gc-content">%GC content</a>
+            <div class="logo" style="text-align: center; margin-bottom: 20px;">
+                <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent_small.png" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
+                <span style="display: block; font-size: 14px; color: #555;">v1.0.2</span>
             </div>
-            <a href="#general-descriptive-statistics">General Descriptive Statistics</a>
-            <div style="margin-left: 15px;">
-                <a href="#sequence-lengths">Sequence lengths</a>
-                <a href="#sequence-duplication-levels">Duplicate sequences</a>
-            </div>
-            <a href="#per-sequence-descriptive-stats">Per Sequence Descriptive Stats</a>
-            <div style="margin-left: 15px;">
-                <a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a>
-                <a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a>
-                <a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a>
-                <a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a>
-                <a href="#per-sequence-gc-content">Per Sequence GC Content</a>
-            </div>
+            <h2>Summary</h2>
+            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
+            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#sequence-duplication-levels">Duplicate sequences</a></div>
+            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#sequence-lengths">Sequence lengths</a></div>
+             <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
+            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
+            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a></div>
+            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
+            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a></div>
         </div>
 
         <div class="content">
-        <h1>HTML Report Output</h1>
+
+            <!-- Report header: logo, short description and generated-on/data source info -->
+            
+<div class="report-header" style="text-align: left; margin-bottom: 30px;">
+    <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent.png" alt="GenBenchQC Logo">
+    <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">
+            Toolkit for automated quality control of genomic datasets used in machine learning. 
+            </div>
+    <div style="font-size: 0.9em; color: #666;">Report generated on 2025-12-05 15:17:28 based on data: example_datasets/G4_positives.fasta, example_datasets/G4_negatives.fasta</div>
+</div>
+
 
             <section id="basic-descriptive-statistics">
-                <h2>Basic Descriptive Statistics</h2>
+                <div class="sidebar-item">
+                    <span class="status-icon status-pass">✔</span>
+                    <h2>Basic Descriptive Statistics</h2>
+                </div>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr id="filename">
                         <td><span>Filename</span></td>
@@ -188,6 +193,21 @@
                         <td style="text-align: center;">100</td>
                         <td style="text-align: center;">100</td>
                     </tr>
+                    <tr id="min-length">
+                        <td><span>Minimum length</span></td>
+                        <td style="text-align: center;">200</td>
+                        <td style="text-align: center;">200</td>
+                    </tr>
+                    <tr id="mean-length">
+                        <td><span>Mean length</span></td>
+                        <td style="text-align: center;">200.00</td>
+                        <td style="text-align: center;">200.00</td>
+                    </tr>
+                    <tr id="max-length">
+                        <td><span>Maximum length</span></td>
+                        <td style="text-align: center;">200</td>
+                        <td style="text-align: center;">200</td>
+                    </tr>
                     <tr id="num-bases">
                         <td><span>Number of bases</span></td>
                         <td style="text-align: center;">20000</td>
@@ -195,8 +215,8 @@
                     </tr>
                     <tr id="unique-bases">
                         <td><span>Unique bases</span></td>
-                        <td style="text-align: center;">A, C, T, G, N</td>
-                        <td style="text-align: center;">A, C, T, G, N</td>
+                        <td style="text-align: center;">A, T, C, G, N</td>
+                        <td style="text-align: center;">A, T, C, G, N</td>
                     </tr>
                     <tr id="gc-content">
                         <td><span>%GC content</span></td>
@@ -206,49 +226,74 @@
                 </table>
             </section>
 
-            <section id="general-descriptive-statistics">
-                <h2>General Descriptive Statistics</h2>
-
-                <h3 id="sequence-lengths">Sequence lengths</h3>
-                <!-- This will be populated with png plot --->
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/sequence_lengths.png alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
-
-                <div id="sequence-duplication-levels">
-                    <h3>Duplicate sequences</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="sequence_column">Sequence</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Table rows will be dynamically populated -->
-                        </tbody>
-                    </table>
-                    <div id="sequence-duplication-levels-info">
-                        <p>And 0 more</p>
-                    </div>
+            <section id="sequence-duplication-levels">
+                <div class="sidebar-item">
+                    <span class="status-icon status-pass">✔</span>
+                    <h2>Duplicate sequences</h2>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sequence_column">Sequence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table rows will be dynamically populated -->
+                    </tbody>
+                </table>
+                <div id="sequence-duplication-levels-info">
+                    <p>And 0 more</p>
                 </div>
             </section>
 
-            <section id="per-sequence-descriptive-stats">
-                <h2>Per Sequence Descriptive Stats</h2>
+            <section id="sequence-lengths">
+                <div class="sidebar-item">
+                    <span class="status-icon status-pass">✔</span>
+                    <h2>Sequence Lengths</h2>
+                </div>
 
-                <h3 id="per-sequence-nucleotide-content">Per Sequence Nucleotide Content</h3>
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_nucleotide_content.png alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
+                <!-- This will be populated with png plot --->
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/sequence_lengths.png alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+            </section>
 
-                <h3 id="per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</h3>
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_dinucleotide_content.png alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-position-nucleotide-content">Per Position Nucleotide Content</h3>
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_position_nucleotide_content.png alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</h3>
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_position_reversed_nucleotide_content.png alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
-
-                <h3 id="per-sequence-gc-content">Per Sequence GC Content</h3>
+            <section id="per-sequence-gc-content">
+                <div class="sidebar-item">
+                    <span class="status-icon status-fail">✖</span>
+                    <h2>Per Sequence GC Content</h2>
+                </div>
                 <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_gc_content.png alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+            </section>
 
+            <section id="per-sequence-nucleotide-content">
+                <div class="sidebar-item">
+                    <span class="status-icon status-fail">✖</span>
+                    <h2>Per Sequence Nucleotide Content</h2>
+                </div>
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_nucleotide_content.png alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
+            </section>
+
+            <section id="per-sequence-dinucleotide-content">
+                <div class="sidebar-item">
+                    <span class="status-icon status-fail">✖</span>
+                    <h2>Per Sequence Dinucleotide Content</h2>
+                </div>
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_dinucleotide_content.png alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
+            </section>
+
+            <section id="per-position-nucleotide-content">
+                <div class="sidebar-item">
+                    <span class="status-icon status-fail">✖</span>
+                    <h2>Per Position Nucleotide Content</h2>
+                </div>
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_position_nucleotide_content.png alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
+            </section>
+
+            <section id="per-position-reversed-nucleotide-content">
+                <div class="sidebar-item">
+                    <span class="status-icon status-fail">✖</span>
+                    <h2>Per Position Reversed Nucleotide Content</h2>
+                </div>
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_position_reversed_nucleotide_content.png alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
         </div>
     </div>

@@ -1,119 +1,84 @@
+from datetime import datetime
+from genbenchQC.report.report_common import put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML
+import importlib.metadata
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Similar Sequences Report</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            max-width: 100%;
-        }
-        .sidebar {
-            width: 250px;
-            background: #f4f4f4;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-            height: 100vh;
-            position: fixed;
-            overflow-y: auto;
-            z-index: 1000;
-        }
-        .sidebar a {
-            display: block;
-            margin: 10px 0;
-            text-decoration: none;
-            color: #333;
-        }
-        .content {
-            margin-left: 300px;
-            padding: 20px;
-            width: calc(100% - 350px);
-            overflow-x: hidden;
-        }
-        section {
-            margin-bottom: 50px;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-        h2 {
-            color: #333;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
-        }
-        .data-item {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-        }
-        .data-item span {
-            font-weight: bold;
-            font-size: 1em;
-        }
-        .cluster {
-            border: 1px solid #ccc;
-            margin-bottom: 20px;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        pre {
-            background: #f9f9f9;
-            padding: 10px;
-            overflow-x: auto;
-        }
-    </style>
+    <style>{{common_css}}</style>
 </head>
 <body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo" style="text-align: center; margin-bottom: 20px;">
+                <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent_small.png" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
+                <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
+            </div>
+            <h2>Summary</h2>
+            <div class="sidebar-item"><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
+            <div class="sidebar-item"><a href="#clusters-section">Clusters</a></div>
+        </div>
 
-    <div class="sidebar">
-        <h2>Navigation</h2>
-        <a href="#basic-descriptive-statistics">Basic Statistics</a>
-        <a href="#clusters-section">Clusters</a>
-    </div>
+        <div class="content">
+            {{report_header}}
 
-    <div class="content">
-        <h1>Similar Sequences Found in Train vs Test Dataset</h1>
+            <section id="basic-descriptive-statistics">
+                <h2>Basic Descriptive Statistics</h2>
+                <div class="data-item"><span>Train set filename:</span> {{train_filename}}</div>
+                <div class="data-item"><span>Number of sequences in train set:</span> {{number_of_sequences_train}}</div>
+                <div class="data-item"><span>Number of train sequences overlapping with test set:</span> {{train_overlap}}</div>
+                <div class="data-item"><span>Test set filename:</span> {{test_filename}}</div>
+                <div class="data-item"><span>Number of sequences in test set:</span> {{number_of_sequences_test}}</div>
+                <div class="data-item"><span>Number of test sequences overlapping with train set:</span> {{test_overlap}}</div>
+            </section>
 
-        <section id="basic-descriptive-statistics">
-            <h2>Basic Descriptive Statistics</h2>
-            <div class="data-item"><span>Train set filename:</span> {{train_filename}}</div>
-            <div class="data-item"><span>Number of sequences in train set:</span> {{number_of_sequences_train}}</div>
-            <div class="data-item"><span>Number of train sequences overlapping with test set:</span> {{train_overlap}}</div>
-            <div class="data-item"><span>Test set filename:</span> {{test_filename}}</div>
-            <div class="data-item"><span>Number of sequences in test set:</span> {{number_of_sequences_test}}</div>
-            <div class="data-item"><span>Number of test sequences overlapping with train set:</span> {{test_overlap}}</div>
-        </section>
+            <section id="clusters-section">
+                <h2>Clusters of Similar Sequences</h2>
+                <p>Clustering was done using cd-hit est-2d with identity threshold of {{identity_threshold}} and sequence alignment coverage of {{alignment_coverage}}.</p>
+                {{clusters}}
+            </section>
 
-        <section id="clusters-section">
-            <h2>Clusters of Similar Sequences</h2>
-            <p>Clustering was done using cd-hit est-2d with identity threshold of {{identity_threshold}} and sequence alignment coverage of {{alignment_coverage}}.</p>
-            {{clusters}}
-        </section>
-
+        </div>
     </div>
 
 </body>
 </html>
 """
 
-def get_train_test_html_template(clusters, filename_train, sequences_train, filename_test, sequences_test, identity_threshold, alignment_coverage):
+def get_train_test_html_template(clusters, filename_train, sequences_train, filename_test, sequences_test, identity_threshold, alignment_coverage, tool_description=None):
+    """Build train/test similarity HTML using shared helpers."""
 
     html_template = HTML_TEMPLATE
 
-    html_template = html_template.replace("{{train_filename}}", str(filename_train))
-    html_template = html_template.replace("{{test_filename}}", str(filename_test))
-    html_template = html_template.replace("{{number_of_sequences_train}}", str(len(sequences_train)))
-    html_template = html_template.replace("{{number_of_sequences_test}}", str(len(sequences_test)))
+    # insert shared CSS and header fragment
+    html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
+    html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
+
+    # header info
+    if tool_description is None:
+        tool_description = "Toolkit for automated quality control of genomic datasets used in machine learning."
+    input_paths = f"{filename_train}, {filename_test}" if filename_train != filename_test else filename_train
+    generated_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    html_template = put_data(html_template, "{{tool_description}}", tool_description)
+    html_template = put_data(html_template, "{{generated_on}}", generated_on)
+    html_template = put_data(html_template, "{{input_paths}}", input_paths)
+    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
+
+    html_template = put_data(html_template, "{{train_filename}}", str(filename_train))
+    html_template = put_data(html_template, "{{test_filename}}", str(filename_test))
+    html_template = put_data(html_template, "{{number_of_sequences_train}}", str(len(sequences_train)))
+    html_template = put_data(html_template, "{{number_of_sequences_test}}", str(len(sequences_test)))
     train_overlap = sum(len(cluster.get('train', [])) for cluster in clusters)
     test_overlap = sum(len(cluster.get('test', [])) for cluster in clusters)
-    html_template = html_template.replace("{{train_overlap}}", str(train_overlap))
-    html_template = html_template.replace("{{test_overlap}}", str(test_overlap))
-    html_template = html_template.replace("{{identity_threshold}}", str(identity_threshold))
-    html_template = html_template.replace("{{alignment_coverage}}", str(alignment_coverage))
+    html_template = put_data(html_template, "{{train_overlap}}", str(train_overlap))
+    html_template = put_data(html_template, "{{test_overlap}}", str(test_overlap))
+    html_template = put_data(html_template, "{{identity_threshold}}", str(identity_threshold))
+    html_template = put_data(html_template, "{{alignment_coverage}}", str(alignment_coverage))
 
     if not clusters:
         return html_template.replace("{{clusters}}", "<h2>No similar sequences found.</h2>")
@@ -137,7 +102,7 @@ def get_train_test_html_template(clusters, filename_train, sequences_train, file
 
         cluster_html = f"""
         <div class="cluster">
-            <h2>Cluster #{cluster['cluster']}</h2>
+            <h3>Cluster #{cluster['cluster']}</h3>
             <div class="section-title">Train Sequences:</div>
             <pre>{chr(10).join(train_sequences)}</pre>
             <div class="section-title">Test Sequences:</div>

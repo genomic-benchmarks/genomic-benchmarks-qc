@@ -15,14 +15,25 @@ def write_fasta(sequences, output_file, indices=None):
     logging.debug(f"Writing FASTA file: {output_file} with {len(sequences)} sequences")
     SeqIO.write(records, output_file, 'fasta')
 
-def read_csv_file(file_path, input_format, seq_columns, label_columns=None):
+def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     delim = '\t' if input_format == 'tsv' or input_format == 'tsv.gz' else ','
     compression = 'gzip' if file_path.endswith('.gz') else None
 
     columns = seq_columns.copy()
-    if label_columns is not None:
-        columns += [label_columns]
+    if label_column is not None:
+        columns += [label_column]
+
     df = pd.read_csv(file_path, delimiter=delim, usecols=columns, dtype=str, compression=compression)
+    
+    # Drop rows with missing labels
+    if label_column is not None:
+        # check if label column contains any missing values
+        if df[label_column].isnull().any():
+            logging.warning(f"Label column '{label_column}' contains missing values. Dropping rows with missing labels.")
+        df = df.dropna(subset=[label_column])
+        logging.debug(f"Dropped rows with missing labels, new shape: {df.shape}")
+
+    # Convert sequences to uppercase
     df[seq_columns] = df[seq_columns].apply(lambda col: col.str.upper())
 
     logging.debug(f"Read CSV/TSV file: {file_path}, shape: {df.shape}, columns: {columns}")
