@@ -136,17 +136,17 @@ pre {
         <div class="sidebar">
             <div class="logo" style="text-align: center; margin-bottom: 20px;">
                 <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent_small.png" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
-                <span style="display: block; font-size: 14px; color: #555;">v1.0.1</span>
+                <span style="display: block; font-size: 14px; color: #555;">v1.0.2</span>
             </div>
             <h2>Summary</h2>
             <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
-            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#sequence-lengths">Sequence lengths</a></div>
             <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#sequence-duplication-levels">Duplicate sequences</a></div>
+            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#sequence-lengths">Sequence lengths</a></div>
+             <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
             <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
             <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a></div>
-            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
-            <div class="sidebar-item"><span class="status-icon status-pass">✔</span><a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a></div>
-            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
+            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
+            <div class="sidebar-item"><span class="status-icon status-fail">✖</span><a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a></div>
         </div>
 
         <div class="content">
@@ -158,7 +158,7 @@ pre {
     <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">
             Toolkit for automated quality control of genomic datasets used in machine learning. 
             </div>
-    <div style="font-size: 0.9em; color: #666;">Report generated on 2025-11-16 14:30:52 based on data: example_datasets/G4_positives.fasta, example_datasets/G4_negatives.fasta</div>
+    <div style="font-size: 0.9em; color: #666;">Report generated on 2025-12-05 15:17:28 based on data: example_datasets/G4_positives.fasta, example_datasets/G4_negatives.fasta</div>
 </div>
 
 
@@ -215,8 +215,8 @@ pre {
                     </tr>
                     <tr id="unique-bases">
                         <td><span>Unique bases</span></td>
-                        <td style="text-align: center;">A, N, G, T, C</td>
-                        <td style="text-align: center;">A, N, G, T, C</td>
+                        <td style="text-align: center;">A, T, C, G, N</td>
+                        <td style="text-align: center;">A, T, C, G, N</td>
                     </tr>
                     <tr id="gc-content">
                         <td><span>%GC content</span></td>
@@ -226,15 +226,6 @@ pre {
                 </table>
             </section>
 
-            <section id="sequence-lengths">
-                <div class="sidebar-item">
-                    <span class="status-icon status-pass">✔</span>
-                    <h2>Sequence Lengths</h2>
-                </div>
-
-                <!-- This will be populated with png plot --->
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/sequence_lengths.png alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
-            </section>
             <section id="sequence-duplication-levels">
                 <div class="sidebar-item">
                     <span class="status-icon status-pass">✔</span>
@@ -255,6 +246,24 @@ pre {
                 </div>
             </section>
 
+            <section id="sequence-lengths">
+                <div class="sidebar-item">
+                    <span class="status-icon status-pass">✔</span>
+                    <h2>Sequence Lengths</h2>
+                </div>
+
+                <!-- This will be populated with png plot --->
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/sequence_lengths.png alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+            </section>
+
+            <section id="per-sequence-gc-content">
+                <div class="sidebar-item">
+                    <span class="status-icon status-fail">✖</span>
+                    <h2>Per Sequence GC Content</h2>
+                </div>
+                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_gc_content.png alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+            </section>
+
             <section id="per-sequence-nucleotide-content">
                 <div class="sidebar-item">
                     <span class="status-icon status-fail">✖</span>
@@ -262,6 +271,7 @@ pre {
                 </div>
                 <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_nucleotide_content.png alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
+
             <section id="per-sequence-dinucleotide-content">
                 <div class="sidebar-item">
                     <span class="status-icon status-fail">✖</span>
@@ -269,26 +279,21 @@ pre {
                 </div>
                 <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_dinucleotide_content.png alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
             </section>
+
             <section id="per-position-nucleotide-content">
                 <div class="sidebar-item">
-                    <span class="status-icon status-pass">✔</span>
+                    <span class="status-icon status-fail">✖</span>
                     <h2>Per Position Nucleotide Content</h2>
                 </div>
                 <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_position_nucleotide_content.png alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
+
             <section id="per-position-reversed-nucleotide-content">
                 <div class="sidebar-item">
-                    <span class="status-icon status-pass">✔</span>
+                    <span class="status-icon status-fail">✖</span>
                     <h2>Per Position Reversed Nucleotide Content</h2>
                 </div>
                 <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_position_reversed_nucleotide_content.png alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
-            </section>
-            <section id="per-sequence-gc-content">
-                <div class="sidebar-item">
-                    <span class="status-icon status-fail">✖</span>
-                    <h2>Per Sequence GC Content</h2>
-                </div>
-                <img src=dataset_report_label_G4_positives_vs_G4_negatives_plots/per_sequence_gc_content.png alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
         </div>
     </div>
