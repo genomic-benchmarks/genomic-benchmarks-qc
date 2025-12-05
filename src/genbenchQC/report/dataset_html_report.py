@@ -1,6 +1,6 @@
 from datetime import datetime
-from genbenchQC import __version__
 from genbenchQC.report.report_common import put_data, put_file_details, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
+import importlib.metadata
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -224,7 +224,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", __version__)
+    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)

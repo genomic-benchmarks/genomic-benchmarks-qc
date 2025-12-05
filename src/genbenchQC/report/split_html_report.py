@@ -1,6 +1,6 @@
 from datetime import datetime
-from genbenchQC import __version__
 from genbenchQC.report.report_common import put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML
+import importlib.metadata
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -67,7 +67,7 @@ def get_train_test_html_template(clusters, filename_train, sequences_train, file
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", __version__)
+    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
 
     html_template = put_data(html_template, "{{train_filename}}", str(filename_train))
     html_template = put_data(html_template, "{{test_filename}}", str(filename_test))

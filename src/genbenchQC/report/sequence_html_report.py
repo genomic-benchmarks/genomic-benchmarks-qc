@@ -1,6 +1,6 @@
 from datetime import datetime
-from genbenchQC import __version__
 from genbenchQC.report.report_common import put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML
+import importlib.metadata
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -166,7 +166,7 @@ def get_sequence_html_template(stats, plots_path, tool_description=None):
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_path)
-    html_template = put_data(html_template, "{{version}}", __version__)
+    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
 
     html_template = put_file_details(html_template, stats['Filename'])
     html_template = put_data(html_template, "{{label}}", stats['Label'] if stats['Label'] else "N/A")
