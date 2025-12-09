@@ -150,39 +150,3 @@ def run(train_files, test_files, format,
     shutil.rmtree(Path(out_folder, "tmp"))
 
     logging.info("Train-test split evaluation successfully completed.")
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Check data leakage in dataset train-test split.')
-    parser.add_argument('--train_input', type=str, help='Path to the dataset file with training data. Can be multiple files that will be evaluated as one dataset part.', nargs='+', required=True)
-    parser.add_argument('--test_input', type=str, help='Path to the dataset file with testing data. Can be multiple files that will be evaluated as one dataset part.', nargs='+',
-                        required=True)
-    parser.add_argument('--format', help="Format of the input files.", choices=['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz'], required=True)
-    parser.add_argument('--sequence_column', type=str, help='Name of the columns with sequences to analyze for datasets in CSV/TSV format. '
-                                                            'Either one column or list of columns.', nargs='+', default=['sequence'])
-    parser.add_argument('--out_folder', type=str, help='Path to the output folder.', default='.')
-    parser.add_argument('--report_types', type=str, nargs='+', choices=['json', 'html', 'simple'],
-                        help='Types of reports to generate. Default: [html]', default=['html', 'simple'])
-    parser.add_argument('--identity_threshold', type=float, help='Identity threshold for clustering. Default: 0.8', default=0.8)
-    parser.add_argument('--alignment_coverage', type=float, help='Alignment coverage for clustering. Default: 0.8', default=0.8)
-    parser.add_argument('--log_level', type=str, help='Logging level, default to INFO.', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
-    parser.add_argument('--log_file', type=str, help='Path to the log file. If provided, logs will be written to this file as well as to the console.', default=None)
-    args = parser.parse_args()
-
-    return args
-
-def main():
-    args = parse_args()
-    run(train_files = args.train_input, 
-        test_files = args.test_input, 
-        format = args.format, 
-        out_folder = args.out_folder, 
-        sequence_column = args.sequence_column, 
-        report_types = args.report_types, 
-        identity_threshold = args.identity_threshold, 
-        alignment_coverage = args.alignment_coverage,
-        log_level = args.log_level,
-        log_file = args.log_file
-    )
-
-if __name__ == '__main__':
-    main()

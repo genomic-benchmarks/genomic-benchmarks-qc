@@ -9,6 +9,7 @@ requirements = [
     'scikit-learn>=1.2',
     'cdhit-reader==0.2.0',
     'statsmodels>=0.13',
+    'typer>=0.20',
 ]
 
 test_requirements = [
@@ -36,9 +37,7 @@ setup(
     test_suite='tests',
     entry_points='''
       [console_scripts]
-      evaluate_sequences=genbenchQC.evaluate_sequences:main
-      evaluate_dataset=genbenchQC.evaluate_dataset:main
-      evaluate_split=genbenchQC.evaluate_split:main
+      genbenchQC=genbenchQC.cli:main
       ''',
     keywords=["genomic benchmarks", "deep learning", "machine learning",
       "computational biology", "bioinformatics", "genomics", "quality control"],
