@@ -1,4 +1,4 @@
-![](assets/logo_with_text_transparent.png)
+![](https://github.com/katarinagresova/GenBenchQC/blob/main/assets/logo_with_text_transparent.png?raw=True)
 
 # Automated Quality Control for Genomic Machine Learning Datasets
 
@@ -8,12 +8,10 @@ It helps detect biases, inconsistencies, and potential data leakage across seque
 ## Features
 
 ### Provided Tools
-- **evaluate_sequences** – QC of a single dataset or dataset subset.
-- **evaluate_dataset** – QC across multiple dataset classes.
-- **evaluate_split** – Train–test split leakage detection.
+- **genbenchQC evaluate_classess** – QC of a single dataset or dataset subset.
+- **genbenchQC evaluate_splitst** – QC across multiple dataset classes.
 
 ### General Features
-- [**Sequence-level QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-sequences) – Evaluate nucleotide composition, sequence length distribution, GC content, and more.
 - [**Class-level QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-dataset) – Compare multiple classes for feature similarity or bias.
 - [**Train–test split validation**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-split) – Detect potential data leakage through sequence similarity and clustering.
 - [**Multiple input formats**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#supported-input-file-formats) – Supports FASTA, CSV, and TSV datasets.
@@ -29,7 +27,7 @@ Install Genomic Benchmarks QC using pip:
 pip install genbenchQC
 ```
 
-If you plan to use `evaluate_split`, install [cd-hit](https://www.bioinformatics.org/cd-hit/cd-hit-user-guide):
+If you plan to use `evaluate_splits`, install [cd-hit](https://www.bioinformatics.org/cd-hit/cd-hit-user-guide):
 
 ```bash
 conda install -c bioconda cd-hit
@@ -45,91 +43,32 @@ git clone https://github.com/katarinagresova/GenBenchQC.git
 cd GenBenchQC
 ```
 
-### Evaluate Sequences
-
-```bash
-evaluate_sequences \
-  --input example_datasets/G4_positives.fasta \
-  --format fasta \
-  --out_folder example_outputs/G4_dataset_positives
-```
-
-Outputs with their description are in [example_outputs/G4_dataset_positives](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset_positives).
-
-### Evaluate Dataset
+### Evaluate Classes
 
 Running from CLI with fasta file:
 
 ```bash
-evaluate_dataset \
-  --input example_datasets/G4_positives.fasta example_datasets/G4_negatives.fasta \
+genbenchQC evaluate-classes \
+  --input example_datasets/G4_positives.fasta \
+  --input example_datasets/G4_negatives.fasta \
   --format fasta \
-  --out_folder example_outputs/G4_dataset
+  --out-folder example_outputs/G4_dataset
 ```
 
 Outputs with their description are in [example_outputs/G4_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset).
 
-### Evaluate Split
+### Evaluate Splits
 
 ```bash
-evaluate_split \
-  --train_input example_datasets/enhancers_train.csv \
-  --test_input example_datasets/enhancers_test.csv \
+genbenchQC evaluate-splits \
+  --train-input example_datasets/enhancers_train.csv \
+  --test-input example_datasets/enhancers_test.csv \
   --format csv \
-  --sequence_column sequence \
-  --out_folder example_outputs/enhancers_dataset
+  --sequence-column sequence \
+  --out-folder example_outputs/enhancers_dataset
 ```
 
 Outputs with their description are in [example_outputs/enhancers_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/enhancers_dataset).
-
-## Python Execution
-
-The same commands can be executed from Python.
-
-### Evaluate Sequences
-
-```python
-from genbenchQC import evaluate_sequences
-
-evaluate_sequences.run(
-  input='example_datasets/G4_positives.fasta', 
-  format='fasta',
-  out_folder='example_outputs/G4_dataset_positives'
-)
-```
-
-### Evaluate Dataset
-
-Running from Python with CSV file with multiple sequence columns:
-
-```python
-from genbenchQC import evaluate_dataset
-
-evaluate_dataset.run(
-  input=['example_datasets/miRNA_mRNA_pairs_dataset.tsv'], 
-  format='tsv', 
-  out_folder='example_outputs/miRNA_mRNA_dataset', 
-  sequence_column=['gene', 'noncodingRNA'], 
-  label_column='label', 
-  label_list=['0', '1']
-)
-```
-
-Outputs with their description are in [example_outputs/miRNA_mRNA_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/miRNA_mRNA_dataset).
-
-### Evaluate Split
-
-```python
-from genbenchQC import evaluate_split
-
-evaluate_split.run(
-  train_files=['example_datasets/enhancers_train.csv'],
-  test_files=['example_datasets/enhancers_test.csv'],
-  format='csv',
-  sequence_column='sequence',
-  out_folder='example_outputs/enhancers_dataset'
-)
-```
 
 ## Supported input file formats
 

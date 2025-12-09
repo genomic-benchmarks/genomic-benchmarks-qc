@@ -55,7 +55,7 @@ def evaluate_splits(
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
 ):
     """
-    Check data leakage in dataset train-test split.
+    Evaluate data leakage in dataset train-test split.
     """
     run_evaluate_splits(
         train_files=train_input,

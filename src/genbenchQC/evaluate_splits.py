@@ -72,8 +72,8 @@ def process_mixed_clusters(clusters, train_sequences, test_sequences):
 
 def run(train_files, test_files, format, 
         out_folder: Optional[str] = '.', 
-        sequence_column: Optional[list[str]] = ['sequence'], 
-        report_types: Optional[list[str]] = ['html', 'simple'], 
+        sequence_column: Optional[list[str]] = None, 
+        report_types: Optional[list[str]] = None, 
         identity_threshold: Optional[float] = 0.8, 
         alignment_coverage: Optional[float] = 0.8,
         log_level: Optional[str] = 'INFO',
@@ -97,6 +97,11 @@ def run(train_files, test_files, format,
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
     """
+
+    if sequence_column is None:
+        sequence_column = ['sequence']
+    if report_types is None:
+        report_types = ['html', 'simple']
 
     setup_logger(log_level, log_file)
     logging.info("Starting train-test split evaluation.")
