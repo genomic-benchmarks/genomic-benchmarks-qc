@@ -74,11 +74,11 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
 def run(input, 
         format, 
         out_folder='.', 
-        sequence_column: Optional[list[str]] = ['sequences'], 
+        sequence_column: Optional[list[str]] = None, 
         label_column='label', 
-        label_list: Optional[list[str]] = ['infer'],
+        label_list: Optional[list[str]] = None,
         regression: Optional[bool] = False,
-        report_types: Optional[list[str]] = ['html', 'simple'],
+        report_types: Optional[list[str]] = None,
         seq_report_types: Optional[list[str]] = None,
         end_position: Optional[int] = None,
         plot_type: Optional[str] = 'boxen',
@@ -93,7 +93,7 @@ def run(input,
     @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
     @param out_folder: Path to the output folder. Default: '.'.
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
-                            Either one column or list of columns. Default: ['sequences']
+                            Either one column or list of columns. Default: ['sequence']
     @param label_column: Name of the label column for datasets in CSV/TSV format. Default: 'label'.
     @param label_list: List of label classes to consider or "infer" to parse different labels automatically from label column.
                       For datasets in CSV/TSV format.
@@ -107,6 +107,13 @@ def run(input,
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
     """
+
+    if sequence_column is None:
+        sequence_column = ['sequence']
+    if report_types is None:
+        report_types = ['html', 'simple']
+    if label_list is None:
+        label_list = ['infer']
 
     setup_logger(log_level, log_file)
     logging.info("Starting dataset evaluation.")
