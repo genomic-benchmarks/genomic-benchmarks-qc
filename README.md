@@ -27,7 +27,7 @@ Install Genomic Benchmarks QC using pip:
 pip install genbenchQC
 ```
 
-If you plan to use `evaluate_splits`, install [cd-hit](https://www.bioinformatics.org/cd-hit/cd-hit-user-guide):
+If you plan to use `evaluate-splits`, install [cd-hit](https://www.bioinformatics.org/cd-hit/cd-hit-user-guide):
 
 ```bash
 conda install -c bioconda cd-hit
@@ -72,15 +72,15 @@ Outputs with their description are in [example_outputs/enhancers_dataset](https:
 
 ## Supported input file formats
 
-You can choose to run the tool while having different dataset formats:
-- **FASTA**: The input is a FASTA file / list of FASTA files. One file needs to contain sequences of one class if running *evaluate_sequences* mode.
+You can choose to run the tools while having different dataset formats:
+- **FASTA**: The input is a FASTA file / list of FASTA files. For *evaluate-classes* each fasta file is treated as separate class/label.
 - **CSV/TSV**: The input is a CSV/TSV file, and you provide the name of the column containing sequences. You can have either:
   - **multiple files**, each one containing sequences from one class (similar as with FASTA input)
-  - **one file** containing sequences from multiple classes. In this case, when running *evaluate_sequences* mode, you need to provide the name of the column containing class labels so the tool can split the dataset into parts. The label classes can then be inferred, or you can specify their list by yourself. The dataset will then be split into pieces containing sequences with corresponding labels and analysis will be performed similarly as with multiple files.
+  - **one file** containing sequences from multiple classes. In this case, when running *evaluate-classes* tool, you need to provide the name of the column containing class labels so the tool can split the dataset into parts. The label classes can then be inferred, or you can specify their list by yourself. The dataset will then be split into pieces containing sequences with corresponding labels and analysis will be performed similarly as with multiple files.
 - **CSV.GZ/TSV.GZ**: Functionality is the same as CSV/TSV files
 
-When having CSV/TSV/CSV.GZ/TSV.GZ input, you can also decide to provide multiple sequence columns to analyze. In this case, the analysis in modes *evaluate_sequences* and *evaluate_dataset* will be performed for each column separately and lastly for sequences made by concatenating sequences throughout all the columns. 
-*evaluate_split* mode will run only the concatenated sequences.
+When having CSV/TSV/CSV.GZ/TSV.GZ input, you can also decide to provide multiple sequence columns to analyze. In this case, the tool *evaluate-classes* will be performed for each column separately and lastly for sequences made by concatenating sequences throughout all the columns. 
+*evaluate-splits* tool will run only the concatenated sequences.
 
 
 ## Development
