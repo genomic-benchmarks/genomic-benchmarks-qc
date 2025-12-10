@@ -8,12 +8,12 @@ It helps detect biases, inconsistencies, and potential data leakage across seque
 ## Features
 
 ### Provided Tools
-- **genbenchQC evaluate_classes** – QC of a single dataset or dataset subset.
-- **genbenchQC evaluate_splits** – QC across multiple dataset classes.
+- **genbenchQC evaluate_classes** – QC tool to evaluate sequence characteristics between different classes/labels in the dataset.
+- **genbenchQC evaluate_splits** – QC tool to evaluate data leakage in dataset train-test splits.
 
 ### General Features
 - [**Class-level QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-classes) – Compare multiple classes for feature similarity or bias.
-- [**Train–test split validation**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-splits) – Detect potential data leakage through sequence similarity and clustering.
+- [**Train–test split QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-splits) – Detect potential data leakage through sequence similarity and clustering.
 - [**Multiple input formats**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#supported-input-file-formats) – Supports FASTA, CSV, and TSV datasets.
 - **Customizable reporting** – Generate JSON, HTML, or simple text summaries.
 - **Integration-ready** – Available as both CLI tools and a Python API.
