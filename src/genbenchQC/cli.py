@@ -16,7 +16,7 @@ def evaluate_classes(
     regression: bool = typer.Option(False, help="Treat label column as regression target and split into high/low."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    seq_report_types: List[str] = typer.Option([], help="Sequence-level report types (json, html)."),
+    seq_report_types: Optional[List[str]] = typer.Option(None, help="Sequence-level report types (json, html)."),
     end_position: Optional[int] = typer.Option(None, help="End position for per-position stats."),
     plot_type: str = typer.Option('boxen', help="Plot type to use for visualizations (boxen, violin)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
