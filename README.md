@@ -8,8 +8,8 @@ It helps detect biases, inconsistencies, and potential data leakage across seque
 ## Features
 
 ### Provided Tools
-- **genbenchQC evaluate_classes** – QC tool to evaluate sequence characteristics between different classes/labels in the dataset.
-- **genbenchQC evaluate_splits** – QC tool to evaluate data leakage in dataset train-test splits.
+- **genbenchQC evaluate-classes** – QC tool to evaluate sequence characteristics between different classes/labels in the dataset.
+- **genbenchQC evaluate-splits** – QC tool to evaluate data leakage in dataset train-test splits.
 
 ### General Features
 - [**Class-level QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-classes) – Compare multiple classes for feature similarity or bias.
