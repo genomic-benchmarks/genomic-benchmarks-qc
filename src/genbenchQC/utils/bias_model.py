@@ -49,7 +49,7 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
 
     for stat in STATS_TO_TRAIN_PRECOMPUTED:
 
-        logging.info(f"Training bias detection model for statistic: {stat}")
+        logging.debug(f"Training bias detection model for statistic: {stat}")
 
         X = pd.concat([stats1.stats[stat], stats2.stats[stat]], axis=0)
         X.fillna(0, inplace=True)
@@ -71,7 +71,7 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
         worse_metrics = {metric: [] for metric in METRICS_TO_COMPUTE}
         for nt in common_nts:
             log_msg = "Training bias detection model for per position nucleotide" if not reverse else "Training bias detection model for per reverse position nucleotide"
-            logging.info(f"{log_msg}: {nt}")
+            logging.debug(f"{log_msg}: {nt}")
 
             end_position=min(stats1.end_position, stats2.end_position)
             features = extract_per_position_base(stats1.sequences + stats2.sequences, base=nt, reverse=reverse, end_position=end_position)

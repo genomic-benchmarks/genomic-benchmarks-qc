@@ -42,13 +42,14 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
         filename = "dataset_report"
         if stat1.seq_column is not None:
             filename += f'_{stat1.seq_column}'
+            logging.info(f"Comparing classes for sequence column: {stat1.seq_column}")
         if stat1.label is not None and stat2.label is not None:
             filename += f'_label_{stat1.label}_vs_{stat2.label}'
-            logging.debug(f"Comparing datasets label: {stat1.label} vs {stat2.label}")
+            logging.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
         else:
             filename += f'_{Path(stat1.filename).stem}_{Path(stat2.filename).stem}'
-            logging.debug(
-                f"Comparing datasets: {stat1.filename} vs {stat2.filename}")
+            logging.info(
+                f"Comparing classes: {stat1.filename} vs {stat2.filename}")
 
         results = flag_significant_differences(
             stat1, stat2, 
@@ -115,7 +116,7 @@ def run(input,
         label_list = ['infer']
 
     setup_logger(log_level, log_file)
-    logging.info("Starting dataset evaluation.")
+    logging.info("Starting classes evaluation.")
 
     if not Path(out_folder).exists():
         logging.info(f"Output folder {out_folder} does not exist. Creating it.")
@@ -185,6 +186,7 @@ def run(input,
                     sequences = read_multisequence_df(df, sequence_column, label_column, label)
                     seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, filepath=input[0],
                                                      label=label, seq_column='_'.join(sequence_column))]
+                
                 run_analysis(
                     input_statistics=seq_stats,
                     out_folder=out_folder,
@@ -228,4 +230,4 @@ def run(input,
                     plot_type=plot_type,
                 )
 
-    logging.info("Dataset evaluation successfully completed.")
+    logging.info("Classes evaluation successfully completed.")

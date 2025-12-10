@@ -65,8 +65,8 @@ class SequenceStatistics:
             # round to nearest integer
             self.end_position = int(np.round(lengths_75th))
 
-            logging.info(
-                f"End position not provided. Using end position: {self.end_position}{col_info}. "
+            logging.debug(
+                f"End position argument not provided. Using end position: {self.end_position}{col_info}. "
                  "This is the 75th percentile of sequence lengths."
             )
         else:
