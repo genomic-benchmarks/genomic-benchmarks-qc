@@ -55,6 +55,8 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
             stat1, stat2, 
         )
         
+        if report_types is None:
+            report_types = ['html', 'simple']
         if 'simple' in report_types:
             simple_report_path = out_folder / Path(f'{filename}.csv')
             generate_simple_report(results, simple_report_path)
@@ -150,6 +152,11 @@ def run(input,
                 if not pd.api.types.is_numeric_dtype(df[label_column]):
                     logging.debug(f"Converting label column '{label_column}' to numeric type for regression.")
                     df[label_column] = pd.to_numeric(df[label_column], errors='coerce')
+                # drop rows with NaN values in label column
+                nan_count = df[label_column].isna().sum()
+                if nan_count > 0:
+                    logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
+                    df = df.dropna(subset=[label_column])
                 # infer the threshold as the median of the label column
                 threshold = df[label_column].median()
                 logging.debug(f"Inferred threshold for regression: {threshold}")
