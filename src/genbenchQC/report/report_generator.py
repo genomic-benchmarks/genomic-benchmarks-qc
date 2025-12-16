@@ -9,7 +9,7 @@ import logging
 
 from genbenchQC.report.sequence_html_report import get_sequence_html_template
 from genbenchQC.report.dataset_html_report import get_dataset_html_template
-from genbenchQC.report.split_html_report import get_train_test_html_template
+from genbenchQC.report.split_html_report import get_split_html_template
 from genbenchQC.utils.input_utils import write_stats_json
 from genbenchQC.report import dataset_plots
 from genbenchQC.report import sequences_plots
@@ -96,27 +96,33 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_train_test_html_report(stratified_test_split, train_filename, train_sequences, test_filename, test_sequences, output_path, plots_path):
+def generate_split_html_report(stratified_test_split, stratified_test_split_shuffled, basic_stats, threshold_stats, output_path, plots_path):
     """
     Generate an HTML report visualising data leakage. 
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
-    plots_paths = generate_split_plots(stratified_test_split, plots_path)
+    plots_paths = generate_split_plots(stratified_test_split, stratified_test_split_shuffled, threshold_stats["threshold"], plots_path)
 
-    template = get_train_test_html_template(stratified_test_split, train_filename, train_sequences, test_filename, test_sequences, plots_paths)
+    template = get_split_html_template(basic_stats, threshold_stats, plots_paths)
 
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_split_plots(stratified_test_split, plots_path):
+def generate_split_plots(stratified_test_split, stratified_test_split_shuffled, threshold, plots_path):
 
     plots_paths = {}
 
     # Plot distribution of test set maximum corrected alignment scores
-    fig = split_plots.plot_distribution_max_corr_alignment_scores(stratified_test_split)
+    fig = split_plots.plot_distribution_max_corr_alignment_scores(stratified_test_split, threshold)
     plots_paths['Distribution of test set maximum corrected alignment scores'] = Path(plots_path.name) / 'distribution_test_set_max_corr_alignment_scores.png'
     fig.savefig(plots_path / 'distribution_test_set_max_corr_alignment_scores.png', bbox_inches='tight')
+    plt.close(fig)
+
+    # Plot threshold selection plot
+    fig = split_plots.plot_genomic_vs_shuffled_hist(stratified_test_split, stratified_test_split_shuffled)
+    plots_paths['Threshold selection plot'] = Path(plots_path.name) / 'threshold_selection_plot.png'
+    fig.savefig(plots_path / 'threshold_selection_plot.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths

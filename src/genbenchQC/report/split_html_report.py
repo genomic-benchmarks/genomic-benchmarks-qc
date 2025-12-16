@@ -60,8 +60,12 @@ HTML_TEMPLATE = """
             <section id="similarity-section">
                 <h2>Train/Test Similarity</h2>
                 <p>The test set was stratified using hashFrag. The score is the maximum pairwise SW alignment score of a test sequence when queried against all train set sequences. More information about the score is provided by <a href="https://github.com/de-Boer-Lab/hashFrag?tab=readme-ov-file#a-minor-note-on-the-use-of-blast-alignment-scores-in-hashfrag" target="_blank" rel="noopener noreferrer">hashFrag</a>. </p>
-                <img src={{max_corr_alignment_scores_plot}} alt="Max Corrected Alignment Scores Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
-            </section>
+                <img src={{max_corr_alignment_scores_plot}} alt="Max Corrected Alignment Scores Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">          
+                <p>Threshold: {{threshold}} </p>
+                <p>Percentage of alignments above threshold: {{perc_above_threshold}} </p>
+                <p>Percentage of alignments below threshold: {{perc_below_threshold}} </p>
+                <img src={{threshold_selection_plot}} alt="Threshold Selection Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">    
+        </section>
 
         </div>
     </div>
@@ -70,7 +74,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def get_train_test_html_template(stratified_test_split, filename_train, train_sequences, filename_test, test_sequences, plots_paths, tool_description=None):
+def get_split_html_template(basic_stats, threshold_stats, plots_paths, tool_description=None):
     """Build train/test similarity HTML using shared helpers."""
 
     html_template = HTML_TEMPLATE
@@ -82,7 +86,7 @@ def get_train_test_html_template(stratified_test_split, filename_train, train_se
     # header info
     if tool_description is None:
         tool_description = "Toolkit for automated quality control of genomic datasets used in machine learning."
-    input_paths = f"{filename_train}, {filename_test}" if filename_train != filename_test else filename_train
+    input_paths = f"{basic_stats['train_filename']}, {basic_stats['test_filename']}" if basic_stats['train_filename'] != basic_stats['test_filename'] else basic_stats['train_filename']
     generated_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
@@ -90,17 +94,22 @@ def get_train_test_html_template(stratified_test_split, filename_train, train_se
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
     html_template = put_data(html_template, "{{version}}", __version__)
 
-    html_template = put_data(html_template, "{{train_filename}}", str(filename_train))
-    html_template = put_data(html_template, "{{test_filename}}", str(filename_test))
-    html_template = put_data(html_template, "{{number_of_sequences_train}}", str(len(train_sequences)))
-    html_template = put_data(html_template, "{{number_of_sequences_test}}", str(len(test_sequences)))
-    html_template = put_data(html_template, "{{min_length_train}}", str(min(len(seq) for seq in train_sequences)))
-    html_template = put_data(html_template, "{{mean_length_train}}", str(sum(len(seq) for seq in train_sequences) // len(train_sequences)))
-    html_template = put_data(html_template, "{{max_length_train}}", str(max(len(seq) for seq in train_sequences)))
-    html_template = put_data(html_template, "{{min_length_test}}", str(min(len(seq) for seq in test_sequences)))
-    html_template = put_data(html_template, "{{mean_length_test}}", str(sum(len(seq) for seq in test_sequences) // len(test_sequences)))
-    html_template = put_data(html_template, "{{max_length_test}}", str(max(len(seq) for seq in test_sequences)))
+    html_template = put_data(html_template, "{{train_filename}}", str(basic_stats["train_filename"]))
+    html_template = put_data(html_template, "{{test_filename}}", str(basic_stats["test_filename"]))
+    html_template = put_data(html_template, "{{number_of_sequences_train}}", str(basic_stats["number_of_sequences_train"]))
+    html_template = put_data(html_template, "{{number_of_sequences_test}}", str(basic_stats["number_of_sequences_test"]))
+    html_template = put_data(html_template, "{{min_length_train}}", str(basic_stats["min_length_train"]))
+    html_template = put_data(html_template, "{{mean_length_train}}", str(basic_stats["mean_length_train"]))
+    html_template = put_data(html_template, "{{max_length_train}}", str(basic_stats["max_length_train"]))
+    html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats["min_length_test"]))
+    html_template = put_data(html_template, "{{mean_length_test}}", str(basic_stats["mean_length_test"]))
+    html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats["max_length_test"]))
 
     html_template = put_data(html_template, "{{max_corr_alignment_scores_plot}}", str(plots_paths['Distribution of test set maximum corrected alignment scores']))
+    html_template = put_data(html_template, "{{threshold}}", str(threshold_stats["threshold"]))
+    html_template = put_data(html_template, "{{perc_above_threshold}}", str(round(threshold_stats["num_above_threshold"] / threshold_stats["total_alignments"] * 100, 2)))
+    html_template = put_data(html_template, "{{perc_below_threshold}}", str(round(threshold_stats["num_below_threshold"] / threshold_stats["total_alignments"] * 100, 2)))
+
+    html_template = put_data(html_template, "{{threshold_selection_plot}}", str(plots_paths['Threshold selection plot']))
 
     return html_template

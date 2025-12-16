@@ -6,10 +6,11 @@ import os
 import shutil
 import pandas as pd
 
-from genbenchQC.report.report_generator import generate_json_report, generate_train_test_html_report, generate_simple_report
+from genbenchQC.report.report_generator import generate_json_report, generate_split_html_report, generate_simple_report
 from genbenchQC.utils.input_utils import setup_logger, read_files_to_sequence_list, write_fasta
+from genbenchQC.utils.similarity_threshold import dinucleotide_shuffle_list, compute_threshold, get_basic_stats, get_threshold_stats
 
-def run_hashFrag_stratify_test_split(train_fasta_file, test_fasta_file, out_folder):
+def run_hashFrag_stratify_test_split(train_fasta_file, test_fasta_file, out_folder): #, shuffled=False):
     logging.info("Running hashFrag stratify test split.")
 
     logging.debug("Running hashFrag stratify test split with the following parameters:")
@@ -17,16 +18,21 @@ def run_hashFrag_stratify_test_split(train_fasta_file, test_fasta_file, out_fold
     logging.debug(f"Input test file: {test_fasta_file}")
     logging.debug(f"Output directory: {out_folder}")
 
-    hashfrag_out = Path(out_folder) / "hashFrag_outputs"
-    hashfrag_out.mkdir(parents=True, exist_ok=True)
+    out_folder.mkdir(parents=True, exist_ok=True)
     
-    errcode = os.system(f"hashFrag stratify_test_split --train-fasta-path {train_fasta_file} --test-fasta-path {test_fasta_file} -o {hashfrag_out} >/dev/null 2>&1")
+    errcode = os.system(f"hashFrag stratify_test_split --train-fasta-path {train_fasta_file} --test-fasta-path {test_fasta_file} -o {out_folder} >/dev/null 2>&1")
     if errcode != 0:
         logging.error(f"hashFrag stratify test split failed with error code {errcode}.")
         raise RuntimeError(f"hashFrag stratify test split failed with error code {errcode}.")
-    
-    stratified_test_split = pd.read_csv(hashfrag_out / "hashFrag.stratified_test_split.tsv", sep="\t")
+
+    stratified_test_split = pd.read_csv(out_folder / "hashFrag.stratified_test_split.tsv", sep="\t")
     logging.info("hashFrag stratify test split completed successfully.")
+
+    # if shuffled:
+    #     return stratified_test_split
+    
+    # test_seqs_processed = pd.read_csv(out_folder / "test_sequencessta.blastn.processed.tsv", sep="\t", header=None, names=["test_id", "train_id", "score"])
+    # return stratified_test_split, test_seqs_processed
 
     return stratified_test_split
 
@@ -66,45 +72,58 @@ def run(train_files, test_files, format,
     train_sequences = read_files_to_sequence_list(train_files, format, sequence_column)
     train_index = [f"{i}_train" for i in range(len(train_sequences))]
     logging.info(f"Read {len(train_sequences)} sequences from training files.")
+    train_fasta_path = Path(out_folder, "tmp") / 'train_sequences.fasta'
+    write_fasta(train_sequences, train_fasta_path, train_index)
 
     test_sequences = read_files_to_sequence_list(test_files, format, sequence_column)
     test_index = [f"{i}_test" for i in range(len(test_sequences))]
     logging.info(f"Read {len(test_sequences)} sequences from testing files.")
-
-    train_fasta_path = Path(out_folder, "tmp") / 'train_sequences.fasta'
-    write_fasta(train_sequences, train_fasta_path, train_index)
     test_fasta_path = Path(out_folder, "tmp") / 'test_sequences.fasta'
     write_fasta(test_sequences, test_fasta_path, test_index)
     
-    stratified_test_split = run_hashFrag_stratify_test_split(train_fasta_path, test_fasta_path, Path(out_folder))
+    out_folder_hashFrag_genomic = Path(out_folder) / "hashFrag_genomic"
+    stratified_test_split = run_hashFrag_stratify_test_split(train_fasta_path, test_fasta_path, Path(out_folder_hashFrag_genomic))
     
-    filename = "split_check_" + Path(train_files[0]).stem + "_vs_" + Path(test_files[0]).stem
+    train_seqs_shuffled = dinucleotide_shuffle_list(train_sequences, seed=42)
+    train_fasta_path_shuffled = Path(out_folder, "tmp") / 'train_sequences_shuffled.fasta'
+    write_fasta(train_seqs_shuffled, train_fasta_path_shuffled, train_index)
+    
+    test_seqs_shuffled = dinucleotide_shuffle_list(test_sequences, seed=42)
+    test_fasta_path_shuffled = Path(out_folder, "tmp") / 'test_sequences_shuffled.fasta'
+    write_fasta(test_seqs_shuffled, test_fasta_path_shuffled, test_index)
 
+    out_folder_hashFrag_shuffled = Path(out_folder) / "hashFrag_shuffled"
+    stratified_test_split_shuffled = run_hashFrag_stratify_test_split(train_fasta_path_shuffled, test_fasta_path_shuffled, Path(out_folder_hashFrag_shuffled)) #, shuffled=True)
+
+    threshold = compute_threshold(stratified_test_split_shuffled)
+
+    filename = "split_check_" + Path(train_files[0]).stem + "_vs_" + Path(test_files[0]).stem
     # if 'simple' in report_types:
     #     simple_report_path = Path(out_folder, filename + '.csv')
     #     result = {"Data leakage": "Pass" if not clusters else "Fail"}
     #     df = pd.DataFrame.from_dict(result, orient='index', columns=['Flag'])
     #     df.index.name = "Statistic"
     #     generate_simple_report(df, simple_report_path)
-
     # if 'json' in report_types or 'html' in report_types:
     #     sequence_clusters = process_mixed_clusters(clusters, train_sequences, test_sequences)
     #     logging.debug(f"Transformed cluster sequence IDs to sequences: {sequence_clusters}")
-
     # if 'json' in report_types:
     #     json_report_path = Path(out_folder, filename + '_report.json')
     #     generate_json_report({"mixed train-test clusters": sequence_clusters}, json_report_path)
-    
     if 'html' in report_types:
         train_filenames = ",".join([Path(f).name for f in train_files])
         test_filenames = ",".join([Path(f).name for f in test_files])
         html_report_path = Path(out_folder, filename + '_report.html')
         plots_path = Path(out_folder, filename + '_plots')
-        generate_train_test_html_report(stratified_test_split, train_filenames, train_sequences, test_filenames, test_sequences, html_report_path, plots_path)
+
+        basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
+        threshold_stats = get_threshold_stats(stratified_test_split, threshold)
+
+        generate_split_html_report(stratified_test_split, stratified_test_split_shuffled, basic_stats, threshold_stats, html_report_path, plots_path)
 
     # Clean up temporary files
     logging.debug("Removing temporary files.")
-    shutil.rmtree(Path(out_folder, "tmp"))
+    # shutil.rmtree(Path(out_folder, "tmp"))
 
     logging.info("Train-test split evaluation successfully completed.")
 
