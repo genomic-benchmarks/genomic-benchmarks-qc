@@ -41,7 +41,7 @@ def evaluate_classes(
     
     # Validate input files exist
     for file_path in input:
-        if not Path(file_path).exists():
+        if not Path(file_path).is_file():
             typer.echo(f"Error: Input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
     
@@ -117,13 +117,13 @@ def evaluate_splits(
     
     # Validate train input files exist
     for file_path in train_input:
-        if not Path(file_path).exists():
+        if not Path(file_path).is_file():
             typer.echo(f"Error: Training input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
     
     # Validate test input files exist
     for file_path in test_input:
-        if not Path(file_path).exists():
+        if not Path(file_path).is_file():
             typer.echo(f"Error: Test input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
     
