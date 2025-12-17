@@ -1,6 +1,7 @@
 from datetime import datetime
 from genbenchQC.report.report_common import put_data, put_file_details, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
 import importlib.metadata
+import base64
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -125,7 +126,7 @@ HTML_TEMPLATE = """
                 </div>
 
                 <!-- This will be populated with png plot --->
-                <img src={{sequence_length_plot}} alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+                <img src="data:image/png;base64, {{sequence_length_plot_base64}}" alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
 
             <section id="per-sequence-gc-content">
@@ -133,7 +134,7 @@ HTML_TEMPLATE = """
                     {{icon_per_sequence_gc_content}}
                     <h2>Per Sequence GC Content</h2>
                 </div>
-                <img src={{per-sequence-gc-content}} alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+                <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
 
             <section id="per-sequence-nucleotide-content">
@@ -141,7 +142,7 @@ HTML_TEMPLATE = """
                     {{icon_per_sequence_nucleotide_content}}
                     <h2>Per Sequence Nucleotide Content</h2>
                 </div>
-                <img src={{per-sequence-nucleotide-content}} alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
+                <img src="data:image/png;base64, {{per-sequence-nucleotide-content_base64}}" alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
 
             <section id="per-sequence-dinucleotide-content">
@@ -149,7 +150,7 @@ HTML_TEMPLATE = """
                     {{icon_per_sequence_dinucleotide_content}}
                     <h2>Per Sequence Dinucleotide Content</h2>
                 </div>
-                <img src={{per-sequence-dinucleotide-content}} alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
+                <img src="data:image/png;base64, {{per-sequence-dinucleotide-content_base64}}" alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
             </section>
 
             <section id="per-position-nucleotide-content">
@@ -157,7 +158,7 @@ HTML_TEMPLATE = """
                     {{icon_per_position_nucleotide_content}}
                     <h2>Per Position Nucleotide Content</h2>
                 </div>
-                <img src={{per-position-nucleotide-content}} alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
+                <img src="data:image/png;base64, {{per-position-nucleotide-content_base64}}" alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
 
             <section id="per-position-reversed-nucleotide-content">
@@ -165,7 +166,7 @@ HTML_TEMPLATE = """
                     {{icon_per_position_reversed_nucleotide_content}}
                     <h2>Per Position Reversed Nucleotide Content</h2>
                 </div>
-                <img src={{per-position-reversed-nucleotide-content}} alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
+                <img src="data:image/png;base64, {{per-position-reversed-nucleotide-content_base64}}" alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
         </div>
     </div>
@@ -254,12 +255,24 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")  
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
-    html_template = put_data(html_template, "{{sequence_length_plot}}", str(plots_path['Sequence lengths']))
-    html_template = put_data(html_template, "{{per-sequence-nucleotide-content}}", str(plots_path['Per sequence nucleotide content']))
-    html_template = put_data(html_template, "{{per-sequence-dinucleotide-content}}", str(plots_path['Per sequence dinucleotide content']))
-    html_template = put_data(html_template, "{{per-position-nucleotide-content}}", str(plots_path['Per position nucleotide content']))
-    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}", str(plots_path['Per position reversed nucleotide content']))
-    html_template = put_data(html_template, "{{per-sequence-gc-content}}", str(plots_path['Per sequence GC content']))
+    with open(plots_path['Sequence lengths'], "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    html_template = put_data(html_template, "{{sequence_length_plot_base64}}", encoded_string)
+    with open(plots_path['Per sequence GC content'], "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", encoded_string)
+    with open(plots_path['Per sequence nucleotide content'], "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    html_template = put_data(html_template, "{{per-sequence-nucleotide-content_base64}}", encoded_string)
+    with open(plots_path['Per sequence dinucleotide content'], "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    html_template = put_data(html_template, "{{per-sequence-dinucleotide-content_base64}}", encoded_string)
+    with open(plots_path['Per position nucleotide content'], "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    html_template = put_data(html_template, "{{per-position-nucleotide-content_base64}}", encoded_string)
+    with open(plots_path['Per position reversed nucleotide content'], "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content_base64}}", encoded_string)
 
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
