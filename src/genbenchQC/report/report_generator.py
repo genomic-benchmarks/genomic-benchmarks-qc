@@ -162,7 +162,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         nucleotides = bases_overlap,
         plot_type=plot_type
     )
-    plots_paths['Per sequence nucleotide content'] = Path(output_path) / 'per_sequence_nucleotide_content.png'
+    plots_paths['Per sequence nucleotide content'] = output_path / 'per_sequence_nucleotide_content.png'
     fig.savefig(output_path / 'per_sequence_nucleotide_content.png', bbox_inches='tight')
     plt.close(fig)
 
@@ -173,7 +173,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         nucleotides = bases_overlap,
         plot_type=plot_type
     )
-    plots_paths['Per sequence dinucleotide content'] = Path(output_path) / 'per_sequence_dinucleotide_content.png'
+    plots_paths['Per sequence dinucleotide content'] = output_path / 'per_sequence_dinucleotide_content.png'
     fig.savefig(output_path / 'per_sequence_dinucleotide_content.png', bbox_inches='tight')
     plt.close(fig)
     
@@ -187,7 +187,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         x_label='Position in sequence',
         title='Nucleotide composition per position',
     )
-    plots_paths['Per position nucleotide content'] = Path(output_path) / 'per_position_nucleotide_content.png'
+    plots_paths['Per position nucleotide content'] = output_path / 'per_position_nucleotide_content.png'
     fig.savefig(output_path / 'per_position_nucleotide_content.png', bbox_inches='tight')   
     plt.close(fig)
 
@@ -201,7 +201,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         x_label='Position in reversed sequence',
         title='Reversed nucleotide composition per position',
     )
-    plots_paths['Per position reversed nucleotide content'] = Path(output_path) / 'per_position_reversed_nucleotide_content.png'
+    plots_paths['Per position reversed nucleotide content'] = output_path / 'per_position_reversed_nucleotide_content.png'
     fig.savefig(output_path / 'per_position_reversed_nucleotide_content.png', bbox_inches='tight')
     plt.close(fig)
 
@@ -211,7 +211,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats2,
         plot_type=plot_type,
     )
-    plots_paths['Sequence lengths'] = Path(output_path) / 'sequence_lengths.png'
+    plots_paths['Sequence lengths'] = output_path / 'sequence_lengths.png'
     fig.savefig(output_path / 'sequence_lengths.png', bbox_inches='tight')
     plt.close(fig)
 
@@ -221,7 +221,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats2,
         plot_type=plot_type,
     )
-    plots_paths['Per sequence GC content'] = Path(output_path) / 'per_sequence_gc_content.png'
+    plots_paths['Per sequence GC content'] = output_path / 'per_sequence_gc_content.png'
     fig.savefig(output_path / 'per_sequence_gc_content.png', bbox_inches='tight')
     plt.close(fig)
 
