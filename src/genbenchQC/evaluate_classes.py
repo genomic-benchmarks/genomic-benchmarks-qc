@@ -158,6 +158,13 @@ def run(input,
                 if nan_count > 0:
                     logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
                     df = df.dropna(subset=[label_column])
+
+                if len(df) == 0:
+                    logging.error(f"No valid numeric values found in '{label_column}' for regression. Skipping analysis.")
+                    return
+                elif len(df) < 2:
+                    logging.warning(f"Only {len(df)} sample(s) remaining after dropping non-numeric values. Results may not be meaningful.")
+
                 # infer the threshold as the median of the label column
                 threshold = df[label_column].median()
                 logging.debug(f"Inferred threshold for regression: {threshold}")
