@@ -1,4 +1,3 @@
-import argparse
 import logging
 from pathlib import Path
 from itertools import combinations
@@ -74,11 +73,11 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
 def run(input, 
         format, 
         out_folder='.', 
-        sequence_column: Optional[list[str]] = ['sequences'], 
+        sequence_column: Optional[list[str]] = None, 
         label_column='label', 
-        label_list: Optional[list[str]] = ['infer'],
+        label_list: Optional[list[str]] = None,
         regression: Optional[bool] = False,
-        report_types: Optional[list[str]] = ['html', 'simple'],
+        report_types: Optional[list[str]] = None,
         seq_report_types: Optional[list[str]] = None,
         end_position: Optional[int] = None,
         plot_type: Optional[str] = 'boxen',
@@ -93,7 +92,7 @@ def run(input,
     @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
     @param out_folder: Path to the output folder. Default: '.'.
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
-                            Either one column or list of columns. Default: ['sequences']
+                            Either one column or list of columns. Default: ['sequence']
     @param label_column: Name of the label column for datasets in CSV/TSV format. Default: 'label'.
     @param label_list: List of label classes to consider or "infer" to parse different labels automatically from label column.
                       For datasets in CSV/TSV format.
@@ -107,6 +106,13 @@ def run(input,
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
     """
+
+    if sequence_column is None:
+        sequence_column = ['sequence']
+    if report_types is None:
+        report_types = ['html', 'simple']
+    if label_list is None:
+        label_list = ['infer']
 
     setup_logger(log_level, log_file)
     logging.info("Starting dataset evaluation.")
@@ -223,53 +229,3 @@ def run(input,
                 )
 
     logging.info("Dataset evaluation successfully completed.")
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='A tool for evaluating sequence datasets.')
-    parser.add_argument('--input', type=str, help='Path to the dataset file. '
-                                                  'Can be a list of files, each containing sequences from one class.', nargs='+', required=True)
-    parser.add_argument('--format', help="Format of the input files.", choices=['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz'], required=True) # potentially add HF support
-    parser.add_argument('--sequence_column', type=str, help='Name of the columns with sequences to analyze for datasets in CSV/TSV format. '
-                                                            'Either one column or list of columns.', nargs='+', default=['sequence'])
-    parser.add_argument('--label_column', type=str, help='Name with the label column for datasets in CSV/TSV format.', default='label')
-    parser.add_argument('--label_list', type=str, nargs='+', help='List of label classes to consider or "infer" to parse different labels automatically from label column.'
-                                                       ' For datasets in CSV/TSV format.', default=['infer'])
-    parser.add_argument('--regression', action='store_true', help='If True, label column is considered as a regression target and values are split into 2 classes')
-    parser.add_argument('--out_folder', type=str, help='Path to the output folder.', default='.')
-    parser.add_argument('--report_types', type=str, nargs='+', choices=['json', 'html', 'simple'], default=['html', 'simple'],
-                        help='Types of reports to generate. Default: [html, simple].')
-    parser.add_argument('--seq_report_types', type=str, nargs='+', choices=['json', 'html'], default=[],
-                        help='Types of reports to generate for individual groups of sequences. Default: [].')
-    parser.add_argument('--end_position', type=int, default=None,
-                        help='End position of the sequences to consider in per position statistics. If not provided, 75th percentile of sequence lengths will be used.')
-    parser.add_argument('--plot_type', type=str, help='Type of plot to use for visualizations. For bigger datasets, "boxen" in recommended. Default: boxen.',
-                        choices=['boxen', 'violin'], default='boxen')
-    parser.add_argument('--log_level', type=str, help='Logging level, default to INFO.', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
-    parser.add_argument('--log_file', type=str, help='Path to the log file. If provided, logs will be written to this file as well as to the console.', default=None)
-    args = parser.parse_args()
-
-    if args.format == 'fasta' and len(args.input) < 2:
-        parser.error("When format is 'fasta', the input must contain individual files for each class.")
-
-    return args
-
-def main():
-    args = parse_args()
-    run(input = args.input, 
-        format = args.format, 
-        out_folder = args.out_folder, 
-        sequence_column = args.sequence_column, 
-        label_column = args.label_column, 
-        label_list = args.label_list,
-        regression = args.regression,
-        report_types = args.report_types,
-        seq_report_types = args.seq_report_types,
-        end_position = args.end_position,
-        plot_type = args.plot_type,
-        log_level = args.log_level,
-        log_file = args.log_file
-    )
-
-if __name__ == '__main__':
-    main()
