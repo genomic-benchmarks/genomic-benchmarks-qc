@@ -36,6 +36,9 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
 
     if len(input_statistics) < 2:
         return
+    
+    if report_types is None:
+        report_types = ['html', 'simple']
 
     # run pair comparison analysis with all combinations
     for stat1, stat2 in combinations(input_statistics, 2):
@@ -55,8 +58,6 @@ def run_analysis(input_statistics, out_folder, report_types, seq_report_types, p
             stat1, stat2, 
         )
         
-        if report_types is None:
-            report_types = ['html', 'simple']
         if 'simple' in report_types:
             simple_report_path = out_folder / Path(f'{filename}.csv')
             generate_simple_report(results, simple_report_path)
