@@ -192,7 +192,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, duplicate_seqs_file=None, summary_statuses=None,
+def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, duplicate_seqs, duplicate_seqs_file=None,
                              tool_description=None):
     """
     Returns the HTML template for the report.
@@ -200,9 +200,11 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, duplic
     Args:
         stats1, stats2: objects containing dataset statistics (unchanged API).
         plots_path: dict with plot image paths.
+        summary_statuses: pd.DataFrame mapping status keys to HTML/text snippets for
+                    the sidebar placeholders.
         duplicate_seqs: list of duplicate sequences.
-        summary_statuses: optional pd.DataFrame mapping status keys to HTML/text snippets for
-                          the sidebar placeholders.
+        duplicate_seqs_file: path to file with duplicate sequences (optional).
+        tool_description: short description of the tool to include in the header (optional).
 
     Backwards compatible: if summary_statuses is None, placeholders are left empty.
     """
@@ -328,5 +330,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, duplic
 
         if duplicate_seqs_file is not None:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All duplicate sequences saved to {duplicate_seqs_file}.")
+        else:
+            html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
 
     return html_template
