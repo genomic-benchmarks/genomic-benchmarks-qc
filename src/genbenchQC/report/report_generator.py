@@ -125,7 +125,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     else:
         summary_statuses = None
     # Load the HTML template
-    template = get_dataset_html_template(stats1, stats2, plots_paths, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path, summary_statuses=summary_statuses)
+    template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path)
 
     with open(output_path, 'w') as file:
         file.write(template)
