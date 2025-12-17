@@ -57,6 +57,26 @@ genbenchQC evaluate-classes \
 
 Outputs with their description are in [example_outputs/G4_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset).
 
+Running from CLI with tsv file and two sequence columns:
+
+```bash
+genbenchQC evaluate-classes \
+  --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
+  --format tsv \
+  --out-folder example_outputs/miRNA_mRNA_dataset \
+  --sequence-column gene \
+  --sequence-column noncodingRNA
+```
+
+Note: when you want to provide multiple values for some option, such as `--input` or `--sequence-column`, prefix each value with option name:
+```bash
+genbenchQC evaluate-classes \
+  --input example_datasets/G4_positives.fasta \
+  --input example_datasets/G4_negatives.fasta 
+```
+
+Outputs with their description are in [example_outputs/miRNA_mRNA_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/miRNA_mRNA_dataset).
+
 ### Evaluate Splits
 
 ```bash
