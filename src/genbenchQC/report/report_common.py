@@ -1,5 +1,6 @@
 from datetime import datetime
 import base64
+from pathlib import Path
 
 def put_file_details(html_template, filename):
     """
@@ -53,7 +54,22 @@ def icon_html(summary_statuses, key):
     return s
 
 def encode_image_to_base64(image_path):
-    """Read an image file and return its base64-encoded string."""
+    """
+    Read an image file and return its base64-encoded string.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        Base64-encoded string of the image
+        
+    Raises:
+        ValueError: If image_path is invalid
+        FileNotFoundError: If the image file doesn't exist
+        IOError: If the file cannot be read
+    """
+    if not Path(image_path).is_file():
+        raise FileNotFoundError(f"Image file not found: {image_path}")
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
