@@ -227,8 +227,8 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
 
     # plot length counts in the last subplot
     last_index = len(nucleotides)
-    axs[last_index].fill_between(range(1, end_position + 1), length_counts, color='lightblue', alpha=0.5)
-    axs[last_index].plot(range(1, end_position + 1), length_counts, color='lightblue', linewidth=2)
+    axs[last_index].fill_between(range(1, end_position + 1), length_counts, color='lightgray', alpha=0.5)
+    axs[last_index].plot(range(1, end_position + 1), length_counts, color='lightgray', linewidth=2)
     axs[last_index].set_xlabel(f"{x_label}", fontsize=14)
     axs[last_index].set_ylabel('Proportion of\nsequences', fontsize=14)
     axs[last_index].yaxis.set_label_position("right")
