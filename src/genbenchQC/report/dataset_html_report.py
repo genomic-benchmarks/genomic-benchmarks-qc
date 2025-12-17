@@ -1,7 +1,6 @@
 from datetime import datetime
-from genbenchQC.report.report_common import put_data, put_file_details, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
+from genbenchQC.report.report_common import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
 import importlib.metadata
-import base64
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -255,24 +254,18 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")  
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
-    with open(plots_path['Sequence lengths'], "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    html_template = put_data(html_template, "{{sequence_length_plot_base64}}", encoded_string)
-    with open(plots_path['Per sequence GC content'], "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", encoded_string)
-    with open(plots_path['Per sequence nucleotide content'], "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    html_template = put_data(html_template, "{{per-sequence-nucleotide-content_base64}}", encoded_string)
-    with open(plots_path['Per sequence dinucleotide content'], "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    html_template = put_data(html_template, "{{per-sequence-dinucleotide-content_base64}}", encoded_string)
-    with open(plots_path['Per position nucleotide content'], "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    html_template = put_data(html_template, "{{per-position-nucleotide-content_base64}}", encoded_string)
-    with open(plots_path['Per position reversed nucleotide content'], "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content_base64}}", encoded_string)
+    html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
+                             encode_image_to_base64(plots_path['Sequence lengths']))
+    html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
+                             encode_image_to_base64(plots_path['Per sequence GC content']))
+    html_template = put_data(html_template, "{{per-sequence-nucleotide-content_base64}}", 
+                             encode_image_to_base64(plots_path['Per sequence nucleotide content']))
+    html_template = put_data(html_template, "{{per-sequence-dinucleotide-content_base64}}", 
+                             encode_image_to_base64(plots_path['Per sequence dinucleotide content']))
+    html_template = put_data(html_template, "{{per-position-nucleotide-content_base64}}", 
+                             encode_image_to_base64(plots_path['Per position nucleotide content']))
+    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content_base64}}", encode_image_to_base64(
+                             plots_path['Per position reversed nucleotide content']))
 
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper

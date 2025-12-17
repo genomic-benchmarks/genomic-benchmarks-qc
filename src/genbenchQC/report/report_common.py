@@ -1,5 +1,5 @@
 from datetime import datetime
-
+import base64
 
 def put_file_details(html_template, filename):
     """
@@ -52,6 +52,10 @@ def icon_html(summary_statuses, key):
     # Otherwise assume the value is an HTML snippet or a custom symbol and return as-is
     return s
 
+def encode_image_to_base64(image_path):
+    """Read an image file and return its base64-encoded string."""
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
 
 # Shared CSS used by all report HTML templates. Keep this as plain CSS (no <style> tags).
 COMMON_CSS = """
