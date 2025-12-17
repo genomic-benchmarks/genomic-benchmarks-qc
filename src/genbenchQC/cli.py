@@ -78,25 +78,21 @@ def evaluate_classes(
         typer.echo(f"Error: end_position must be a positive integer, got {end_position}", err=True)
         raise typer.Exit(code=1)
     
-    try:
-        run_evaluate_classes(
-            input=input,
-            format=format,
-            out_folder=out_folder,
-            sequence_column=sequence_column,
-            label_column=label_column,
-            label_list=label_list,
-            regression=regression,
-            report_types=report_types,
-            seq_report_types=seq_report_types,
-            end_position=end_position,
-            plot_type=plot_type,
-            log_level=log_level,
-            log_file=log_file,
-        )
-    except Exception as e:
-        typer.echo(f"Error during evaluation: {str(e)}", err=True)
-        raise typer.Exit(code=1)
+    run_evaluate_classes(
+        input=input,
+        format=format,
+        out_folder=out_folder,
+        sequence_column=sequence_column,
+        label_column=label_column,
+        label_list=label_list,
+        regression=regression,
+        report_types=report_types,
+        seq_report_types=seq_report_types,
+        end_position=end_position,
+        plot_type=plot_type,
+        log_level=log_level,
+        log_file=log_file,
+    )
 
 @app.command()
 def evaluate_splits(
@@ -151,22 +147,18 @@ def evaluate_splits(
         typer.echo(f"Error: alignment_coverage must be between 0 and 1, got {alignment_coverage}", err=True)
         raise typer.Exit(code=1)
     
-    try:
-        run_evaluate_splits(
-            train_files=train_input,
-            test_files=test_input,
-            format=format,
-            out_folder=out_folder,
-            sequence_column=sequence_column,
-            report_types=report_types,
-            identity_threshold=identity_threshold,
-            alignment_coverage=alignment_coverage,
-            log_level=log_level,
-            log_file=log_file,
-        )
-    except Exception as e:
-        typer.echo(f"Error during split evaluation: {str(e)}", err=True)
-        raise typer.Exit(code=1)
+    run_evaluate_splits(
+        train_files=train_input,
+        test_files=test_input,
+        format=format,
+        out_folder=out_folder,
+        sequence_column=sequence_column,
+        report_types=report_types,
+        identity_threshold=identity_threshold,
+        alignment_coverage=alignment_coverage,
+        log_level=log_level,
+        log_file=log_file,
+    )
 
 def main():
     app()
