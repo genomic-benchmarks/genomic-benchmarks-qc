@@ -67,6 +67,7 @@ html, body {
     overflow-x: hidden; /* prevent accidental page-wide horizontal scroll */
     margin: 0;
     padding: 0;
+    background: #ffffff;
 }
 body {
     font-family: Arial, sans-serif;

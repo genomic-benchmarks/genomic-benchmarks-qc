@@ -20,9 +20,10 @@ HTML_TEMPLATE = """
             </div>
             <h2>Summary</h2>
             <div class="sidebar-item">{{icon_basic_descriptive_statistics}}<a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
+            <div class="sidebar-item">{{icon_sequence_duplications_within_classes}}<a href="#sequence-duplications-within-classes">Sequence Duplications within Classes</a></div>
             <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate sequences</a></div>
             <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
-             <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
+            <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
             <div class="sidebar-item">{{icon_per_sequence_nucleotide_content}}<a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_sequence_dinucleotide_content}}<a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_position_nucleotide_content}}<a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
@@ -98,24 +99,22 @@ HTML_TEMPLATE = """
                 </table>
             </section>
 
+            <section id="sequence-duplications-within-classes">
+                <div class="sidebar-item">
+                    {{icon_sequence_duplications_within_classes}}
+                    <h2>Sequence Duplications within Classes</h2>
+                </div>
+                <!-- This will be populated either with png plot showing duplication or with a message saying no duplications found -->
+                {{sequence_duplications_within_classes}}
+            </section>
+
             <section id="sequence-duplication-levels">
                 <div class="sidebar-item">
                     {{icon_sequence_duplication_levels}}
                     <h2>Duplicate sequences</h2>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="sequence_column">Sequence</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Table rows will be dynamically populated -->
-                    </tbody>
-                </table>
-                <div id="sequence-duplication-levels-info">
-                    <p>And {{sequence_duplication_levels_rest}} more</p>
-                </div>
+                <!-- This will be populated either with a table showing duplicate sequences or a message saying no duplications found -->
+                {{sequence_duplication_levels}}
             </section>
 
             <section id="sequence-lengths">
@@ -171,7 +170,7 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        var sequenceDuplicationLevels = {{sequence_duplication_levels}};
+        var sequenceDuplicationLevels = {{sequence_duplication_levels_seqs}};
 
         // Populate table for sequence duplication levels
         var tableBody = document.querySelector("#sequence-duplication-levels tbody");
@@ -193,7 +192,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summary_statuses=None,
+def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, duplicate_seqs_file=None, summary_statuses=None,
                              tool_description=None):
     """
     Returns the HTML template for the report.
@@ -254,6 +253,16 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")  
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
+    if summary_statuses['Duplicate sequences'].lower() in ('pass', 'ok', 'good', 'success'):
+        # no duplicate sequences found
+        duplication_message = """
+        <p>No duplicate sequences were found in either class.</p>
+        """
+        html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", duplication_message)
+    else:
+        # insert plot showing duplicate sequences
+        html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", 
+                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence duplications within classes"])}" alt="Sequence Duplications within Classes Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">')
     html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
                              encode_image_to_base64(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
@@ -271,6 +280,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
     # returns the HTML for the small circular icon shown before each section link.
     html_template = put_data(html_template, "{{icon_basic_descriptive_statistics}}", icon_html(summary_statuses, 'Unique bases'))
+    html_template = put_data(html_template, "{{icon_sequence_duplications_within_classes}}", icon_html(summary_statuses, 'Duplicate sequences'))
     html_template = put_data(html_template, "{{icon_sequence_lengths}}", icon_html(summary_statuses, 'Sequence lengths'))
     html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", icon_html(summary_statuses, 'Duplication between labels'))
     html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", icon_html(summary_statuses, 'Per sequence nucleotide content'))
@@ -279,16 +289,44 @@ def get_dataset_html_template(stats1, stats2, plots_path, duplicate_seqs, summar
     html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", icon_html(summary_statuses, 'Per reverse position nucleotide content'))
     html_template = put_data(html_template, "{{icon_per_sequence_gc_content}}", icon_html(summary_statuses, 'Per sequence GC content'))
 
-    # take max 10 sequences for sequence duplication levels
-    sequence_duplication_levels = duplicate_seqs[:10]
-    html_template = put_data(html_template, "{{sequence_duplication_levels}}",
-                             '[' + ', '.join(escape_str(seq) for seq in sequence_duplication_levels) + ']')
-    if len(duplicate_seqs) > 10:
-        # If there are more than 10 sequences, we show how many more there are
-        # and set the rest to a placeholder
-        html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", str(len(duplicate_seqs) - 10))
+    if duplicate_seqs == []:
+        # no duplicate sequences found
+        duplication_message = """
+        <p>No duplicate sequences were found between classes.</p>
+        """
+        html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_message)
+        # set empty list for JS population
+        html_template = put_data(html_template, "{{sequence_duplication_levels_seqs}}", "[]")
     else:
-        # If there are 10 or fewer sequences, we set the rest to 0
-        html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", "0")
+        # insert table showing duplicate sequences
+        duplication_table = """
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sequence_column">Sequence</th>
+                        </tr>
+                    </thead>
+                        <tbody>
+                            <!-- Table rows will be dynamically populated -->
+                        </tbody>
+                </table>
+                <div id="sequence-duplication-levels-info">
+                    <p>{{sequence_duplication_levels_rest}} {{sequence_duplication_levels_file}}</p>
+                </div>
+        """
+        html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_table)
+        # pass list of duplicate sequences for JS population
+        escaped_seqs = [escape_str(seq) for seq in duplicate_seqs[:10]]
+        html_template = put_data(html_template, "{{sequence_duplication_levels_seqs}}",
+                                 '[' + ', '.join(f'{seq}' for seq in escaped_seqs) + ']')
+        if len(duplicate_seqs) > 10:
+            # If there are more than 10 sequences, we show how many more there are
+            # and set the rest to a placeholder
+            html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", f"And {str(len(duplicate_seqs) - 10)} more.")
+        else:
+            html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", "")
+
+        if duplicate_seqs_file is not None:
+            html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All duplicate sequences saved to {duplicate_seqs_file}.")
 
     return html_template

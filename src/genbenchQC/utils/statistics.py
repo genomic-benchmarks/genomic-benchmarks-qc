@@ -177,8 +177,8 @@ class SequenceStatistics:
         """
 
         sequence_counts = Counter(self.sequences)
-        # remove sequences that are not duplicated
-        sequence_counts = {sequence: count for sequence, count in sequence_counts.items() if count > 1}
+        # remove sequences that are not duplicated and decrement counts by 1 to reflect number of duplications
+        sequence_counts = {sequence: (count - 1) for sequence, count in sequence_counts.items() if count > 1}
         # sort the sequences by their counts
         sequence_counts = dict(sorted(sequence_counts.items(), key=lambda item: item[1], reverse=True))
         

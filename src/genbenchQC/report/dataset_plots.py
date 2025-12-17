@@ -1,3 +1,4 @@
+from typing import Counter
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,9 +11,7 @@ def plot_lengths(stats1, stats2, plot_type='boxen'):
     return plot_one_stat(
         stats1, stats2, 
         'Sequence lengths', 
-        plot_type=plot_type,
-        x_label='Sequence length', 
-        title='Sequence Length Distribution'
+        plot_type=plot_type
     )
 
 def plot_gc_content(stats1, stats2, plot_type='boxen'):
@@ -21,9 +20,7 @@ def plot_gc_content(stats1, stats2, plot_type='boxen'):
     """
     return plot_one_stat(
         stats1, stats2, 
-        'Per sequence GC content', 
-        x_label='GC content', 
-        title='GC Content Distribution',
+        'Per sequence GC content',
         plot_type=plot_type
     )
 
@@ -40,7 +37,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
 
     df = melt_stats(stats1, stats2, 'Per sequence nucleotide content', var_name='Nucleotide', value_name='Frequency')
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 4), dpi=300)
+    fig, ax = plt.subplots(1, 1, figsize=(12, 4), dpi=300)
     if plot_type == 'violin':
         sns.violinplot(
             x='Nucleotide', 
@@ -70,7 +67,6 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
-    ax.set_title('Nucleotide content', fontsize=16)
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
     ax.tick_params(axis='x', labelsize=12)
@@ -83,7 +79,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
     
-    fig, axs = plt.subplots(len(nucleotides), 1, figsize=(10, len(nucleotides) * 3 + 2), sharey=True, dpi=300)
+    fig, axs = plt.subplots(len(nucleotides), 1, figsize=(12, len(nucleotides) * 3 + 2), sharey=True, dpi=300)
     for index, nt in enumerate(nucleotides):
         dinucleotides = [nt + nt2 for nt2 in nucleotides]
         row = df[df['Dinucleotide'].isin(dinucleotides)]
@@ -117,9 +113,6 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
             )
         else:
             logging.error(f"Unknown plot type: {plot_type}")
-        
-        if index == 0:
-            axs[index].set_title('Dinucleotide content', fontsize=16)
 
         axs[index].set_xlabel('')
         axs[index].legend().set_visible(False)
@@ -148,7 +141,7 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
     min_y = df[stats_name].min()
     max_y = df[stats_name].max()
 
-    fig, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=300)
+    fig, ax = plt.subplots(1, 1, figsize=(6, 6), dpi=300)
     if plot_type == 'violin':
         sns.violinplot(
             y=stats_name, 
@@ -175,16 +168,16 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
-    ax.set_title(title, fontsize=16)
     ax.set_xlabel(x_label, fontsize=14)
     ax.set_ylabel(stats_name, fontsize=14)
-    ax.tick_params(axis='x', labelsize=12)
+    # remove x ticks
+    ax.set_xticks([])
     ax.tick_params(axis='y', labelsize=12)
     if min_y == max_y:
         # show only one value
         ax.set_yticks([min_y])
     ax.ticklabel_format(axis='y', style='plain')
-    ax = prepare_legend(ax) 
+    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.05)) 
 
     return fig
 
@@ -195,7 +188,7 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
 
     fig, axs = plt.subplots(
         len(nucleotides) + 1, 1, 
-        figsize=(10, len(nucleotides) * 2 + 2), 
+        figsize=(12, len(nucleotides) * 2 + 2), 
         height_ratios=[1] * len(nucleotides) + [0.5],
         sharey=True, dpi=300
     )
@@ -252,6 +245,71 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     ticks.extend(range(max(1, end_position // 10), end_position + 1, max(1, end_position // 10)))
     axs[last_index].set_xticks(ticks)
     axs[last_index] = prepare_legend(axs[index], box_to_anchor=(0.5, -1))
+
+    return fig
+
+def plot_sequence_duplications_within_classes(stats1, stats2):
+
+    fig, ax = plt.subplots(figsize=(12, 5), dpi=300)
+
+    for i, stats in enumerate([stats1, stats2]):
+
+        # count_distribution_bins for bins 1, 2, 3 .. >10, >50, >100, >500, >1000
+        count_distribution_bins = {
+            1: 0,
+            2: 0,
+            3: 0,
+            4: 0,
+            5: 0,
+            6: 0,
+            7: 0,
+            8: 0,
+            9: 0,
+            10: 0,
+            '>10': 0,
+            '>50': 0,
+            '>100': 0,
+            '>500': 0,
+            '>1000': 0
+        }
+        for k, v in stats.stats['Sequence duplication levels'].items():
+            if v == 0:
+                continue
+            if v <= 10:
+                count_distribution_bins[v] = count_distribution_bins.get(v, 0) + v
+            elif v <= 50:
+                count_distribution_bins['>10'] = count_distribution_bins.get('>10', 0) + v
+            elif v <= 100:
+                count_distribution_bins['>50'] = count_distribution_bins.get('>50', 0) + v
+            elif v <= 500:
+                count_distribution_bins['>100'] = count_distribution_bins.get('>100', 0) + v
+            elif v <= 1000:
+                count_distribution_bins['>500'] = count_distribution_bins.get('>500', 0) + v
+            else:
+                count_distribution_bins['>1000'] = count_distribution_bins.get('>1000', 0) + v
+
+        # normalize counts to frequencies
+        total = sum(count_distribution_bins.values())
+        if total > 0:
+            for k in count_distribution_bins:
+                count_distribution_bins[k] /= total
+
+        ax.plot(list(count_distribution_bins.keys()), list(count_distribution_bins.values()), label=f"{stats.label}", color=HuePalette()[i], alpha=0.7)
+        
+    total_sequences = 0
+    unique_sequences = 0
+    for stats in [stats1, stats2]:
+        total_sequences += stats.stats['Number of sequences']
+        unique_sequences += stats.stats['Number of sequences left after deduplication']
+    percent_remaining_after_dedup = (unique_sequences / total_sequences) if total_sequences > 0 else 0.0
+    ax.set_title(f"Percent of sequences remaining after deduplication: {percent_remaining_after_dedup:.2%}")
+
+    ax.set_xlabel('Sequence Duplication Level', fontsize=14)
+    ax.set_ylabel('Frequency', fontsize=14)
+    ax.tick_params(axis='x', labelsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+
+    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.15)) 
 
     return fig
 

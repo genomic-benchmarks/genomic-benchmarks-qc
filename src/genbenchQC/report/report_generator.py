@@ -116,6 +116,8 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
 
     # find duplicate sequences between labels
     duplicate_seqs = list(set(stats1.sequences).intersection(stats2.sequences))
+    # remove extension from output path, add '_duplicates.txt'
+    duplicate_seqs_path = os.path.splitext(output_path)[0] + '_duplicates.txt'
 
     # Make dictionary of summary statuses
     if results is not None:
@@ -123,14 +125,12 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     else:
         summary_statuses = None
     # Load the HTML template
-    template = get_dataset_html_template(stats1, stats2, plots_paths, duplicate_seqs, summary_statuses=summary_statuses)
+    template = get_dataset_html_template(stats1, stats2, plots_paths, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path, summary_statuses=summary_statuses)
 
     with open(output_path, 'w') as file:
         file.write(template)
 
     if len(duplicate_seqs) > 0:
-        # remove extension from output path, add '_duplicates.txt'
-        duplicate_seqs_path = os.path.splitext(output_path)[0] + '_duplicates.txt'
         with open(duplicate_seqs_path, 'w') as f:
             for seq in duplicate_seqs:
                 f.write(f"{seq}\n")
@@ -184,8 +184,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats_name='Per position nucleotide content',
         nucleotides = bases_overlap,
         end_position=end_position,
-        x_label='Position in sequence',
-        title='Nucleotide composition per position',
+        x_label='Position in sequence'
     )
     plots_paths['Per position nucleotide content'] = output_path / 'per_position_nucleotide_content.png'
     fig.savefig(output_path / 'per_position_nucleotide_content.png', bbox_inches='tight')   
@@ -198,8 +197,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats_name='Per position reversed nucleotide content',
         nucleotides = bases_overlap,
         end_position=end_position,
-        x_label='Position in reversed sequence',
-        title='Reversed nucleotide composition per position',
+        x_label='Position in reversed sequence'
     )
     plots_paths['Per position reversed nucleotide content'] = output_path / 'per_position_reversed_nucleotide_content.png'
     fig.savefig(output_path / 'per_position_reversed_nucleotide_content.png', bbox_inches='tight')
@@ -223,6 +221,15 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     )
     plots_paths['Per sequence GC content'] = output_path / 'per_sequence_gc_content.png'
     fig.savefig(output_path / 'per_sequence_gc_content.png', bbox_inches='tight')
+    plt.close(fig)
+
+    # Plot sequence duplications within classes
+    fig = dataset_plots.plot_sequence_duplications_within_classes(
+        stats1,
+        stats2
+    )
+    plots_paths['Sequence duplications within classes'] = output_path / 'sequence_duplications_within_classes.png'
+    fig.savefig(output_path / 'sequence_duplications_within_classes.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths
