@@ -156,7 +156,7 @@ HTML_TEMPLATE = """
                     {{icon_per_position_nucleotide_content}}
                     <h2>Per Position Nucleotide Content</h2>
                 </div>
-                <img src="data:image/png;base64, {{per-position-nucleotide-content_base64}}" alt="Per Position Nucleotide Content" style="max-width: 100%; height: auto;">
+                <img src="data:image/png;base64, {{per-position-nucleotide-content_base64}}" alt="Per Position Nucleotide Content" style="max-width: 108%; height: auto;">
             </section>
 
             <section id="per-position-reversed-nucleotide-content">
@@ -164,7 +164,7 @@ HTML_TEMPLATE = """
                     {{icon_per_position_reversed_nucleotide_content}}
                     <h2>Per Position Reversed Nucleotide Content</h2>
                 </div>
-                <img src="data:image/png;base64, {{per-position-reversed-nucleotide-content_base64}}" alt="Per Position Reversed Nucleotide Content" style="max-width: 100%; height: auto;">
+                <img src="data:image/png;base64, {{per-position-reversed-nucleotide-content_base64}}" alt="Per Position Reversed Nucleotide Content" style="max-width: 108%; height: auto;">
             </section>
         </div>
     </div>

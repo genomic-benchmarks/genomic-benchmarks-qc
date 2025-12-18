@@ -134,7 +134,8 @@ body {
 .content {
     margin-left: 260px;
     padding: 10px;
-    width: calc(100% - 260px); /* Adjust width to avoid overlap */
+    padding-right: 8%;
+    width: min(calc(100% - 260px), 1000px); /* Adjust width to avoid overlap */
     overflow-x: hidden;
     /* allow flex child to shrink below its content width so long lines
        inside (e.g. long sequences in <pre>) don't expand the whole page */
