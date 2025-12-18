@@ -153,7 +153,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
 
     plots_paths = {}
 
-    bases_overlap = list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
+    bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
     # Plot per sequence nucleotide content
     fig = dataset_plots.plot_nucleotides(

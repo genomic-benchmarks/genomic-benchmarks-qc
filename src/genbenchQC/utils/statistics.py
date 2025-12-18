@@ -86,7 +86,7 @@ class SequenceStatistics:
         self.stats['Sequence column'] = self.seq_column if self.seq_column is not None else 'N/A'
         self.stats['Number of sequences'] = len(self.sequences)
         self.stats['Number of bases'] = sum(len(sequence) for sequence in self.sequences)
-        self.stats['Unique bases'] = list(set(''.join(self.sequences)))
+        self.stats['Unique bases'] = sorted(list(set(''.join(self.sequences))))
         total_bases = sum(len(sequence) for sequence in self.sequences)
         self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / total_bases if total_bases > 0 else 0.0
         self.stats['Number of sequences left after deduplication'] = len(set(self.sequences))
@@ -94,7 +94,7 @@ class SequenceStatistics:
 
     def _compute_per_sequence_statistics(self):
 
-        nucleotides = self.stats['Unique bases'] if 'Unique bases' in self.stats else list(set(''.join(self.sequences)))
+        nucleotides = self.stats['Unique bases'] if 'Unique bases' in self.stats else sorted(list(set(''.join(self.sequences))))
         dinucleotides = [n1 + n2 for n1 in nucleotides for n2 in nucleotides]
 
         nucleotides_per_sequence = {}
