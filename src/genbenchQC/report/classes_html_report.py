@@ -1,5 +1,5 @@
 from datetime import datetime
-from genbenchQC.report.report_common import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
+from genbenchQC.report.utils import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
 import importlib.metadata
 
 HTML_TEMPLATE = """

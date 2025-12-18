@@ -5,10 +5,10 @@ from pathlib import Path
 import logging
 
 from genbenchQC.report.sequence_html_report import get_sequence_html_template
-from genbenchQC.report.dataset_html_report import get_dataset_html_template
+from genbenchQC.report.classes_html_report import get_dataset_html_template
 from genbenchQC.report.split_html_report import get_train_test_html_template
 from genbenchQC.utils.input_utils import write_stats_json
-from genbenchQC.report import dataset_plots
+from genbenchQC.report import classes_plots
 from genbenchQC.report import sequences_plots
 
 def generate_sequence_plots(stats_dict, output_path, end_position, plot_type='boxen'):
@@ -154,7 +154,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
     # Plot per sequence nucleotide content
-    fig = dataset_plots.plot_nucleotides(
+    fig = classes_plots.plot_nucleotides(
         stats1,
         stats2,
         nucleotides = bases_overlap,
@@ -165,7 +165,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plt.close(fig)
 
     # Plot per sequence dinucleotide content
-    fig = dataset_plots.plot_dinucleotides(
+    fig = classes_plots.plot_dinucleotides(
         stats1,
         stats2,
         nucleotides = bases_overlap,
@@ -176,7 +176,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plt.close(fig)
     
     # Plot per position nucleotide content
-    fig = dataset_plots.plot_per_base_sequence_comparison(
+    fig = classes_plots.plot_per_base_sequence_comparison(
         stats1,
         stats2,
         stats_name='Per position nucleotide content',
@@ -189,7 +189,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plt.close(fig)
 
     # Plot per reversed position nucleotide content
-    fig = dataset_plots.plot_per_base_sequence_comparison(
+    fig = classes_plots.plot_per_base_sequence_comparison(
         stats1,
         stats2,
         stats_name='Per position reversed nucleotide content',
@@ -202,7 +202,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plt.close(fig)
 
     # Plot length distribution
-    fig = dataset_plots.plot_lengths(
+    fig = classes_plots.plot_lengths(
         stats1,
         stats2,
         plot_type=plot_type,
@@ -212,7 +212,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plt.close(fig)
 
     # Plot per sequence GC content
-    fig = dataset_plots.plot_gc_content(
+    fig = classes_plots.plot_gc_content(
         stats1,
         stats2,
         plot_type=plot_type,
@@ -222,7 +222,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plt.close(fig)
 
     # Plot sequence duplications within classes
-    fig = dataset_plots.plot_sequence_duplications_within_classes(
+    fig = classes_plots.plot_sequence_duplications_within_classes(
         stats1,
         stats2
     )
