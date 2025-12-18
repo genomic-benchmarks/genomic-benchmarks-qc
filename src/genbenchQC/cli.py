@@ -11,7 +11,6 @@ app = typer.Typer(no_args_is_help=True)
 # Valid choices for validation
 VALID_FORMATS = ['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
-VALID_SEQ_REPORT_TYPES = ['json', 'html']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
@@ -25,7 +24,6 @@ def evaluate_classes(
     regression: bool = typer.Option(False, help="Treat label column as regression target and split into high/low."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    seq_report_types: Optional[List[str]] = typer.Option(None, help="Sequence-level report types (json, html)."),
     end_position: Optional[int] = typer.Option(None, help="End position for per-position stats."),
     plot_type: str = typer.Option('boxen', help="Plot type to use for visualizations (boxen, violin)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
@@ -56,13 +54,6 @@ def evaluate_classes(
             typer.echo(f"Error: Invalid report type '{rt}'. Must be one of: {', '.join(VALID_REPORT_TYPES)}", err=True)
             raise typer.Exit(code=1)
     
-    # Validate seq_report_types
-    if seq_report_types:
-        for srt in seq_report_types:
-            if srt not in VALID_SEQ_REPORT_TYPES:
-                typer.echo(f"Error: Invalid sequence report type '{srt}'. Must be one of: {', '.join(VALID_SEQ_REPORT_TYPES)}", err=True)
-                raise typer.Exit(code=1)
-    
     # Validate plot_type
     if plot_type not in VALID_PLOT_TYPES:
         typer.echo(f"Error: Invalid plot type '{plot_type}'. Must be one of: {', '.join(VALID_PLOT_TYPES)}", err=True)
@@ -87,7 +78,6 @@ def evaluate_classes(
         label_list=label_list,
         regression=regression,
         report_types=report_types,
-        seq_report_types=seq_report_types,
         end_position=end_position,
         plot_type=plot_type,
         log_level=log_level,

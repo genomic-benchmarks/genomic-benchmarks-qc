@@ -1,7 +1,4 @@
 import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
-
 import pandas as pd
 import os
 from pathlib import Path
@@ -137,6 +134,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
         logging.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
 
 def generate_json_report(stats_dict, output_path):
+    logging.info(f"Generating JSON report: {output_path}")
     write_stats_json(stats_dict, output_path)
 
 def generate_simple_report(results, output_path):
