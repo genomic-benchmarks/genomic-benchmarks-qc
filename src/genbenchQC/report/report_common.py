@@ -64,9 +64,7 @@ def encode_image_to_base64(image_path):
         Base64-encoded string of the image
         
     Raises:
-        ValueError: If image_path is invalid
         FileNotFoundError: If the image file doesn't exist
-        IOError: If the file cannot be read
     """
     if not Path(image_path).is_file():
         raise FileNotFoundError(f"Image file not found: {image_path}")
