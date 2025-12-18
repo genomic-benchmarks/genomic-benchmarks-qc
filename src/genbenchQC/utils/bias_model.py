@@ -64,7 +64,7 @@ def model(stats1, stats2, max_class_size=None, metric_to_flag='AU-ROC'):
         logging.debug(f"{metric_to_flag} scores for {stat}: {metrics[metric_to_flag]}")
         results = add_result(results, stat, metrics, metric_to_flag)
 
-    common_nts = list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
+    common_nts = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
     for reverse in [False, True]:
         # Compute aggregate metrics for per position nucleotides - take worst case

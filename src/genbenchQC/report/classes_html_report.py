@@ -2,6 +2,56 @@ from datetime import datetime
 from genbenchQC.report.utils import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
 import importlib.metadata
 
+
+def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
+    """
+    Generate HTML for nucleotide-level flags.
+    
+    Args:
+        summary_statuses: dict with summary statuses for various checks.
+        flag_prefix: Prefix for the flag keys (e.g., "Per position nucleotide content")
+    
+    Returns:
+        HTML string with nucleotide flags
+    """
+    if summary_statuses is None:
+        return ''
+    
+    flags_html = ''
+    
+    for flag in summary_statuses.keys():
+        if not flag.startswith(f"{flag_prefix} - "):
+            continue
+
+        nt = flag.split(" - ")[1]
+        flag_value = summary_statuses.get(flag, '')
+        
+        # Determine status class based on flag value
+        status_class = ''
+        symbol = '?'
+        if isinstance(flag_value, str):
+            flag_lower = flag_value.lower()
+            if flag_lower in ('pass', 'ok', 'good', 'success'):
+                status_class = 'status-pass'
+                symbol = '✔'
+            elif flag_lower in ('warn', 'warning'):
+                status_class = 'status-warn'
+                symbol = '!'
+            elif flag_lower in ('fail', 'failed', 'error'):
+                status_class = 'status-fail'
+                symbol = '✖'
+            else:
+                status_class = 'status-pass'
+                symbol = '?'
+        
+        flags_html += f'''<div class="nucleotide-flag-item">
+                <span class="status-icon-small {status_class}">{symbol}</span>
+                <span class="nucleotide-label">{nt}</span>
+            </div>
+            '''
+    
+    return flags_html
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -156,6 +206,9 @@ HTML_TEMPLATE = """
                     {{icon_per_position_nucleotide_content}}
                     <h2>Per Position Nucleotide Content</h2>
                 </div>
+                <div class="nucleotide-flags-container" id="per-position-nucleotide-flags">
+                    {{per_position_nucleotide_content_flags}}
+                </div>
                 <img src="data:image/png;base64, {{per-position-nucleotide-content_base64}}" alt="Per Position Nucleotide Content" style="max-width: 108%; height: auto;">
             </section>
 
@@ -163,6 +216,9 @@ HTML_TEMPLATE = """
                 <div class="sidebar-item">
                     {{icon_per_position_reversed_nucleotide_content}}
                     <h2>Per Position Reversed Nucleotide Content</h2>
+                </div>
+                <div class="nucleotide-flags-container" id="per-position-reversed-nucleotide-flags">
+                    {{per_position_reversed_nucleotide_content_flags}}
                 </div>
                 <img src="data:image/png;base64, {{per-position-reversed-nucleotide-content_base64}}" alt="Per Position Reversed Nucleotide Content" style="max-width: 108%; height: auto;">
             </section>
@@ -200,8 +256,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     Args:
         stats1, stats2: objects containing dataset statistics (unchanged API).
         plots_path: dict with plot image paths.
-        summary_statuses: pd.DataFrame mapping status keys to HTML/text snippets for
-                    the sidebar placeholders.
+        summary_statuses: dict with summary statuses for various checks.
         duplicate_seqs: list of duplicate sequences.
         duplicate_seqs_file: path to file with duplicate sequences (optional).
         tool_description: short description of the tool to include in the header (optional).
@@ -332,5 +387,12 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All duplicate sequences saved to {duplicate_seqs_file}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
+
+    # Generate nucleotide-level flags for per-position sections
+    per_position_nucleotide_flags = generate_nucleotide_flags_html(summary_statuses, 'Per position nucleotide content')
+    html_template = put_data(html_template, "{{per_position_nucleotide_content_flags}}", per_position_nucleotide_flags)
+    
+    per_position_reversed_nucleotide_flags = generate_nucleotide_flags_html(summary_statuses, 'Per reverse position nucleotide content')
+    html_template = put_data(html_template, "{{per_position_reversed_nucleotide_content_flags}}", per_position_reversed_nucleotide_flags)
 
     return html_template

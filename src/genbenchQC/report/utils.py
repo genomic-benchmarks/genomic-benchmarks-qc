@@ -122,9 +122,41 @@ body {
     text-align: center;
     justify-content: center;
 }
+.status-icon-small {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    border-radius: 50%;
+    color: white;
+    font-size: 14px;
+    font-family: verdana;
+    text-align: center;
+    justify-content: center;
+    margin: 0 4px 4px 0;
+}
 .status-pass { background-color: #2e7d32; color: #ffffff; }
 .status-warn { background-color: #f57f17; color: #ffffff; }
 .status-fail { background-color: #c62828; color: #ffffff; }
+.nucleotide-flags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: -15px 0 15px 60px;
+    align-items: flex-start;
+}
+.nucleotide-flag-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.nucleotide-flag-item .nucleotide-label {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    min-width: 24px;
+}
 .container {
     /* in some layouts the flex parent can grow to fit unbreakable children;
        make sure the container can shrink so .content's min-width:0 works */
