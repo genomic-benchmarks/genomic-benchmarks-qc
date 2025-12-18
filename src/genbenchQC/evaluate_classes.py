@@ -173,7 +173,7 @@ def run(input,
 
             # get the list of labels to consider
             elif len(label_list) == 1 and label_list[0] == 'infer':
-                labels = df[label_column].unique().tolist()
+                labels = sorted(df[label_column].unique().tolist())
                 logging.debug(f"Inferred labels: {labels}")
             else:
                 labels = [str(label) for label in label_list]
