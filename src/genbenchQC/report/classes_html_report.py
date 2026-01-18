@@ -1,5 +1,5 @@
 from datetime import datetime
-from genbenchQC.report.utils import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML
+from genbenchQC.report.utils import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 import importlib.metadata
 
 
@@ -65,7 +65,7 @@ HTML_TEMPLATE = """
     <div class="container">
         <div class="sidebar">
             <div class="logo" style="text-align: center; margin-bottom: 20px;">
-                <img src="https://raw.githubusercontent.com/katarinagresova/GenBenchQC/main/assets/logo_with_text_transparent_small.png" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
+                <img src="{{logo_base64}}" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
                 <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
             </div>
             <h2>Summary</h2>
@@ -268,6 +268,9 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # insert shared CSS and header fragment
     html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
     html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
+
+    # insert logo
+    html_template = put_data(html_template, "{{logo_base64}}", LOGO_BASE64)
 
     # populate header placeholders: tool description, generated timestamp and input paths
     # Provide sensible defaults when values are not supplied
