@@ -1,9 +1,20 @@
 Outputs of running example dataset evaluation
 
-```python
-from genbenchQC import evaluate_dataset
+```bash
+genbenchQC evaluate-classes \
+  --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
+  --format tsv \
+  --out-folder example_outputs/miRNA_mRNA_dataset \
+  --sequence-column gene \
+  --sequence-column noncodingRNA
+```
 
-evaluate_dataset.run(
+or from python
+
+```python
+from genbenchQC import evaluate_classes
+
+evaluate_classes.run(
   input=['example_datasets/miRNA_mRNA_pairs_dataset.tsv'], 
   format='tsv', 
   out_folder='example_outputs/miRNA_mRNA_dataset', 
@@ -13,7 +24,7 @@ evaluate_dataset.run(
 )
 ```
 
-Running the above commands for `evaluate_dataset` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following types of reports:
+Running the above commands for `genbenchQC evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following types of reports:
 - `dataset_report_\*.csv` - simple report with the results (pass/fail) of the evaluation between two classes of the dataset.
 - `dataset_report_\*.html` - visul report with the results of the evaluation between two classes of the dataset. 
   - It contains basic information about the dataset and plots visualizing individual features of the dataset. 

@@ -1,20 +1,20 @@
 Outputs of running example split evaluation
 
 ```bash
-evaluate_split \
-  --train_input example_datasets/enhancers_train.csv \
-  --test_input example_datasets/enhancers_test.csv \
+genbenchQC evaluate-splits \
+  --train-input example_datasets/enhancers_train.csv \
+  --test-input example_datasets/enhancers_test.csv \
   --format csv \
-  --sequence_column sequence \
-  --out_folder example_outputs/enhancers_dataset
+  --sequence-column sequence \
+  --out-folder example_outputs/enhancers_dataset
 ```
 
 or
 
 ```python
-from genbenchQC import evaluate_split
+from genbenchQC import evaluate_splits
 
-evaluate_split.run(
+evaluate_splits.run(
   train_files=['example_datasets/enhancers_train.csv'],
   test_files=['example_datasets/enhancers_test.csv'],
   format='csv',
@@ -23,7 +23,7 @@ evaluate_split.run(
 )
 ```
 
-Running the above commands for `evaluate_split` tool will create `example_outputs/enhancers_dataset` folder with the following results:
+Running the above commands for `genbenchQC evaluate-splits` tool will create `example_outputs/enhancers_dataset` folder with the following results:
 - `split_check_enhancers_train_vs_enhancers_test.csv` - a simple report if data leakage check passed or failed.
 - `split_check_enhancers_train_vs_enhancers_test_report.html` - report with clusters containing sequences from both train and test dataset parts, that could indicate data leakage.
 

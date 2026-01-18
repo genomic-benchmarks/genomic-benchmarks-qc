@@ -1,13 +1,14 @@
 Outputs of running example dataset evaluation
 
 ```bash
-evaluate_dataset \
-  --input example_datasets/G4_positives.fasta example_datasets/G4_negatives.fasta \
+genbenchQC evaluate-classes \
+  --input example_datasets/G4_positives.fasta \
+  --input example_datasets/G4_negatives.fasta \
   --format fasta \
-  --out_folder example_outputs/G4_dataset
+  --out-folder example_outputs/G4_dataset
 ```
 
-Running the above commands for `evaluate_dataset` tool will create `example_outputs/G4_dataset` folder with the following results:
+Running the above commands for `genbenchQC evaluate-classes` tool will create `example_outputs/G4_dataset` folder with the following results:
 - `dataset_report_label_G4_positives_vs_G4_negatives.csv` - simple report with the results (pass/fail) of the evaluation between two classes of the dataset.
 - `dataset_report_label_G4_positives_vs_G4_negatives.html` - visul report with the results of the evaluation between two classes of the dataset. 
   - It contains basic information about the dataset and plots visualizing individual features of the dataset. 
