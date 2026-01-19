@@ -1,7 +1,6 @@
 import typer
 from typing import List, Optional
 from pathlib import Path
-import sys
 
 from genbenchQC.evaluate_classes import run as run_evaluate_classes
 from genbenchQC.evaluate_splits import run as run_evaluate_splits
