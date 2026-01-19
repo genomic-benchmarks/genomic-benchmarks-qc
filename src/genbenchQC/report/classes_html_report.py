@@ -91,52 +91,52 @@ HTML_TEMPLATE = """
                     <h2>Basic Descriptive Statistics</h2>
                 </div>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <tr id="filename">
+                    <tr>
                         <td><span>Filename</span></td>
                         <td style="text-align: center;">{{filename1}}</td>
                         <td style="text-align: center;">{{filename2}}</td>
                     </tr>
-                    <tr id="label">
+                    <tr>
                         <td><span>Label</span></td>
                         <td style="text-align: center;">{{label1}}</td>
                         <td style="text-align: center;">{{label2}}</td>
                     </tr>
-                    <tr id="seq_column">
+                    <tr>
                         <td><span>Sequence column</span></td>
                         <td style="text-align: center;">{{seq_col1}}</td>
                         <td style="text-align: center;">{{seq_col2}}</td>
                     </tr>
-                    <tr id="num-sequences">
+                    <tr>
                         <td><span>Number of sequences</span></td>
                         <td style="text-align: center;">{{number_of_sequences1}}</td>
                         <td style="text-align: center;">{{number_of_sequences2}}</td>
                     </tr>
-                    <tr id="dedup-sequences">
+                    <tr>
                         <td><span>Unique sequences</span></td>
                         <td style="text-align: center;">{{dedup_sequences1}}</td>
                         <td style="text-align: center;">{{dedup_sequences2}}</td>
                     </tr>
-                    <tr id="min-length">
+                    <tr>
                         <td><span>Minimum length</span></td>
                         <td style="text-align: center;">{{min_length1}}</td>
                         <td style="text-align: center;">{{min_length2}}</td>
                     </tr>
-                    <tr id="mean-length">
+                    <tr>
                         <td><span>Mean length</span></td>
                         <td style="text-align: center;">{{mean_length1}}</td>
                         <td style="text-align: center;">{{mean_length2}}</td>
                     </tr>
-                    <tr id="max-length">
+                    <tr>
                         <td><span>Maximum length</span></td>
                         <td style="text-align: center;">{{max_length1}}</td>
                         <td style="text-align: center;">{{max_length2}}</td>
                     </tr>
-                    <tr id="num-bases">
+                    <tr>
                         <td><span>Number of bases</span></td>
                         <td style="text-align: center;">{{number_of_bases1}}</td>
                         <td style="text-align: center;">{{number_of_bases2}}</td>
                     </tr>
-                    <tr id="gc-content">
+                    <tr>
                         <td><span>%GC content</span></td>
                         <td style="text-align: center;">{{gc_content1}}</td>
                         <td style="text-align: center;">{{gc_content2}}</td>
@@ -159,12 +159,12 @@ HTML_TEMPLATE = """
                     {{unique_bases_flags}}
                 </div>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <tr id="label">
+                    <tr>
                         <td><span>Label</span></td>
                         <td style="text-align: center;">{{label1}}</td>
                         <td style="text-align: center;">{{label2}}</td>
                     </tr>
-                    <tr id="unique-bases-data">
+                    <tr>
                         <td><span>Unique bases</span></td>
                         <td style="text-align: center;">{{unique_bases1}}</td>
                         <td style="text-align: center;">{{unique_bases2}}</td>
