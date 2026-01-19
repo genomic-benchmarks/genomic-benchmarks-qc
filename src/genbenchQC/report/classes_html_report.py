@@ -69,7 +69,8 @@ HTML_TEMPLATE = """
                 <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
             </div>
             <h2>Summary</h2>
-            <div class="sidebar-item">{{icon_basic_descriptive_statistics}}<a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
+            <div class="sidebar-item"><span style="display: inline-block; width: 40px;"></span><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
+            <div class="sidebar-item">{{icon_unique_bases}}<a href="#unique-bases">Unique Bases</a></div>
             <div class="sidebar-item">{{icon_sequence_duplications_within_classes}}<a href="#sequence-duplications-within-classes">Sequence Duplications within Classes</a></div>
             <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate Sequences between Classes</a></div>
             <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
@@ -85,11 +86,8 @@ HTML_TEMPLATE = """
             <!-- Report header: logo, short description and generated-on/data source info -->
             {{report_header}}
 
-            <section id="basic-descriptive-statistics">
-                <div class="sidebar-item">
-                    {{icon_basic_descriptive_statistics}}
-                    <h2>Basic Descriptive Statistics</h2>
-                </div>
+            <section id="basic-descriptive-statistics" class="table-section">
+                <h2>Basic Descriptive Statistics</h2>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr id="filename">
                         <td><span>Filename</span></td>
@@ -136,15 +134,32 @@ HTML_TEMPLATE = """
                         <td style="text-align: center;">{{number_of_bases1}}</td>
                         <td style="text-align: center;">{{number_of_bases2}}</td>
                     </tr>
-                    <tr id="unique-bases">
-                        <td><span>Unique bases</span></td>
-                        <td style="text-align: center;">{{unique_bases1}}</td>
-                        <td style="text-align: center;">{{unique_bases2}}</td>
-                    </tr>
                     <tr id="gc-content">
                         <td><span>%GC content</span></td>
                         <td style="text-align: center;">{{gc_content1}}</td>
                         <td style="text-align: center;">{{gc_content2}}</td>
+                    </tr>
+                </table>
+            </section>
+
+            <section id="unique-bases" class="table-section">
+                <div class="sidebar-item">
+                    {{icon_unique_bases}}
+                    <h2>Unique Bases</h2>
+                </div>
+                <div class="nucleotide-flags-container" id="unique-bases-flags">
+                    {{unique_bases_flags}}
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr id="label">
+                        <td><span>Label</span></td>
+                        <td style="text-align: center;">{{label1}}</td>
+                        <td style="text-align: center;">{{label2}}</td>
+                    </tr>
+                    <tr id="unique-bases-data">
+                        <td><span>Unique bases</span></td>
+                        <td style="text-align: center;">{{unique_bases1}}</td>
+                        <td style="text-align: center;">{{unique_bases2}}</td>
                     </tr>
                 </table>
             </section>
@@ -339,7 +354,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
     # returns the HTML for the small circular icon shown before each section link.
-    html_template = put_data(html_template, "{{icon_basic_descriptive_statistics}}", icon_html(summary_statuses, 'Unique bases'))
+    html_template = put_data(html_template, "{{icon_unique_bases}}", icon_html(summary_statuses, 'Unique bases'))
     html_template = put_data(html_template, "{{icon_sequence_duplications_within_classes}}", icon_html(summary_statuses, 'Duplicate sequences'))
     html_template = put_data(html_template, "{{icon_sequence_lengths}}", icon_html(summary_statuses, 'Sequence lengths'))
     html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", icon_html(summary_statuses, 'Duplication between labels'))
@@ -397,5 +412,9 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     
     per_position_reversed_nucleotide_flags = generate_nucleotide_flags_html(summary_statuses, 'Per reverse position nucleotide content')
     html_template = put_data(html_template, "{{per_position_reversed_nucleotide_content_flags}}", per_position_reversed_nucleotide_flags)
+
+    # Generate unique bases flags
+    unique_bases_flags = generate_nucleotide_flags_html(summary_statuses, 'Unique bases')
+    html_template = put_data(html_template, "{{unique_bases_flags}}", unique_bases_flags)
 
     return html_template

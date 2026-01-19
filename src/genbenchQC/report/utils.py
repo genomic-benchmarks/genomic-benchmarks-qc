@@ -200,12 +200,12 @@ h3 { color: #555; margin-bottom: 15px; }
 .data-item span { font-weight: bold; font-size: 1em; }
 
 /* basic descriptive statistics table */
-#basic-descriptive-statistics table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-#basic-descriptive-statistics table td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-#basic-descriptive-statistics table td:first-child { text-align: left; width: 200px; }
-#basic-descriptive-statistics table tr:nth-child(even) { background-color: #f9f9f9; }
-#basic-descriptive-statistics table tr:hover { background-color: #f1f1f1; }
-#basic-descriptive-statistics table span { font-weight: bold; }
+.table-section table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+.table-section table td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+.table-section table td:first-child { text-align: left; width: 200px; }
+.table-section table tr:nth-child(even) { background-color: #f9f9f9; }
+.table-section table tr:hover { background-color: #f1f1f1; }
+.table-section table span { font-weight: bold; }
 .cluster { 
     border: 1px solid #ccc; 
     margin-bottom: 20px; 
