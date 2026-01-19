@@ -235,14 +235,14 @@ pre {
 .section-header {
     display: flex;
     align-items: center;
-    justify-content: gap;
+    justify-content: flex-start;
+    gap: 10px;
 }
 
 .toggle-btn {
     background: transparent;
     border: 1.5px solid #cbd5e1;
     margin-bottom: 20px;
-    margin-left: 5px;
     color: #94a3b8;
     cursor: pointer;
     font-size: 12px;
