@@ -1,7 +1,7 @@
 Statistic,Flag,AU-ROC,AU-PR,Accuracy
-Duplicate sequences,Pass,,,
 Unique bases,Pass,,,
-Duplication between labels,Pass,,,
+Sequence Duplications within Labels,Pass,,,
+Duplicate Sequences between Labels,Pass,,,
 Sequence lengths,Pass,0.5,0.75,0.47000000000000003
 Per sequence GC content,Fail,0.8255455115060377,0.8516496927429984,0.7450000000000001
 Per sequence nucleotide content,Fail,0.9210194045720362,0.9204354174107638,0.8200000000000001
