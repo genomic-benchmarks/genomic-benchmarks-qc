@@ -71,8 +71,8 @@ HTML_TEMPLATE = """
             <h2>Summary</h2>
             <div class="sidebar-item"><span style="display: inline-block; width: 40px;"></span><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
             <div class="sidebar-item">{{icon_unique_bases}}<a href="#unique-bases">Unique Bases</a></div>
-            <div class="sidebar-item">{{icon_sequence_duplications_within_classes}}<a href="#sequence-duplications-within-classes">Sequence Duplications within Classes</a></div>
-            <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate Sequences between Classes</a></div>
+            <div class="sidebar-item">{{icon_sequence_duplications_within_classes}}<a href="#sequence-duplications-within-classes">Sequence Duplications within Labels</a></div>
+            <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate Sequences between Labels</a></div>
             <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
             <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
             <div class="sidebar-item">{{icon_per_sequence_nucleotide_content}}<a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
@@ -167,7 +167,7 @@ HTML_TEMPLATE = """
             <section id="sequence-duplications-within-classes">
                 <div class="sidebar-item">
                     {{icon_sequence_duplications_within_classes}}
-                    <h2>Sequence Duplications within Classes</h2>
+                    <h2>Sequence Duplications within Labels</h2>
                 </div>
                 <!-- This will be populated either with png plot showing duplication or with a message saying no duplications found -->
                 {{sequence_duplications_within_classes}}
@@ -176,7 +176,7 @@ HTML_TEMPLATE = """
             <section id="sequence-duplication-levels">
                 <div class="sidebar-item">
                     {{icon_sequence_duplication_levels}}
-                    <h2>Duplicate Sequences between Classes</h2>
+                    <h2>Duplicate Sequences between Labels</h2>
                 </div>
                 <!-- This will be populated either with a table showing duplicate sequences or a message saying no duplications found -->
                 {{sequence_duplication_levels}}
@@ -328,7 +328,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")  
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
-    if summary_statuses['Duplicate sequences'].lower() in ('pass', 'ok', 'good', 'success'):
+    if summary_statuses['Sequence Duplications within Labels'].lower() in ('pass', 'ok', 'good', 'success'):
         # no duplicate sequences found
         duplication_message = """
         <p>No duplicate sequences were found in either class.</p>
@@ -337,7 +337,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     else:
         # insert plot showing duplicate sequences
         html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", 
-                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence duplications within classes"])}" alt="Sequence Duplications within Classes Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">')
+                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">')
     html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
                              encode_image_to_base64(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
@@ -355,9 +355,9 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
     # returns the HTML for the small circular icon shown before each section link.
     html_template = put_data(html_template, "{{icon_unique_bases}}", icon_html(summary_statuses, 'Unique bases'))
-    html_template = put_data(html_template, "{{icon_sequence_duplications_within_classes}}", icon_html(summary_statuses, 'Duplicate sequences'))
+    html_template = put_data(html_template, "{{icon_sequence_duplications_within_classes}}", icon_html(summary_statuses, 'Sequence Duplications within Labels'))
     html_template = put_data(html_template, "{{icon_sequence_lengths}}", icon_html(summary_statuses, 'Sequence lengths'))
-    html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", icon_html(summary_statuses, 'Duplication between labels'))
+    html_template = put_data(html_template, "{{icon_sequence_duplication_levels}}", icon_html(summary_statuses, 'Duplicate Sequences between Labels'))
     html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", icon_html(summary_statuses, 'Per sequence nucleotide content'))
     html_template = put_data(html_template, "{{icon_per_sequence_dinucleotide_content}}", icon_html(summary_statuses, 'Per sequence dinucleotide content'))
     html_template = put_data(html_template, "{{icon_per_position_nucleotide_content}}", icon_html(summary_statuses, 'Per position nucleotide content'))

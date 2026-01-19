@@ -6,18 +6,18 @@ def flag_significant_differences(stats1, stats2):
 
     results = {}
 
-    results['Duplicate sequences'] = {}
-    results['Duplicate sequences']['Flag'] = flag_duplicate_sequences(
-        stats1, stats2
-    )
-
     results['Unique bases'] = {}
     results['Unique bases']['Flag'] = flag_unique_bases(
         stats1, stats2
     )
 
-    results['Duplication between labels'] = {}
-    results['Duplication between labels']['Flag'] = flag_duplication_between_datasets(
+    results['Sequence Duplications within Labels'] = {}
+    results['Sequence Duplications within Labels']['Flag'] = flag_duplicate_sequences(
+        stats1, stats2
+    )
+
+    results['Duplicate Sequences between Labels'] = {}
+    results['Duplicate Sequences between Labels']['Flag'] = flag_duplication_between_datasets(
         stats1.sequences, stats2.sequences
     )
 

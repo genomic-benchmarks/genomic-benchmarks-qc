@@ -226,8 +226,8 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         stats1,
         stats2
     )
-    plots_paths['Sequence duplications within classes'] = output_path / 'sequence_duplications_within_classes.png'
-    fig.savefig(output_path / 'sequence_duplications_within_classes.png', bbox_inches='tight')
+    plots_paths['Sequence Duplications within Labels'] = output_path / 'sequence_duplications_within_labels.png'
+    fig.savefig(output_path / 'sequence_duplications_within_labels.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths
