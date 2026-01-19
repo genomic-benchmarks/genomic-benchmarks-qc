@@ -313,7 +313,7 @@ def plot_sequence_duplications_within_classes(stats1, stats2):
 
     return fig
 
-def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value', keep_positions=False):
+def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value'):
     """
     Melt the stats DataFrame to long format and add a label column.
     """
