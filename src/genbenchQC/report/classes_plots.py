@@ -288,10 +288,11 @@ def plot_sequence_duplications_within_classes(stats1, stats2):
                 count_distribution_bins['>1000'] = count_distribution_bins.get('>1000', 0) + v
 
         # normalize counts to frequencies
-        total = sum(count_distribution_bins.values())
+        total = stats1.stats['Number of sequences'] + stats2.stats['Number of sequences']
         if total > 0:
             for k in count_distribution_bins:
                 count_distribution_bins[k] /= total
+                count_distribution_bins[k] *= 100  # convert to percentage
 
         ax.plot(list(count_distribution_bins.keys()), list(count_distribution_bins.values()), label=f"{stats.label}", color=HuePalette()[i], alpha=0.7)
         
@@ -304,7 +305,7 @@ def plot_sequence_duplications_within_classes(stats1, stats2):
     ax.set_title(f"Percent of sequences remaining after deduplication: {percent_remaining_after_dedup:.2%}")
 
     ax.set_xlabel('Sequence Duplication Level', fontsize=14)
-    ax.set_ylabel('Frequency', fontsize=14)
+    ax.set_ylabel('% Total Sequences', fontsize=14)
     ax.tick_params(axis='x', labelsize=12)
     ax.tick_params(axis='y', labelsize=12)
 
