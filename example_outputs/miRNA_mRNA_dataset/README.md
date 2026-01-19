@@ -24,7 +24,7 @@ evaluate_classes.run(
 
 Running the above commands for `genbenchQC evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following types of reports:
 - `dataset_report_\*.csv` - simple report with the results (pass/fail) of the evaluation between two classes of the dataset.
-- `dataset_report_\*.html` - visul report with the results of the evaluation between two classes of the dataset. 
+- `dataset_report_\*.html` - visual report with the results of the evaluation between two classes of the dataset. 
   - It contains basic information about the dataset and plots visualizing individual features of the dataset. 
   - Each plot can be toned with red color, meaning the specific feature was too different between the two dataset classes and should be examined.
   - plots used in `html` report are stored in `dataset_report_\*_plots` folder in `png` format
