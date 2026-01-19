@@ -64,7 +64,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
             width=0.8
         )
     else:
-        logging.error(f"Unknown plot type: {plot_type}")
+        raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
 
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
