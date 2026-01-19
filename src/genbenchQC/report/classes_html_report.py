@@ -71,7 +71,7 @@ HTML_TEMPLATE = """
             <h2>Summary</h2>
             <div class="sidebar-item">{{icon_basic_descriptive_statistics}}<a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
             <div class="sidebar-item">{{icon_sequence_duplications_within_classes}}<a href="#sequence-duplications-within-classes">Sequence Duplications within Classes</a></div>
-            <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate sequences</a></div>
+            <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate Sequences between Classes</a></div>
             <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>
             <div class="sidebar-item">{{icon_per_sequence_gc_content}}<a href="#per-sequence-gc-content">Per Sequence GC Content</a></div>
             <div class="sidebar-item">{{icon_per_sequence_nucleotide_content}}<a href="#per-sequence-nucleotide-content">Per Sequence Nucleotide Content</a></div>
@@ -161,7 +161,7 @@ HTML_TEMPLATE = """
             <section id="sequence-duplication-levels">
                 <div class="sidebar-item">
                     {{icon_sequence_duplication_levels}}
-                    <h2>Duplicate sequences</h2>
+                    <h2>Duplicate Sequences between Classes</h2>
                 </div>
                 <!-- This will be populated either with a table showing duplicate sequences or a message saying no duplications found -->
                 {{sequence_duplication_levels}}
@@ -387,7 +387,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", "")
 
         if duplicate_seqs_file is not None:
-            html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All duplicate sequences saved to {duplicate_seqs_file}.")
+            html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All {len(duplicate_seqs)} duplicate sequences saved to {duplicate_seqs_file}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
 
