@@ -18,9 +18,7 @@ evaluate_classes.run(
   input=['example_datasets/miRNA_mRNA_pairs_dataset.tsv'], 
   format='tsv', 
   out_folder='example_outputs/miRNA_mRNA_dataset', 
-  sequence_column=['gene', 'noncodingRNA'], 
-  label_column='label', 
-  label_list=['0', '1']
+  sequence_column=['gene', 'noncodingRNA']
 )
 ```
 
