@@ -87,7 +87,9 @@ HTML_TEMPLATE = """
             {{report_header}}
 
             <section id="basic-descriptive-statistics" class="table-section">
-                <h2>Basic Descriptive Statistics</h2>
+                <div class="section-header">
+                    <h2>Basic Descriptive Statistics</h2>
+                </div>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr id="filename">
                         <td><span>Filename</span></td>
@@ -145,7 +147,13 @@ HTML_TEMPLATE = """
             <section id="unique-bases" class="table-section">
                 <div class="sidebar-item">
                     {{icon_unique_bases}}
-                    <h2>Unique Bases</h2>
+                    <div class="section-header">
+                        <h2>Unique Bases</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('unique-bases-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="unique-bases-explanation" class="explanation-text">
+                    <strong>Unique Bases</strong> shows which nucleotides are present in each label. Differences in unique bases between labels may indicate data quality issues or biological differences that could bias machine learning models.
                 </div>
                 <div class="nucleotide-flags-container" id="unique-bases-flags">
                     {{unique_bases_flags}}
@@ -167,7 +175,13 @@ HTML_TEMPLATE = """
             <section id="sequence-duplications-within-classes">
                 <div class="sidebar-item">
                     {{icon_sequence_duplications_within_classes}}
-                    <h2>Sequence Duplications within Labels</h2>
+                    <div class="section-header">
+                        <h2>Sequence Duplications within Labels</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('within-dup-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="within-dup-explanation" class="explanation-text">
+                    <strong>Sequence Duplications within Labels</strong> shows how many sequences appear multiple times within each label. High duplication rates may indicate PCR artifacts, sequencing bias, or legitimate biological repeats. However, for machine learning and deep learning models, duplicate sequences can introduce bias during training. If the same sequence appears multiple times, the model may learn to overweight these repeated sequences, leading to skewed predictions and poor generalization.
                 </div>
                 <!-- This will be populated either with png plot showing duplication or with a message saying no duplications found -->
                 {{sequence_duplications_within_classes}}
@@ -176,7 +190,13 @@ HTML_TEMPLATE = """
             <section id="sequence-duplication-levels">
                 <div class="sidebar-item">
                     {{icon_sequence_duplication_levels}}
-                    <h2>Duplicate Sequences between Labels</h2>
+                    <div class="section-header">
+                        <h2>Duplicate Sequences between Labels</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('between-dup-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="between-dup-explanation" class="explanation-text">
+                    <strong>Duplicate Sequences between Labels</strong> identifies sequences that appear in both labels. The same sequence annotated with both labels is indicating conflicting labels for identical sequence content.
                 </div>
                 <!-- This will be populated either with a table showing duplicate sequences or a message saying no duplications found -->
                 {{sequence_duplication_levels}}
@@ -185,7 +205,13 @@ HTML_TEMPLATE = """
             <section id="sequence-lengths">
                 <div class="sidebar-item">
                     {{icon_sequence_lengths}}
-                    <h2>Sequence Lengths</h2>
+                    <div class="section-header">
+                        <h2>Sequence Lengths</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('lengths-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="lengths-explanation" class="explanation-text">
+                    <strong>Sequence Lengths</strong> displays the distribution of sequence lengths in each label. The plot shows how lengths vary across your dataset. Significant differences in length distributions between labels may indicate bias or differences in the underlying biological processes. For ML models, length differences can sometimes be exploited as shortcuts.
                 </div>
 
                 <!-- This will be populated with png plot --->
@@ -195,7 +221,13 @@ HTML_TEMPLATE = """
             <section id="per-sequence-gc-content">
                 <div class="sidebar-item">
                     {{icon_per_sequence_gc_content}}
-                    <h2>Per Sequence GC Content</h2>
+                    <div class="section-header">
+                        <h2>Per Sequence GC Content</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('gc-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="gc-explanation" class="explanation-text">
+                    <strong>Per Sequence GC Content</strong> shows the distribution of GC% (percentage of G and C bases) across all sequences in each label. GC content affects DNA structure and stability. Significant differences in GC distribution between labels may indicate sequence composition bias that could impact model training.
                 </div>
                 <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
             </section>
@@ -203,7 +235,13 @@ HTML_TEMPLATE = """
             <section id="per-sequence-nucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_sequence_nucleotide_content}}
-                    <h2>Per Sequence Nucleotide Content</h2>
+                    <div class="section-header">
+                        <h2>Per Sequence Nucleotide Content</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('nucleotide-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="nucleotide-explanation" class="explanation-text">
+                    <strong>Per Sequence Nucleotide Content</strong> displays the distribution of individual nucleotide frequencies (A, C, G, T, N) across sequences. Each subplot shows how often that nucleotide appears in sequences from each label. Differences between labels may indicate composition bias or biological differences in your dataset.
                 </div>
                 <img src="data:image/png;base64, {{per-sequence-nucleotide-content_base64}}" alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
             </section>
@@ -211,7 +249,13 @@ HTML_TEMPLATE = """
             <section id="per-sequence-dinucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_sequence_dinucleotide_content}}
-                    <h2>Per Sequence Dinucleotide Content</h2>
+                    <div class="section-header">
+                        <h2>Per Sequence Dinucleotide Content</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('dinucleotide-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="dinucleotide-explanation" class="explanation-text">
+                    <strong>Per Sequence Dinucleotide Content</strong> shows the frequency of two-base combinations (e.g., AA, AC, AG, AT) across sequences. Dinucleotide frequencies can reveal sequence patterns and motifs. Each row shows all dinucleotides starting with a specific base. Significant differences between labels may indicate compositional bias.
                 </div>
                 <img src="data:image/png;base64, {{per-sequence-dinucleotide-content_base64}}" alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
             </section>
@@ -219,10 +263,16 @@ HTML_TEMPLATE = """
             <section id="per-position-nucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_position_nucleotide_content}}
-                    <h2>Per Position Nucleotide Content</h2>
+                    <div class="section-header">
+                        <h2>Per Position Nucleotide Content</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('per-position-explanation')" title="Show explanation">?</button>
+                    </div>
                 </div>
                 <div class="nucleotide-flags-container" id="per-position-nucleotide-flags">
                     {{per_position_nucleotide_content_flags}}
+                </div>
+                <div id="per-position-explanation" class="explanation-text">
+                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of sequences extend to each position.
                 </div>
                 <img src="data:image/png;base64, {{per-position-nucleotide-content_base64}}" alt="Per Position Nucleotide Content" style="max-width: 108%; height: auto;">
             </section>
@@ -230,10 +280,16 @@ HTML_TEMPLATE = """
             <section id="per-position-reversed-nucleotide-content">
                 <div class="sidebar-item">
                     {{icon_per_position_reversed_nucleotide_content}}
-                    <h2>Per Position Reversed Nucleotide Content</h2>
+                    <div class="section-header">
+                        <h2>Per Position Reversed Nucleotide Content</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('per-position-rev-explanation')" title="Show explanation">?</button>
+                    </div>
                 </div>
                 <div class="nucleotide-flags-container" id="per-position-reversed-nucleotide-flags">
                     {{per_position_reversed_nucleotide_content_flags}}
+                </div>
+                <div id="per-position-rev-explanation" class="explanation-text">
+                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction). This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data.
                 </div>
                 <img src="data:image/png;base64, {{per-position-reversed-nucleotide-content_base64}}" alt="Per Position Reversed Nucleotide Content" style="max-width: 108%; height: auto;">
             </section>
@@ -256,6 +312,16 @@ HTML_TEMPLATE = """
 
             row.appendChild(sequenceCell);
             tableBody.appendChild(row);
+        }
+        
+        // Toggle explanation visibility
+        function toggleExplanation(elementId) {
+            var element = document.getElementById(elementId);
+            if (element.classList.contains('visible')) {
+                element.classList.remove('visible');
+            } else {
+                element.classList.add('visible');
+            }
         }
     </script>
 

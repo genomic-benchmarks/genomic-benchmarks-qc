@@ -230,6 +230,56 @@ pre {
     height: auto;
     margin: 0 0 10px; 
 }
+
+/* Toggle button styles */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: gap;
+}
+
+.toggle-btn {
+    background: transparent;
+    border: 1.5px solid #cbd5e1;
+    margin-bottom: 20px;
+    margin-left: 5px;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 12px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    line-height: 1;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toggle-btn:hover {
+    border-color: #94a3b8;
+    color: #64748b;
+}
+
+.toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.explanation-text {
+    display: none;
+    background-color: #f0f7ff;
+    border-left: 4px solid #4a90e2;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.explanation-text.visible {
+    display: block;
+}
 """
 
 
