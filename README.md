@@ -102,12 +102,9 @@ You can choose to run the tools while having different dataset formats:
 When having CSV/TSV/CSV.GZ/TSV.GZ input, you can also decide to provide multiple sequence columns to analyze. In this case, the tool *evaluate-classes* will be performed for each column separately and lastly for sequences made by concatenating sequences throughout all the columns. 
 *evaluate-splits* tool will run only the concatenated sequences.
 
+## Contributions & Support
 
-## Development
-
-If you want to help with the development of Genomic Benchmarks QC, you are more than welcome to join in!
-
-For a guidance, have a look at [CONTRIBUTING.md](https://github.com/katarinagresova/GenBenchQC/blob/main/CONTRIBUTING.md)
+Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/katarinagresova/GenBenchQC/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. Please see the [contributing notes](https://github.com/katarinagresova/GenBenchQC/blob/main/CONTRIBUTING.md) for more information about how the process works.
 
 ## License
 
