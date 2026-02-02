@@ -94,20 +94,17 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_splits_html_report(basic_stats, results, coverage_threshold, output_path, plots_dir):
+def generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, output_path, plots_dir):
     """
     Generate an HTML report visualising data leakage. 
     """
     plots_dir.mkdir(parents=True, exist_ok=True)
 
-    plots_paths_dict = generate_split_plots(results, coverage_threshold, plots_dir)
-
-    results_filt = results[(results['qcov'] >= coverage_threshold) & (results['tcov'] >= coverage_threshold)]
+    plots_paths_dict = generate_split_plots(results, threshold_stats['coverage_threshold'], plots_dir)
 
     results_filt_aln = splits_plots.add_alignments_to_results(results_filt)
 
-    template = get_splits_html_template(basic_stats, results_filt_aln, coverage_threshold, plots_paths_dict)
-
+    template = get_splits_html_template(basic_stats, threshold_stats, results_filt_aln, plots_paths_dict)
     with open(output_path, 'w') as file:
         file.write(template)
         

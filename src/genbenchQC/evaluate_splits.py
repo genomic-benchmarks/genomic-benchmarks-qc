@@ -69,7 +69,7 @@ def run(train_files, test_files, format,
         out_folder: Optional[str] = '.', 
         sequence_column: Optional[list[str]] = None, 
         report_types: Optional[list[str]] = None, 
-        coverage_threshold: Optional[float] = 0.8, 
+        coverage_threshold: Optional[float] = 0.80, 
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
@@ -100,11 +100,13 @@ def run(train_files, test_files, format,
     setup_logger(log_level, log_file)
     logging.info("Starting train-test split evaluation.")
 
-    if not Path(out_folder).exists():
-        logging.info(f"Output folder {out_folder} does not exist. Creating it.")
-        Path(out_folder).mkdir(parents=True, exist_ok=True)
+    out_folder = Path(out_folder)
 
-    tmp_dir =  Path(out_folder, "tmp")
+    if not out_folder.exists():
+        logging.info(f"Output folder {out_folder} does not exist. Creating it.")
+        out_folder.mkdir(parents=True, exist_ok=True)
+
+    tmp_dir =  out_folder / "tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     train_sequences = read_files_to_sequence_list(train_files, format, sequence_column)
@@ -120,7 +122,7 @@ def run(train_files, test_files, format,
     test_fasta_path = tmp_dir / 'test_sequences.fasta'
     write_fasta(test_sequences, test_fasta_path, test_index)
 
-    results = run_search(test_fasta_path, train_fasta_path, Path(out_folder, "mmseqs2_search_result.tsv"), tmp_dir)
+    results = run_search(test_fasta_path, train_fasta_path, tmp_dir / "mmseqs2_search_result.tsv", tmp_dir)
 
     filename = "split_check_" + Path(train_files[0]).stem + "_vs_" + Path(test_files[0]).stem
 
@@ -142,13 +144,22 @@ def run(train_files, test_files, format,
     if 'html' in report_types:
         train_filenames = ",".join([Path(f).name for f in train_files])
         test_filenames = ",".join([Path(f).name for f in test_files])
-        html_report_path = Path(out_folder, filename + '_report.html')
-        plots_dir = Path(out_folder, filename + '_plots')
+        html_report_path = out_folder / (filename + '_report.html')
+        plots_dir = out_folder / (filename + '_plots')
 
         basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
-        # threshold_stats = get_threshold_stats(stratified_test_split, threshold)
 
-        generate_splits_html_report(basic_stats, results, coverage_threshold, html_report_path, plots_dir)
+        results['qcov'] = results['qcov'].round(2)
+        results['tcov'] = results['tcov'].round(2)
+        results['evalue'] = results['evalue'].apply(lambda x: f"{x:.2e}")
+
+        results_filt = results[(results['qcov'] >= coverage_threshold) & (results['tcov'] >= coverage_threshold)]
+        results_filt = results_filt.sort_values(by=['qcov', 'tcov'], ascending=False)
+        results_filt.to_csv(out_folder / 'mmseqs2_search_result_filt.tsv', sep='\t', index=False)
+
+        threshold_stats = get_threshold_stats(results, results_filt, coverage_threshold)
+
+        generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, html_report_path, plots_dir)
 
     # Clean up temporary files
     # logging.debug("Removing temporary files.")

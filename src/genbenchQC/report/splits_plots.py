@@ -46,10 +46,26 @@ def build_alignment_string(row, width=80):
         new_taln = tseq[:tstart0] + taln + tseq[tend:]
         new_qaln = qseq[:qstart0] + qaln + qseq[qend:]
 
-        t_line = t_left + "".join(new_taln)
-        q_line = q_left + "".join(new_qaln)
+        t_line = t_left + new_taln
+        q_line = q_left + new_qaln
         
         return t_line, mid_line, q_line
+    
+    def color_base(c):
+        if c == "A":
+            return '<span class="base-A">A</span>'
+        if c == "C":
+            return '<span class="base-C">C</span>'
+        if c == "G":
+            return '<span class="base-G">G</span>'
+        if c == "T":
+            return '<span class="base-T">T</span>'
+        if c == "-":
+            return '<span class="base-gap">-</span>'
+        return f'<span class="base-other">{c}</span>'
+
+    def colorize(seq):
+        return "".join(color_base(c) for c in seq)
 
     def wrap(s, width):
         return [s[i:i+width] for i in range(0, len(s), width)]
@@ -67,9 +83,9 @@ def build_alignment_string(row, width=80):
 
     blocks = []
     for t, m, q in zip_longest(wrap(t_line, width), wrap(mid_line, width), wrap(q_line, width), fillvalue=""):
-        blocks.append(t)
-        blocks.append(m)
-        blocks.append(q)
+        blocks.append(f"T    {colorize(t)}")
+        blocks.append(f"     {m}")   # keep midline uncolored
+        blocks.append(f"Q    {colorize(q)}")
         blocks.append("")
 
     return "\n".join(blocks)

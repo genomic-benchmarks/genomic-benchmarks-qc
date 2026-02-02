@@ -22,6 +22,14 @@ HTML_TEMPLATE = """
         overflow-x: auto;
         border: 1px solid #ddd;
     }
+    /* DNA base coloring */
+    .base-A { color: #2ca02c; font-weight: bold; } /* green */
+    .base-C { color: #1f77b4; font-weight: bold; } /* blue */
+    .base-G { color: #ff7f0e; font-weight: bold; } /* orange */
+    .base-T { color: #d62728; font-weight: bold; } /* red */
+
+    .base-gap { color: #555; } /* darker grey */
+    .base-other { color: #999; }  /* N, ambiguous - grey */
     </style>
 </head>
 <body>
@@ -72,10 +80,21 @@ HTML_TEMPLATE = """
 
             <section id="similarity-section">
                 <h2>Train/Test Similarity</h2>
-                <p>Info about run with MMseqs2. </p>
-                <p>Coverage threshold: {{coverage_threshold}} </p>
-                <p>Percentage of hits above thresholds: {{perc_above_threshold}} </p>
-                <p>Percentage of hits below thresholds: {{perc_below_threshold}} </p>
+                <p>Info about run with MMseqs2.....Sequences in each of the test and train sets are 0-based indexed in the order they appear in the input files. See filtered results file for corresponding sequences. </p>
+                <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
+                    <tr>
+                        <td><span>Coverage threshold</span></td>
+                        <td style="text-align: center;">{{coverage_threshold}}</td>
+                    </tr>
+                    <tr>
+                        <td><span>Percentage of hits above threshold</span></td>
+                        <td style="text-align: center;">{{perc_above_threshold}}</td>
+                    </tr>
+                    <tr>
+                        <td><span>Percentage of hits below threshold</span></td>
+                        <td style="text-align: center;">{{perc_below_threshold}}</td>
+                    </tr>
+                </table>
                 <img src={{histogram_coverage}} alt="Histogram of Coverage" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
             </section>
 
@@ -86,8 +105,10 @@ HTML_TEMPLATE = """
                         <tr>
                             <th>Query (Q)</th>
                             <th>Target (T)</th>
-                            <th>Q Coverage</th>
-                            <th>T Coverage</th>
+                            <th>Q Cov.</th>
+                            <th>T Cov.</th>
+                            <th>Perc. Identity</th>
+                            <th>E-value</th>
                             <th>Alignment</th>
                         </tr>
                     </thead>
@@ -119,7 +140,7 @@ function toggleAlignment(id, btn) {
 </html>
 """
 
-def get_splits_html_template(basic_stats, results_filt_aln, coverage_threshold, plots_paths_dict, tool_description=None):
+def get_splits_html_template(basic_stats, threshold_stats, results_filt_aln, plots_paths_dict, tool_description=None):
     """Build train/test similarity HTML using shared helpers."""
 
     html_template = HTML_TEMPLATE
@@ -152,14 +173,16 @@ def get_splits_html_template(basic_stats, results_filt_aln, coverage_threshold, 
     html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats["min_length_test"]))
     html_template = put_data(html_template, "{{mean_length_test}}", str(basic_stats["mean_length_test"]))
     html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats["max_length_test"]))
-    html_template = put_data(html_template, "{{coverage_threshold}}", coverage_threshold)
+    html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats["coverage_threshold"]:.2f}")
+    html_template = put_data(html_template, "{{perc_above_threshold}}", f"{threshold_stats['perc_above_threshold']:.1f}%")
+    html_template = put_data(html_template, "{{perc_below_threshold}}", f"{threshold_stats['perc_below_threshold']:.1f}%")
     html_template = put_data(html_template, "{{histogram_coverage}}", str(plots_paths_dict['Histogram of coverage']))
 
     if len(results_filt_aln) == 0:
         html_template = put_data(
             html_template,
             "{{results_rows}}",
-            "<tr><td colspan='5'>No similar sequences found.</td></tr>"
+            "<tr><td colspan='7'>No similar sequences found.</td></tr>"
         )
         return html_template
 
@@ -170,8 +193,10 @@ def get_splits_html_template(basic_stats, results_filt_aln, coverage_threshold, 
     <tr>
         <td>{row['query']}</td>
         <td>{row['target']}</td>
-        <td style="text-align: center;">{row['qcov']:.3f}</td>
-        <td style="text-align: center;">{row['tcov']:.3f}</td>
+        <td style="text-align: center;">{row['qcov']:.2f}</td>
+        <td style="text-align: center;">{row['tcov']:.2f}</td>
+        <td style="text-align: center;">{row['pident']:.1f}%</td>
+        <td style="text-align: left;">{row['evalue']}</td>
 
         <td style="text-align: center;">
             <button onclick="toggleAlignment('aln-{i}', this)">
@@ -181,7 +206,7 @@ def get_splits_html_template(basic_stats, results_filt_aln, coverage_threshold, 
     </tr>
 
     <tr id="aln-{i}" style="display:none;">
-        <td colspan="5">
+        <td colspan="7">
             <pre class="alignment-block">{row['alignment_str']}</pre>
         </td>
     </tr>

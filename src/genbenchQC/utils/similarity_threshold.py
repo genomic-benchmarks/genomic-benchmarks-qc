@@ -16,11 +16,10 @@ def get_basic_stats(filename_train, train_sequences, filename_test, test_sequenc
     }
     return basic_stats
 
-def get_threshold_stats(stratified_test_split, threshold):
+def get_threshold_stats(results, results_filt, coverage_threshold):
     threshold_stats = {
-        "threshold": threshold,
-        "num_below_threshold": sum(1 for score in stratified_test_split['score'] if score <= threshold),
-        "num_above_threshold": sum(1 for score in stratified_test_split['score'] if score > threshold),
-        "total_alignments": len(stratified_test_split),
+        "coverage_threshold": coverage_threshold,
+        "perc_above_threshold": len(results_filt) / len(results) * 100 if len(results) > 0 else 0,
+        "perc_below_threshold": (len(results) - len(results_filt)) / len(results) * 100 if len(results) > 0 else 0,
     }
     return threshold_stats
