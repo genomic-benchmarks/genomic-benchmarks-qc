@@ -4,12 +4,14 @@ import os
 from pathlib import Path
 import logging
 
+from genbenchQC.report import splits_plots
 from genbenchQC.report.sequence_html_report import get_sequence_html_template
 from genbenchQC.report.classes_html_report import get_dataset_html_template
-from genbenchQC.report.split_html_report import get_train_test_html_template
+from genbenchQC.report.split_html_report import get_splits_html_template
 from genbenchQC.utils.input_utils import write_stats_json
 from genbenchQC.report import classes_plots
 from genbenchQC.report import sequences_plots
+from genbenchQC.report import splits_plots
 
 def generate_sequence_plots(stats_dict, output_path, end_position, plot_type='boxen'):
     """
@@ -92,15 +94,34 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_train_test_html_report(clusters, train_filename, train_seq, test_filename, test_seq, output_path, identity_threshold, alignment_coverage):
+def generate_splits_html_report(basic_stats, results, coverage_threshold, output_path, plots_dir):
     """
-    Generate an HTML report listing mixed clusters.
+    Generate an HTML report visualising data leakage. 
     """
-    # Load the HTML template
-    template = get_train_test_html_template(clusters, train_filename, train_seq, test_filename, test_seq, identity_threshold, alignment_coverage)
+    plots_dir.mkdir(parents=True, exist_ok=True)
+
+    plots_paths_dict = generate_split_plots(results, coverage_threshold, plots_dir)
+
+    results_filt = results[(results['qcov'] >= coverage_threshold) & (results['tcov'] >= coverage_threshold)]
+
+    results_filt_aln = splits_plots.add_alignments_to_results(results_filt)
+
+    template = get_splits_html_template(basic_stats, results_filt_aln, coverage_threshold, plots_paths_dict)
 
     with open(output_path, 'w') as file:
         file.write(template)
+        
+def generate_split_plots(results, coverage_threshold, plots_dir):
+
+    plots_paths_dict = {}
+
+    # Plot overlaid histograms of query and target coverage
+    fig = splits_plots.plot_coverage_histograms(results, coverage_threshold)
+    plots_paths_dict['Histogram of coverage'] = Path(plots_dir.name) / 'histogram_coverage.png'
+    fig.savefig(plots_dir / 'histogram_coverage.png', bbox_inches='tight')
+    plt.close(fig)
+
+    return plots_paths_dict
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results):
     """

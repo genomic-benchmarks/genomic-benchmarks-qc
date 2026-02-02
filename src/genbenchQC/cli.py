@@ -91,8 +91,7 @@ def evaluate_splits(
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    identity_threshold: float = typer.Option(0.8, help="Identity threshold for clustering."),
-    alignment_coverage: float = typer.Option(0.8, help="Alignment coverage for clustering."),
+    coverage_threshold: float = typer.Option(0.8, help="Coverage threshold for clustering (between 0 and 1)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
 ):
@@ -127,14 +126,14 @@ def evaluate_splits(
         typer.echo(f"Error: Invalid log level '{log_level}'. Must be one of: {', '.join(VALID_LOG_LEVELS)}", err=True)
         raise typer.Exit(code=1)
     
-    # Validate thresholds are in valid range [0, 1]
-    if not 0 <= identity_threshold <= 1:
-        typer.echo(f"Error: identity_threshold must be between 0 and 1, got {identity_threshold}", err=True)
-        raise typer.Exit(code=1)
+    # # Validate thresholds are in valid range [0, 1]
+    # if not 0 <= identity_threshold <= 1:
+    #     typer.echo(f"Error: identity_threshold must be between 0 and 1, got {identity_threshold}", err=True)
+    #     raise typer.Exit(code=1)
     
-    if not 0 <= alignment_coverage <= 1:
-        typer.echo(f"Error: alignment_coverage must be between 0 and 1, got {alignment_coverage}", err=True)
-        raise typer.Exit(code=1)
+    # if not 0 <= alignment_coverage <= 1:
+    #     typer.echo(f"Error: alignment_coverage must be between 0 and 1, got {alignment_coverage}", err=True)
+    #     raise typer.Exit(code=1)
     
     run_evaluate_splits(
         train_files=train_input,
@@ -143,8 +142,7 @@ def evaluate_splits(
         out_folder=out_folder,
         sequence_column=sequence_column,
         report_types=report_types,
-        identity_threshold=identity_threshold,
-        alignment_coverage=alignment_coverage,
+        coverage_threshold=coverage_threshold,
         log_level=log_level,
         log_file=log_file,
     )

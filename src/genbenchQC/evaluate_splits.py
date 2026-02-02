@@ -3,84 +3,79 @@ from pathlib import Path
 from typing import Optional
 import os
 import shutil
-from cdhit_reader import read_cdhit
 import pandas as pd
 
-from genbenchQC.report.report_generator import generate_json_report, generate_train_test_html_report, generate_simple_report
+from genbenchQC.report.report_generator import generate_json_report, generate_splits_html_report, generate_simple_report
 from genbenchQC.utils.input_utils import setup_logger, read_files_to_sequence_list, write_fasta
+from genbenchQC.utils.similarity_threshold import get_basic_stats, get_threshold_stats
 
-def run_clustering(train_fasta_file, test_fasta_file, clustered_file, identity_threshold, alignment_coverage):
-    logging.info("Running CD-HIT clustering.")
+def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
+    # logging.info("Running CD-HIT clustering.")
 
-    # Choose the word size for cd-hit based on the identity threshold
-    if identity_threshold > 0.90:
-        n = 10
-    elif identity_threshold > 0.88:
-        n = 7
-    elif identity_threshold > 0.85:
-        n = 6
-    elif identity_threshold > 0.80:
-        n = 5
-    elif identity_threshold > 0.75:
-        n = 4
-    elif identity_threshold > 0.5:
-        n = 3
-    else:
-        n = 2
+    # logging.debug("Running CD-HIT with the following parameters:")
+    # logging.debug(f"Input test file: {test_fasta_file}")    
+    # logging.debug(f"Input train file: {train_fasta_file}")
+    # logging.debug(f"Output clustered file: {clustered_file}")
+    # logging.debug(f"Identity threshold: {identity_threshold}")
+    # logging.debug(f"Word size (n): {n}")
+    # logging.debug(f"Alignment coverage: {alignment_coverage}")
 
-    logging.debug("Running CD-HIT with the following parameters:")
-    logging.debug(f"Input train file: {train_fasta_file}")
-    logging.debug(f"Input test file: {test_fasta_file}")
-    logging.debug(f"Output clustered file: {clustered_file}")
-    logging.debug(f"Identity threshold: {identity_threshold}")
-    logging.debug(f"Word size (n): {n}")
-    logging.debug(f"Alignment coverage: {alignment_coverage}")
-
-    errcode = os.system(f"cd-hit-est-2d -i {train_fasta_file} -i2 {test_fasta_file} -o {clustered_file} -c {identity_threshold} -n {n} -aS {alignment_coverage} -aL {alignment_coverage} -r 0 >/dev/null 2>&1")
+    errcode = os.system(f"mmseqs easy-search \
+                        {test_fasta_file} \
+                        {train_fasta_file} \
+                        {out_file} \
+                        {tmp_dir} \
+                        --format-output query,target,evalue,pident,nident,qstart,qend,qlen,tstart,tend,tlen,alnlen,raw,qseq,tseq,qaln,taln,cigar,qcov,tcov \
+                        --format-mode 4 \
+                        --search-type 3 >/dev/null 2>&1")
     if errcode != 0:
-        logging.error(f"CD-HIT clustering failed with error code {errcode}.")
-        raise RuntimeError(f"CD-HIT clustering failed with error code {errcode}.")
-    clusters = read_cdhit(f"{clustered_file}.clstr").read_items()
-    logging.debug(f"CD-HIT clustering completed. {len(clusters)} clusters found.")
+        logging.error(f"MMseqs2 easy-search failed with error code {errcode}.")
+        raise RuntimeError(f"MMseqs2 easy-search failed with error code {errcode}.")
+    
+    results = pd.read_csv(out_file, sep="\t", header=0)
+    logging.debug(f"MMseqs2 easy-search completed.")
+    return results
+
+    # clusters = read_cdhit(f"{clustered_file}.clstr").read_items()
+    # logging.debug(f"CD-HIT clustering completed. {len(clusters)} clusters found.")
 
     # Collect clusters with >1 sequence
-    mixed_clusters = []
+#     mixed_clusters = []
 
-    for cluster in clusters:
-        if len(cluster.sequences) == 1:
-            continue
-        seq_ids = [seq.name for seq in cluster.sequences]
-        mixed_clusters.append(seq_ids)
-    return mixed_clusters
+#     for cluster in clusters:
+#         if len(cluster.sequences) == 1:
+#             continue
+#         seq_ids = [seq.name for seq in cluster.sequences]
+#         mixed_clusters.append(seq_ids)
+#     return mixed_clusters
 
-def process_mixed_clusters(clusters, train_sequences, test_sequences):
-    sequence_clusters = []
-    for i in range(len(clusters)):
-        sequences = {"cluster": i, "train": [], "test": []}
-        for seq_id in clusters[i]:
-            seq_id = seq_id.split("_")
-            if seq_id[2] == "train":
-                sequences["train"].append(train_sequences[int(seq_id[1])])
-            elif seq_id[2] == "test":
-                sequences["test"].append(test_sequences[int(seq_id[1])])
-            else:
-                logging.warning(f"Unexpected sequence ID format: {seq_id}")
-        sequence_clusters.append(sequences)
+# def process_mixed_clusters(clusters, train_sequences, test_sequences):
+#     sequence_clusters = []
+#     for i in range(len(clusters)):
+#         sequences = {"cluster": i, "train": [], "test": []}
+#         for seq_id in clusters[i]:
+#             seq_id = seq_id.split("_")
+#             if seq_id[2] == "train":
+#                 sequences["train"].append(train_sequences[int(seq_id[1])])
+#             elif seq_id[2] == "test":
+#                 sequences["test"].append(test_sequences[int(seq_id[1])])
+#             else:
+#                 logging.warning(f"Unexpected sequence ID format: {seq_id}")
+#         sequence_clusters.append(sequences)
 
-    return sequence_clusters
+#     return sequence_clusters
 
 def run(train_files, test_files, format, 
         out_folder: Optional[str] = '.', 
         sequence_column: Optional[list[str]] = None, 
         report_types: Optional[list[str]] = None, 
-        identity_threshold: Optional[float] = 0.8, 
-        alignment_coverage: Optional[float] = 0.8,
+        coverage_threshold: Optional[float] = 0.8, 
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
     """Run the train-test split evaluation.
 
-    This function reads sequences from the provided training and testing files, performs clustering using CD-HIT, 
+    This function reads sequences from the provided training and testing files, performs easy-search using MMseqs2, 
     and generates reports about potential data leakage between the training and testing datasets.
 
     @param train_files: List of paths to training files.
@@ -109,7 +104,8 @@ def run(train_files, test_files, format,
         logging.info(f"Output folder {out_folder} does not exist. Creating it.")
         Path(out_folder).mkdir(parents=True, exist_ok=True)
 
-    Path(out_folder, "tmp").mkdir(parents=True, exist_ok=True)
+    tmp_dir =  Path(out_folder, "tmp")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
     train_sequences = read_files_to_sequence_list(train_files, format, sequence_column)
     train_index = [f"{i}_train" for i in range(len(train_sequences))]
@@ -119,38 +115,43 @@ def run(train_files, test_files, format,
     test_index = [f"{i}_test" for i in range(len(test_sequences))]
     logging.info(f"Read {len(test_sequences)} sequences from testing files.")
 
-    train_fasta_path = Path(out_folder, "tmp") / 'train_sequences.fasta'
+    train_fasta_path = tmp_dir / 'train_sequences.fasta'
     write_fasta(train_sequences, train_fasta_path, train_index)
-    test_fasta_path = Path(out_folder, "tmp") / 'test_sequences.fasta'
+    test_fasta_path = tmp_dir / 'test_sequences.fasta'
     write_fasta(test_sequences, test_fasta_path, test_index)
 
-    clusters = run_clustering(train_fasta_path, test_fasta_path, Path(out_folder, "tmp/clustered_sequences"), identity_threshold, alignment_coverage)
-    logging.debug(f"Having {len(clusters)} mixed clusters: {clusters}")
+    results = run_search(test_fasta_path, train_fasta_path, Path(out_folder, "mmseqs2_search_result.tsv"), tmp_dir)
 
     filename = "split_check_" + Path(train_files[0]).stem + "_vs_" + Path(test_files[0]).stem
 
-    if 'simple' in report_types:
-        simple_report_path = Path(out_folder, filename + '.csv')
-        result = {"Data leakage": "Pass" if not clusters else "Fail"}
-        df = pd.DataFrame.from_dict(result, orient='index', columns=['Flag'])
-        df.index.name = "Statistic"
-        generate_simple_report(df, simple_report_path)
+    # if 'simple' in report_types:
+    #     simple_report_path = Path(out_folder, filename + '.csv')
+    #     result = {"Data leakage": "Pass" if not clusters else "Fail"}
+    #     df = pd.DataFrame.from_dict(result, orient='index', columns=['Flag'])
+    #     df.index.name = "Statistic"
+    #     generate_simple_report(df, simple_report_path)
 
-    if 'json' in report_types or 'html' in report_types:
-        sequence_clusters = process_mixed_clusters(clusters, train_sequences, test_sequences)
-        logging.debug(f"Transformed cluster sequence IDs to sequences: {sequence_clusters}")
+    # if 'json' in report_types or 'html' in report_types:
+    #     sequence_clusters = process_mixed_clusters(clusters, train_sequences, test_sequences)
+    #     logging.debug(f"Transformed cluster sequence IDs to sequences: {sequence_clusters}")
 
-    if 'json' in report_types:
-        json_report_path = Path(out_folder, filename + '_report.json')
-        generate_json_report({"mixed train-test clusters": sequence_clusters}, json_report_path)
+    # if 'json' in report_types:
+    #     json_report_path = Path(out_folder, filename + '_report.json')
+    #     generate_json_report({"mixed train-test clusters": sequence_clusters}, json_report_path)
+    
     if 'html' in report_types:
         train_filenames = ",".join([Path(f).name for f in train_files])
         test_filenames = ",".join([Path(f).name for f in test_files])
         html_report_path = Path(out_folder, filename + '_report.html')
-        generate_train_test_html_report(sequence_clusters, train_filenames, train_sequences, test_filenames, test_sequences, html_report_path, identity_threshold, alignment_coverage)
+        plots_dir = Path(out_folder, filename + '_plots')
+
+        basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
+        # threshold_stats = get_threshold_stats(stratified_test_split, threshold)
+
+        generate_splits_html_report(basic_stats, results, coverage_threshold, html_report_path, plots_dir)
 
     # Clean up temporary files
-    logging.debug("Removing temporary files.")
-    shutil.rmtree(Path(out_folder, "tmp"))
+    # logging.debug("Removing temporary files.")
+    # shutil.rmtree(Path(out_folder, "tmp"))
 
     logging.info("Train-test split evaluation successfully completed.")
