@@ -27,11 +27,10 @@ Install Genomic Benchmarks QC using pip:
 pip install genbenchQC
 ```
 
-If you plan to use `evaluate-splits`, install [cd-hit](https://www.bioinformatics.org/cd-hit/cd-hit-user-guide):
+If you plan to use `evaluate-splits`, install [mmseqs2](https://mmseqs.com/latest/userguide.pdf):
 
 ```bash
-conda install -c bioconda cd-hit
-# or follow: https://github.com/weizhongli/cdhit/wiki/2.-Installation
+conda install -c conda-forge -c bioconda mmseqs2
 ```
 
 ## Quick Start

@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 import logging
 
-from genbenchQC.report import splits_plots
 from genbenchQC.report.sequence_html_report import get_sequence_html_template
 from genbenchQC.report.classes_html_report import get_dataset_html_template
 from genbenchQC.report.split_html_report import get_splits_html_template
@@ -100,22 +99,21 @@ def generate_splits_html_report(basic_stats, threshold_stats, results, results_f
     """
     plots_dir.mkdir(parents=True, exist_ok=True)
 
-    plots_paths_dict = generate_split_plots(results, threshold_stats['coverage_threshold'], plots_dir)
+    logging.info(f"Generating HTML report: {output_path}")
 
-    results_filt_aln = splits_plots.add_alignments_to_results(results_filt)
+    plots_paths_dict = generate_split_plots(results, threshold_stats, plots_dir)
 
-    template = get_splits_html_template(basic_stats, threshold_stats, results_filt_aln, plots_paths_dict)
+    template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict)
     with open(output_path, 'w') as file:
         file.write(template)
         
-def generate_split_plots(results, coverage_threshold, plots_dir):
+def generate_split_plots(results, threshold_stats, plots_dir):
 
     plots_paths_dict = {}
 
-    # Plot overlaid histograms of query and target coverage
-    fig = splits_plots.plot_coverage_histograms(results, coverage_threshold)
-    plots_paths_dict['Histogram of coverage'] = Path(plots_dir.name) / 'histogram_coverage.png'
-    fig.savefig(plots_dir / 'histogram_coverage.png', bbox_inches='tight')
+    fig = splits_plots.plot_coverage_histograms(results, threshold_stats)
+    plots_paths_dict['Coverage histograms'] = Path(plots_dir.name) / 'coverage_histograms.png'
+    fig.savefig(plots_dir / 'coverage_histograms.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths_dict

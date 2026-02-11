@@ -5,65 +5,33 @@ import os
 import shutil
 import pandas as pd
 
-from genbenchQC.report.report_generator import generate_json_report, generate_splits_html_report, generate_simple_report
+from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
 from genbenchQC.utils.input_utils import setup_logger, read_files_to_sequence_list, write_fasta
-from genbenchQC.utils.similarity_threshold import get_basic_stats, get_threshold_stats
+from genbenchQC.utils.data_leakage_utils import get_basic_stats, get_threshold_stats, filter_fasta_by_ids, add_alignments_to_results
 
 def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
-    # logging.info("Running CD-HIT clustering.")
+    logging.info("Running MMSeqs2, an ultrafast and sensitive search, for test sequences (query) against train sequences (db).")
 
-    # logging.debug("Running CD-HIT with the following parameters:")
-    # logging.debug(f"Input test file: {test_fasta_file}")    
-    # logging.debug(f"Input train file: {train_fasta_file}")
-    # logging.debug(f"Output clustered file: {clustered_file}")
-    # logging.debug(f"Identity threshold: {identity_threshold}")
-    # logging.debug(f"Word size (n): {n}")
-    # logging.debug(f"Alignment coverage: {alignment_coverage}")
+    logging.debug("Running MMSeqs2 easy-search with the following parameters:")
+    logging.debug(f"Input test file: {test_fasta_file}")    
+    logging.debug(f"Input train file: {train_fasta_file}")
+    logging.debug(f"Output file: {out_file}")
 
     errcode = os.system(f"mmseqs easy-search \
                         {test_fasta_file} \
                         {train_fasta_file} \
                         {out_file} \
                         {tmp_dir} \
-                        --format-output query,target,evalue,pident,nident,qstart,qend,qlen,tstart,tend,tlen,alnlen,raw,qseq,tseq,qaln,taln,cigar,qcov,tcov \
+                        --format-output query,target,qcov,tcov,pident,evalue,qstart,qend,tstart,tend,alnlen,qseq,tseq,qaln,taln \
                         --format-mode 4 \
                         --search-type 3 >/dev/null 2>&1")
     if errcode != 0:
-        logging.error(f"MMseqs2 easy-search failed with error code {errcode}.")
-        raise RuntimeError(f"MMseqs2 easy-search failed with error code {errcode}.")
+        logging.error(f"MMseqs2 search failed with error code {errcode}.")
+        raise RuntimeError(f"MMseqs2 search failed with error code {errcode}.")
     
     results = pd.read_csv(out_file, sep="\t", header=0)
     logging.debug(f"MMseqs2 easy-search completed.")
     return results
-
-    # clusters = read_cdhit(f"{clustered_file}.clstr").read_items()
-    # logging.debug(f"CD-HIT clustering completed. {len(clusters)} clusters found.")
-
-    # Collect clusters with >1 sequence
-#     mixed_clusters = []
-
-#     for cluster in clusters:
-#         if len(cluster.sequences) == 1:
-#             continue
-#         seq_ids = [seq.name for seq in cluster.sequences]
-#         mixed_clusters.append(seq_ids)
-#     return mixed_clusters
-
-# def process_mixed_clusters(clusters, train_sequences, test_sequences):
-#     sequence_clusters = []
-#     for i in range(len(clusters)):
-#         sequences = {"cluster": i, "train": [], "test": []}
-#         for seq_id in clusters[i]:
-#             seq_id = seq_id.split("_")
-#             if seq_id[2] == "train":
-#                 sequences["train"].append(train_sequences[int(seq_id[1])])
-#             elif seq_id[2] == "test":
-#                 sequences["test"].append(test_sequences[int(seq_id[1])])
-#             else:
-#                 logging.warning(f"Unexpected sequence ID format: {seq_id}")
-#         sequence_clusters.append(sequences)
-
-#     return sequence_clusters
 
 def run(train_files, test_files, format, 
         out_folder: Optional[str] = '.', 
@@ -85,8 +53,7 @@ def run(train_files, test_files, format,
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
                             Default: ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param identity_threshold: Identity threshold for clustering. Default: 0.8.
-    @param alignment_coverage: Alignment coverage for clustering. Default: 0.8.
+    @param coverage_threshold: Coverage threshold for considering a hit from mmseqs2 easy-search as potential leakage. Default: 0.8.
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
@@ -101,7 +68,6 @@ def run(train_files, test_files, format,
     logging.info("Starting train-test split evaluation.")
 
     out_folder = Path(out_folder)
-
     if not out_folder.exists():
         logging.info(f"Output folder {out_folder} does not exist. Creating it.")
         out_folder.mkdir(parents=True, exist_ok=True)
@@ -109,60 +75,83 @@ def run(train_files, test_files, format,
     tmp_dir =  out_folder / "tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
+    # Read sequences from training and testing files
     train_sequences = read_files_to_sequence_list(train_files, format, sequence_column)
     train_index = [f"{i}_train" for i in range(len(train_sequences))]
     logging.info(f"Read {len(train_sequences)} sequences from training files.")
-
     test_sequences = read_files_to_sequence_list(test_files, format, sequence_column)
     test_index = [f"{i}_test" for i in range(len(test_sequences))]
     logging.info(f"Read {len(test_sequences)} sequences from testing files.")
 
+    # Write sequences to temporary fasta files for MMseqs2
     train_fasta_path = tmp_dir / 'train_sequences.fasta'
     write_fasta(train_sequences, train_fasta_path, train_index)
     test_fasta_path = tmp_dir / 'test_sequences.fasta'
     write_fasta(test_sequences, test_fasta_path, test_index)
+    
+    # Run MMseqs2 search and get results as a DataFrame
+    outfile ="mmseqs2_search_result.tsv"
+    results = run_search(test_fasta_path, train_fasta_path, tmp_dir / outfile, tmp_dir)
 
-    results = run_search(test_fasta_path, train_fasta_path, tmp_dir / "mmseqs2_search_result.tsv", tmp_dir)
+    # Add columns to results for coverage and whether the hit is above the threshold for potential leakage
+    results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
+    results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov'] >= coverage_threshold else 'False', axis=1)
 
-    filename = "split_check_" + Path(train_files[0]).stem + "_vs_" + Path(test_files[0]).stem
+    # Build filename for reports based on input file names
+    filename = ("split_check_" 
+                + Path(train_files[0]).name.replace("".join(Path(train_files[0]).suffixes), "") 
+                + "_vs_" 
+                + Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), ""))
 
-    # if 'simple' in report_types:
-    #     simple_report_path = Path(out_folder, filename + '.csv')
-    #     result = {"Data leakage": "Pass" if not clusters else "Fail"}
-    #     df = pd.DataFrame.from_dict(result, orient='index', columns=['Flag'])
-    #     df.index.name = "Statistic"
-    #     generate_simple_report(df, simple_report_path)
-
-    # if 'json' in report_types or 'html' in report_types:
-    #     sequence_clusters = process_mixed_clusters(clusters, train_sequences, test_sequences)
-    #     logging.debug(f"Transformed cluster sequence IDs to sequences: {sequence_clusters}")
-
-    # if 'json' in report_types:
-    #     json_report_path = Path(out_folder, filename + '_report.json')
-    #     generate_json_report({"mixed train-test clusters": sequence_clusters}, json_report_path)
+    if 'simple' in report_types:
+        simple_report_path = out_folder / (filename + '.csv')
+        has_leakage = (results['Leaked'] == 'True').any()
+        result = {"Data leakage": "Fail" if has_leakage else "Pass"}
+        df = pd.DataFrame.from_dict(result, orient='index', columns=['Flag'])
+        df.index.name = "Statistic"
+        generate_simple_report(df, simple_report_path)
     
     if 'html' in report_types:
+        # Build paths for output files
         train_filenames = ",".join([Path(f).name for f in train_files])
         test_filenames = ",".join([Path(f).name for f in test_files])
         html_report_path = out_folder / (filename + '_report.html')
         plots_dir = out_folder / (filename + '_plots')
+        mmseqs_dir = out_folder / (filename + '_mmseqs')
+        seq_index_mapping = mmseqs_dir / 'seq_index_mapping'
 
+        # Write mmseqs2 results, including flag for hits above threshold, to file 
+        mmseqs_dir.mkdir(parents=True, exist_ok=True)
+        results.to_csv(mmseqs_dir / outfile, sep='\t', index=False)
+
+        # Filter results for hits above threshold and sort by coverage for HTML report
+        results_filt = results[results['Leaked'] == 'True'].sort_values(by=['qcov', 'tcov'], ascending=False)
+
+        # Write filtered fasta files for mapping hits seq IDs back to seqs
+        seq_index_mapping.mkdir(parents=True, exist_ok=True)
+        new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
+        new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
+        filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, set(results_filt["query"]))
+        filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, set(results_filt["target"]))
+
+        # Prepare results (hits over threshold) for HTML report
+        results_filt['qcov'] = results_filt['qcov'].round(2)
+        results_filt['tcov'] = results_filt['tcov'].round(2)
+        results_filt['evalue'] = results_filt['evalue'].apply(lambda x: f"{x:.2e}")
+        
+        # Get basic stats for HTML report
         basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
 
-        results['qcov'] = results['qcov'].round(2)
-        results['tcov'] = results['tcov'].round(2)
-        results['evalue'] = results['evalue'].apply(lambda x: f"{x:.2e}")
+        # Get threshold stats for HTML report
+        num_train_seqs = len(train_sequences)
+        num_test_seqs = len(test_sequences)
+        threshold_stats = get_threshold_stats(results, results_filt, coverage_threshold, num_train_seqs, num_test_seqs)
 
-        results_filt = results[(results['qcov'] >= coverage_threshold) & (results['tcov'] >= coverage_threshold)]
-        results_filt = results_filt.sort_values(by=['qcov', 'tcov'], ascending=False)
-        results_filt.to_csv(out_folder / 'mmseqs2_search_result_filt.tsv', sep='\t', index=False)
-
-        threshold_stats = get_threshold_stats(results, results_filt, coverage_threshold)
-
+        # Generate HTML report
         generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, html_report_path, plots_dir)
 
     # Clean up temporary files
-    # logging.debug("Removing temporary files.")
-    # shutil.rmtree(Path(out_folder, "tmp"))
+    logging.debug("Removing temporary files.")
+    shutil.rmtree(Path(out_folder, "tmp"))
 
     logging.info("Train-test split evaluation successfully completed.")

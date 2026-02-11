@@ -1,5 +1,6 @@
 from datetime import datetime
 from genbenchQC.report.utils import put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genbenchQC.utils.data_leakage_utils import add_alignments_to_results, build_alignment_string
 import importlib.metadata
 
 HTML_TEMPLATE = """
@@ -41,7 +42,7 @@ HTML_TEMPLATE = """
             </div>
             <h2>Summary</h2>
             <div class="sidebar-item"><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
-            <div class="sidebar-item"><a href="#similarity-section">Train/Test Similarity</a></div>
+            <div class="sidebar-item"><a href="#similarity-section">Train-Test Split Check</a></div>
         </div>
 
         <div class="content">
@@ -79,27 +80,36 @@ HTML_TEMPLATE = """
             </section>
 
             <section id="similarity-section">
-                <h2>Train/Test Similarity</h2>
-                <p>Info about run with MMseqs2.....Sequences in each of the test and train sets are 0-based indexed in the order they appear in the input files. See filtered results file for corresponding sequences. </p>
+                <h2>Train-Test Split Check</h2>
+                <p>
+                Using MMSeqs2, test set sequencies (queries) are aligned against train set sequences (target database), to identify similar sequences across splits.
+                Query and target sequences are 0-based indexed, in the order they appear in the input files. Refer to fasta files for index-to-sequence mapping. 
+                Data leakage is defined as the percentage of sequences in the train/test sets that have exceeded a set coverage threshold.
+                Coverage is the sequence length overlap. The alignment covers at least this threshold of the query sequence and of the target sequence. 
+                </p>
                 <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
                     <tr>
                         <td><span>Coverage threshold</span></td>
-                        <td style="text-align: center;">{{coverage_threshold}}</td>
+                        <td style="text-align: right;">{{coverage_threshold}}</td>
+                    </tr>
+                    <tr style="height: 15px;">
+                        <td></td>
+                        <td></td>
                     </tr>
                     <tr>
-                        <td><span>Percentage of hits above threshold</span></td>
-                        <td style="text-align: center;">{{perc_above_threshold}}</td>
-                    </tr>
+                        <td><span>Data leakage in train set (%)</span></td>
+                        <td style="text-align: right;">{{perc_targets_above_thr}}</td>
+                    </tr>                    
                     <tr>
-                        <td><span>Percentage of hits below threshold</span></td>
-                        <td style="text-align: center;">{{perc_below_threshold}}</td>
+                        <td><span>Data leakage in test set (%)</span></td>
+                        <td style="text-align: right;">{{perc_queries_above_thr}}</td>
                     </tr>
                 </table>
                 <img src={{histogram_coverage}} alt="Histogram of Coverage" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
             </section>
 
             <section id="results-section">
-                <h3>Alignment Results</h3>
+                <h3>Alignment of Leaked Sequences (Top 100)</h3>
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr>
@@ -140,8 +150,8 @@ function toggleAlignment(id, btn) {
 </html>
 """
 
-def get_splits_html_template(basic_stats, threshold_stats, results_filt_aln, plots_paths_dict, tool_description=None):
-    """Build train/test similarity HTML using shared helpers."""
+def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict, tool_description=None):
+    """Build Train-Test Split Check HTML using shared helpers."""
 
     html_template = HTML_TEMPLATE
 
@@ -168,36 +178,40 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt_aln, plo
     html_template = put_data(html_template, "{{number_of_sequences_train}}", str(basic_stats["number_of_sequences_train"]))
     html_template = put_data(html_template, "{{number_of_sequences_test}}", str(basic_stats["number_of_sequences_test"]))
     html_template = put_data(html_template, "{{min_length_train}}", str(basic_stats["min_length_train"]))
-    html_template = put_data(html_template, "{{mean_length_train}}", str(basic_stats["mean_length_train"]))
+    html_template = put_data(html_template, "{{mean_length_train}}", f"{basic_stats['mean_length_train']:.2f}")
     html_template = put_data(html_template, "{{max_length_train}}", str(basic_stats["max_length_train"]))
     html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats["min_length_test"]))
-    html_template = put_data(html_template, "{{mean_length_test}}", str(basic_stats["mean_length_test"]))
+    html_template = put_data(html_template, "{{mean_length_test}}", f"{basic_stats['mean_length_test']:.2f}")
     html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats["max_length_test"]))
     html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats["coverage_threshold"]:.2f}")
-    html_template = put_data(html_template, "{{perc_above_threshold}}", f"{threshold_stats['perc_above_threshold']:.1f}%")
-    html_template = put_data(html_template, "{{perc_below_threshold}}", f"{threshold_stats['perc_below_threshold']:.1f}%")
-    html_template = put_data(html_template, "{{histogram_coverage}}", str(plots_paths_dict['Histogram of coverage']))
+    html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}%")
+    html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}%")
+    html_template = put_data(html_template, "{{histogram_coverage}}", str(plots_paths_dict['Coverage histograms']))
 
-    if len(results_filt_aln) == 0:
+    if len(results_filt) == 0:
         html_template = put_data(
             html_template,
             "{{results_rows}}",
-            "<tr><td colspan='7'>No similar sequences found.</td></tr>"
+            "<tr><td colspan='7'>No leaked sequences found across train/test splits.</td></tr>"
         )
         return html_template
 
+    results_display = results_filt.head(100)
+    results_display = add_alignments_to_results(results_display)
+
     rows = []
 
-    for i, row in results_filt_aln.iterrows():
+    for i, row in results_display.iterrows():
+        alignment_str_color = build_alignment_string(row, color=True)
+
         rows.append(f"""
     <tr>
         <td>{row['query']}</td>
         <td>{row['target']}</td>
-        <td style="text-align: center;">{row['qcov']:.2f}</td>
-        <td style="text-align: center;">{row['tcov']:.2f}</td>
-        <td style="text-align: center;">{row['pident']:.1f}%</td>
-        <td style="text-align: left;">{row['evalue']}</td>
-
+        <td style="text-align: center; ">{row['qcov']:.2f}</td>
+        <td style="text-align: center; ">{row['tcov']:.2f}</td>
+        <td style="text-align: right; padding-right: 20px;">{row['pident']:.1f}%</td>
+        <td style="text-align: left; ">{row['evalue']}</td>
         <td style="text-align: center;">
             <button onclick="toggleAlignment('aln-{i}', this)">
                 Show
@@ -207,7 +221,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt_aln, plo
 
     <tr id="aln-{i}" style="display:none;">
         <td colspan="7">
-            <pre class="alignment-block">{row['alignment_str']}</pre>
+            <pre class="alignment-block">{alignment_str_color}</pre>
         </td>
     </tr>
     """)
