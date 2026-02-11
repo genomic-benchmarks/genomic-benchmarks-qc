@@ -41,15 +41,23 @@ HTML_TEMPLATE = """
                 <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
             </div>
             <h2>Summary</h2>
-            <div class="sidebar-item"><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
-            <div class="sidebar-item"><a href="#similarity-section">Train-Test Split Check</a></div>
+            <div class="sidebar-item">
+                <span style="display: inline-block; width: 40px"></span>
+                <a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a>
+            </div>
+            <div class="sidebar-item">
+                {{icon_data_leakage}}
+                <a href="#similarity-section">Data Leakage</a>
+            </div>
         </div>
 
         <div class="content">
             {{report_header}}
 
-            <section id="basic-descriptive-statistics">
-                <h2>Basic Descriptive Statistics</h2>             
+            <section id="basic-descriptive-statistics" class="table-section">
+                <div class="section-header">
+                    <h2>Basic Descriptive Statistics</h2>
+                </div>            
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr id="filename">
                         <td><span>Filename</span></td>
@@ -80,13 +88,19 @@ HTML_TEMPLATE = """
             </section>
 
             <section id="similarity-section">
-                <h2>Train-Test Split Check</h2>
-                <p>
-                Using MMSeqs2, test set sequencies (queries) are aligned against train set sequences (target database), to identify similar sequences across splits.
-                Query and target sequences are 0-based indexed, in the order they appear in the input files. Refer to fasta files for index-to-sequence mapping. 
-                Data leakage is defined as the percentage of sequences in the train/test sets that have exceeded a set coverage threshold.
-                Coverage is the sequence length overlap. The alignment covers at least this threshold of the query sequence and of the target sequence. 
-                </p>
+                <div class="sidebar-item">
+                    {{icon_data_leakage}}
+                    <div class="section-header">
+                        <h2>Data Leakage</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('data-leakage-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="data-leakage-explanation" class="explanation-text">
+                    Using MMSeqs2, test set sequencies (queries) are aligned against train set sequences (target database), to identify similar sequences across splits.
+                    Query and target sequences are 0-based indexed, in the order they appear in the input files. Refer to fasta files for index-to-sequence mapping. 
+                    Data leakage is defined as the percentage of sequences in the train/test sets that have exceeded a set coverage threshold.
+                    Coverage is the sequence length overlap. The alignment covers at least this threshold of the query sequence and of the target sequence.
+                </div>
                 <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
                     <tr>
                         <td><span>Coverage threshold</span></td>
@@ -131,20 +145,30 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-<script>
-function toggleAlignment(id, btn) {
-    const row = document.getElementById(id);
-    if (!row) return;
+    <script>
+        function toggleAlignment(id, btn) {
+            const row = document.getElementById(id);
+            if (!row) return;
 
-    if (row.style.display === "none") {
-        row.style.display = "table-row";
-        btn.textContent = "Hide";
-    } else {
-        row.style.display = "none";
-        btn.textContent = "Show";
-    }
-}
-</script>
+            if (row.style.display === "none") {
+                row.style.display = "table-row";
+                btn.textContent = "Hide";
+            } else {
+                row.style.display = "none";
+                btn.textContent = "Show";
+            }
+        }
+
+        // Toggle explanation visibility
+        function toggleExplanation(elementId) {
+            var element = document.getElementById(elementId);
+            if (element.classList.contains('visible')) {
+                element.classList.remove('visible');
+            } else {
+                element.classList.add('visible');
+            }
+        }
+    </script>
 
 </body>
 </html>
