@@ -103,11 +103,23 @@ def run(train_files, test_files, format,
                 + "_vs_" 
                 + Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), ""))
 
+
+    # Filter results for hits above threshold and sort by coverage
+    results_filt = results[results['Leaked'] == 'True'].sort_values(by=['qcov', 'tcov'], ascending=False)
+
+    # Get threshold stats
+    num_train_seqs = len(train_sequences)
+    num_test_seqs = len(test_sequences)
+    threshold_stats = get_threshold_stats(results, results_filt, coverage_threshold, num_train_seqs, num_test_seqs)
+
     if 'simple' in report_types:
         simple_report_path = out_folder / (filename + '.csv')
         has_leakage = (results['Leaked'] == 'True').any()
-        result = {"Data leakage": "Fail" if has_leakage else "Pass"}
-        df = pd.DataFrame.from_dict(result, orient='index', columns=['Flag'])
+        result = {}
+        result["Data Leakage"] = {"Flag": "Fail" if has_leakage else "Pass"}
+        result["Data Leakage"]["Percentage of leaked queries"] = f"{threshold_stats['perc_queries_above_thr']:.2f}%"
+        result["Data Leakage"]["Percentage of leaked targets"] = f"{threshold_stats['perc_targets_above_thr']:.2f}%"
+        df = pd.DataFrame.from_dict(result, orient='index')
         df.index.name = "Statistic"
         generate_simple_report(df, simple_report_path)
     
@@ -124,9 +136,6 @@ def run(train_files, test_files, format,
         mmseqs_dir.mkdir(parents=True, exist_ok=True)
         results.to_csv(mmseqs_dir / outfile, sep='\t', index=False)
 
-        # Filter results for hits above threshold and sort by coverage for HTML report
-        results_filt = results[results['Leaked'] == 'True'].sort_values(by=['qcov', 'tcov'], ascending=False)
-
         # Write filtered fasta files for mapping hits seq IDs back to seqs
         seq_index_mapping.mkdir(parents=True, exist_ok=True)
         new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
@@ -141,11 +150,6 @@ def run(train_files, test_files, format,
         
         # Get basic stats for HTML report
         basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
-
-        # Get threshold stats for HTML report
-        num_train_seqs = len(train_sequences)
-        num_test_seqs = len(test_sequences)
-        threshold_stats = get_threshold_stats(results, results_filt, coverage_threshold, num_train_seqs, num_test_seqs)
 
         # Generate HTML report
         generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, html_report_path, plots_dir)

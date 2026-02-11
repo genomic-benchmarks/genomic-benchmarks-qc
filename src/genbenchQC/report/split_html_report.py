@@ -173,17 +173,17 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
     html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
 
-    html_template = put_data(html_template, "{{train_filename}}", str(basic_stats["train_filename"]))
-    html_template = put_data(html_template, "{{test_filename}}", str(basic_stats["test_filename"]))
-    html_template = put_data(html_template, "{{number_of_sequences_train}}", str(basic_stats["number_of_sequences_train"]))
-    html_template = put_data(html_template, "{{number_of_sequences_test}}", str(basic_stats["number_of_sequences_test"]))
-    html_template = put_data(html_template, "{{min_length_train}}", str(basic_stats["min_length_train"]))
+    html_template = put_data(html_template, "{{train_filename}}", str(basic_stats['train_filename']))
+    html_template = put_data(html_template, "{{test_filename}}", str(basic_stats['test_filename']))
+    html_template = put_data(html_template, "{{number_of_sequences_train}}", str(basic_stats['number_of_sequences_train']))
+    html_template = put_data(html_template, "{{number_of_sequences_test}}", str(basic_stats['number_of_sequences_test']))
+    html_template = put_data(html_template, "{{min_length_train}}", str(basic_stats['min_length_train']))
     html_template = put_data(html_template, "{{mean_length_train}}", f"{basic_stats['mean_length_train']:.2f}")
-    html_template = put_data(html_template, "{{max_length_train}}", str(basic_stats["max_length_train"]))
-    html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats["min_length_test"]))
+    html_template = put_data(html_template, "{{max_length_train}}", str(basic_stats['max_length_train']))
+    html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats['min_length_test']))
     html_template = put_data(html_template, "{{mean_length_test}}", f"{basic_stats['mean_length_test']:.2f}")
-    html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats["max_length_test"]))
-    html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats["coverage_threshold"]:.2f}")
+    html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats['max_length_test']))
+    html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats['coverage_threshold']:.2f}")
     html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}%")
     html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}%")
     html_template = put_data(html_template, "{{histogram_coverage}}", str(plots_paths_dict['Coverage histograms']))
@@ -196,7 +196,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         )
         return html_template
 
-    results_display = results_filt.head(100)
+    results_display = results_filt.head(100).copy() # limit to top 100 hits for display in HTML report
     results_display = add_alignments_to_results(results_display)
 
     rows = []
