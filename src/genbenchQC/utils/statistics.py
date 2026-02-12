@@ -65,8 +65,8 @@ class SequenceStatistics:
             # round to nearest integer
             self.end_position = int(np.round(lengths_75th))
 
-            logging.info(
-                f"End position not provided. Using end position: {self.end_position}{col_info}. "
+            logging.debug(
+                f"End position argument not provided. Using end position: {self.end_position}{col_info}. "
                  "This is the 75th percentile of sequence lengths."
             )
         else:
@@ -86,7 +86,7 @@ class SequenceStatistics:
         self.stats['Sequence column'] = self.seq_column if self.seq_column is not None else 'N/A'
         self.stats['Number of sequences'] = len(self.sequences)
         self.stats['Number of bases'] = sum(len(sequence) for sequence in self.sequences)
-        self.stats['Unique bases'] = list(set(''.join(self.sequences)))
+        self.stats['Unique bases'] = sorted(list(set(''.join(self.sequences))))
         total_bases = sum(len(sequence) for sequence in self.sequences)
         self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / total_bases if total_bases > 0 else 0.0
         self.stats['Number of sequences left after deduplication'] = len(set(self.sequences))
@@ -94,7 +94,7 @@ class SequenceStatistics:
 
     def _compute_per_sequence_statistics(self):
 
-        nucleotides = self.stats['Unique bases'] if 'Unique bases' in self.stats else list(set(''.join(self.sequences)))
+        nucleotides = self.stats['Unique bases'] if 'Unique bases' in self.stats else sorted(list(set(''.join(self.sequences))))
         dinucleotides = [n1 + n2 for n1 in nucleotides for n2 in nucleotides]
 
         nucleotides_per_sequence = {}
@@ -177,8 +177,8 @@ class SequenceStatistics:
         """
 
         sequence_counts = Counter(self.sequences)
-        # remove sequences that are not duplicated
-        sequence_counts = {sequence: count for sequence, count in sequence_counts.items() if count > 1}
+        # remove sequences that are not duplicated and decrement counts by 1 to reflect number of duplications
+        sequence_counts = {sequence: (count - 1) for sequence, count in sequence_counts.items() if count > 1}
         # sort the sequences by their counts
         sequence_counts = dict(sorted(sequence_counts.items(), key=lambda item: item[1], reverse=True))
         
