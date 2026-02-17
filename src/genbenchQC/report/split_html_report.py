@@ -1,5 +1,5 @@
 from datetime import datetime
-from genbenchQC.report.utils import put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genbenchQC.report.utils import encode_image_to_base64, put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genbenchQC.utils.data_leakage_utils import add_alignments_to_results, build_alignment_string
 import importlib.metadata
 
@@ -119,7 +119,7 @@ HTML_TEMPLATE = """
                         <td style="text-align: right;">{{perc_queries_above_thr}}</td>
                     </tr>
                 </table>
-                <img src={{histogram_coverage}} alt="Histogram of Coverage" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
+                <img src="data:image/png;base64, {{histogram_coverage_base64}}" alt="Histogram of Coverage" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
             </section>
 
             <section id="results-section">
@@ -210,7 +210,10 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats['coverage_threshold']:.2f}")
     html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}%")
     html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}%")
-    html_template = put_data(html_template, "{{histogram_coverage}}", str(plots_paths_dict['Coverage histograms']))
+
+    # insert plots as base64-encoded images
+    html_template = put_data(html_template, "{{histogram_coverage_base64}}", 
+                             encode_image_to_base64(plots_paths_dict['Coverage histograms']))
 
     if len(results_filt) == 0:
         html_template = put_data(

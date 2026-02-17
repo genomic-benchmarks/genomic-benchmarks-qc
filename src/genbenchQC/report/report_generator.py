@@ -112,7 +112,7 @@ def generate_split_plots(results, threshold_stats, plots_dir):
     plots_paths_dict = {}
 
     fig = splits_plots.plot_coverage_histograms(results, threshold_stats)
-    plots_paths_dict['Coverage histograms'] = Path(plots_dir.name) / 'coverage_histograms.png'
+    plots_paths_dict['Coverage histograms'] = plots_dir / 'coverage_histograms.png'
     fig.savefig(plots_dir / 'coverage_histograms.png', bbox_inches='tight')
     plt.close(fig)
 
