@@ -218,8 +218,10 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
             "{{results_rows}}",
             "<tr><td colspan='7'>No leaked sequences found across train/test splits.</td></tr>"
         )
+        html_template = put_data(html_template, "{{icon_data_leakage}}", '<span class="status-icon status-pass">✔</span>')
         return html_template
 
+    html_template = put_data(html_template, "{{icon_data_leakage}}", '<span class="status-icon status-fail">✘</span>')
     results_display = results_filt.head(100).copy() # limit to top 100 hits for display in HTML report
     results_display = add_alignments_to_results(results_display)
 
