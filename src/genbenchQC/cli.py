@@ -91,7 +91,7 @@ def evaluate_splits(
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    coverage_threshold: float = typer.Option(0.8, help="Coverage threshold for clustering (between 0 and 1)."),
+    coverage_threshold: float = typer.Option(80.0, help="Coverage threshold for clustering (between 0 and 1)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
 ):

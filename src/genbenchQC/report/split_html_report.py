@@ -103,7 +103,7 @@ HTML_TEMPLATE = """
                 </div>
                 <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
                     <tr>
-                        <td><span>Coverage threshold</span></td>
+                        <td><span>Threshold (%)</span></td>
                         <td style="text-align: right;">{{coverage_threshold}}</td>
                     </tr>
                     <tr style="height: 15px;">
@@ -131,7 +131,7 @@ HTML_TEMPLATE = """
                             <th>Target (T)</th>
                             <th>Q Cov.</th>
                             <th>T Cov.</th>
-                            <th>Perc. Identity</th>
+                            <th>% Identity</th>
                             <th>E-value</th>
                             <th>Alignment</th>
                         </tr>
@@ -207,9 +207,9 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats['min_length_test']))
     html_template = put_data(html_template, "{{mean_length_test}}", f"{basic_stats['mean_length_test']:.2f}")
     html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats['max_length_test']))
-    html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats['coverage_threshold']:.2f}")
-    html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}%")
-    html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}%")
+    html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats['coverage_threshold']:.1f}")
+    html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}")
+    html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}")
 
     # insert plots as base64-encoded images
     html_template = put_data(html_template, "{{histogram_coverage_base64}}", 
@@ -239,8 +239,8 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         <td>{row['target']}</td>
         <td style="text-align: center; ">{row['qcov']:.2f}</td>
         <td style="text-align: center; ">{row['tcov']:.2f}</td>
-        <td style="text-align: right; padding-right: 20px;">{row['pident']:.1f}%</td>
-        <td style="text-align: left; ">{row['evalue']}</td>
+        <td style="text-align: center; ">{row['pident']:.1f}</td>
+        <td style="text-align: center; ">{row['evalue']:2e}</td>
         <td style="text-align: center;">
             <button onclick="toggleAlignment('aln-{i}', this)">
                 Show

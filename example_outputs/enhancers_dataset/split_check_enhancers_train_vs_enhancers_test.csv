@@ -1,2 +1,2 @@
-Statistic,Flag
-Data leakage,Fail
+Statistic,Flag,Percentage of leaked queries,Percentage of leaked targets
+Data Leakage,Fail,2.94%,0.99%

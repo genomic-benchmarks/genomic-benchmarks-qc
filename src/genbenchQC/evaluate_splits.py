@@ -37,7 +37,7 @@ def run(train_files, test_files, format,
         out_folder: Optional[str] = '.', 
         sequence_column: Optional[list[str]] = None, 
         report_types: Optional[list[str]] = None, 
-        coverage_threshold: Optional[float] = 0.80, 
+        coverage_threshold: Optional[float] = 80.0, 
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
@@ -95,7 +95,8 @@ def run(train_files, test_files, format,
 
     # Add columns to results for coverage and whether the hit is above the threshold for potential leakage
     results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
-    results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov'] >= coverage_threshold else 'False', axis=1)
+    results['min_cov*pident'] = results['min_cov'] * results['pident']
+    results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov*pident'] >= coverage_threshold else 'False', axis=1)
 
     # Build filename for reports based on input file names
     filename = ("split_check_" 
@@ -105,7 +106,7 @@ def run(train_files, test_files, format,
 
 
     # Filter results for hits above threshold and sort by coverage
-    results_filt = results[results['Leaked'] == 'True'].sort_values(by=['qcov', 'tcov'], ascending=False)
+    results_filt = results[results['Leaked'] == 'True'].sort_values(by=['min_cov*pident'], ascending=False)
 
     # Get threshold stats
     num_train_seqs = len(train_sequences)
@@ -143,10 +144,10 @@ def run(train_files, test_files, format,
         filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, set(results_filt["query"]))
         filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, set(results_filt["target"]))
 
-        # Prepare results (hits over threshold) for HTML report
-        results_filt['qcov'] = results_filt['qcov'].round(2)
-        results_filt['tcov'] = results_filt['tcov'].round(2)
-        results_filt['evalue'] = results_filt['evalue'].apply(lambda x: f"{x:.2e}")
+        # # Prepare results (hits over threshold) for HTML report
+        # results_filt['qcov'] = results_filt['qcov'].round(2)
+        # results_filt['tcov'] = results_filt['tcov'].round(2)
+        # results_filt['evalue'] = results_filt['evalue'].apply(lambda x: f"{x:.2e}")
         
         # Get basic stats for HTML report
         basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
