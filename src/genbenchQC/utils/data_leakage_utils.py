@@ -45,7 +45,7 @@ def filter_fasta_by_ids(fasta_path, new_fasta_path,ids_to_keep):
             if write:
                 file_out.write(line)
 
-def build_alignment_string(row, width=80, color=True):
+def build_alignment_string(row, width=80, color=True, validate=True):
     def get_midline(qaln: str, taln: str) -> str:
         # '|' = match, '.' = mismatch, ' ' = gap
         return "".join(
@@ -54,6 +54,52 @@ def build_alignment_string(row, width=80, color=True):
             else "."
             for q, t in zip(qaln, taln)
         )
+
+    def validate_inputs(qstart, tstart, qend, tend, qseq, tseq, qaln, taln):
+        # ---- Coordinate sanity ---
+        def validate_coords(start, end, seqlen, label):
+            if start < 1:
+                raise ValueError(f"{label} start < 1 (1-based expected): {start}")
+            if end < start:
+                raise ValueError(f"{label} end ({end}) < start ({start})")
+            if end > seqlen:
+                raise ValueError(
+                    f"{label} coordinates [{start}, {end}] exceed sequence length {seqlen}"
+                )
+            
+        q_len = len(qseq)
+        t_len = len(tseq)
+        validate_coords(qstart, qend, q_len, "Query")
+        validate_coords(tstart, tend, t_len, "Target")
+
+        # ---- Alignment consistency ----
+        if len(qaln) != len(taln):
+            raise ValueError(
+                f"Alignment length mismatch: "
+                f"  len(qaln)={len(qaln)}, len(taln)={len(taln)}"
+            )
+
+        # ---- Ungapped alignment should match original slice ----
+        qstart0 = qstart - 1
+        tstart0 = tstart - 1
+
+        expected_q = qseq[qstart0:qend]
+        expected_t = tseq[tstart0:tend]
+
+        ungapped_qaln = qaln.replace("-", "")
+        ungapped_taln = taln.replace("-", "")
+
+        if ungapped_qaln != expected_q:
+            raise ValueError(
+                f"Query alignment mismatch:\n"
+                f"  Ungapped aligned sequence does not match original sequence slice."
+            )
+
+        if ungapped_taln != expected_t:
+            raise ValueError(
+                f"Target alignment mismatch:\n"
+                f"  Ungapped aligned sequence does not match original sequence slice."
+            )    
     
     # Get aligned sequences with appropriate padding to show the alignment in the correct position relative to the original sequences
     def get_alignment(qstart, tstart, qseq, tseq, qaln, taln, tend, qend):
@@ -100,16 +146,22 @@ def build_alignment_string(row, width=80, color=True):
     def format_seq(seq):
         return "".join(color_base(c) for c in seq) if color else seq
 
+    qstart = int(row["qstart"])
+    tstart = int(row["tstart"])
+    qend   = int(row["qend"])
+    tend   = int(row["tend"])
+
+    qseq = row["qseq"]
+    tseq = row["tseq"]
+    qaln = row["qaln"]
+    taln = row["taln"]
+
+    if validate:
+        validate_inputs(qstart, tstart, qend, tend, qseq, tseq, qaln, taln)
+
     t_line, mid_line, q_line = get_alignment(
-        qstart=int(row["qstart"]),
-        tstart=int(row["tstart"]),
-        qseq=row["qseq"],
-        tseq=row["tseq"],
-        qaln=row["qaln"],
-        taln=row["taln"],
-        tend=int(row["tend"]),
-        qend=int(row["qend"]),
-    )
+        qstart, tstart, qseq, tseq, qaln, taln, tend, qend
+    )    
 
     blocks = []
     for t, m, q in zip_longest(wrap(t_line, width), wrap(mid_line, width), wrap(q_line, width), fillvalue=""):
@@ -119,8 +171,3 @@ def build_alignment_string(row, width=80, color=True):
         blocks.append("")
 
     return "\n".join(blocks)
-
-# Add alignment strings to the results DataFrame
-def add_alignments_to_results(results):
-    results["alignment"] = results.apply(lambda row: build_alignment_string(row, color=False), axis=1)
-    return results

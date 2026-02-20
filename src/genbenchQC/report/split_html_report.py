@@ -1,6 +1,6 @@
 from datetime import datetime
-from genbenchQC.report.utils import encode_image_to_base64, put_data, put_file_details, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
-from genbenchQC.utils.data_leakage_utils import add_alignments_to_results, build_alignment_string
+from genbenchQC.report.utils import encode_image_to_base64, put_data, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genbenchQC.utils.data_leakage_utils import build_alignment_string
 import importlib.metadata
 
 HTML_TEMPLATE = """
@@ -226,13 +226,18 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
 
     html_template = put_data(html_template, "{{icon_data_leakage}}", '<span class="status-icon status-fail">✘</span>')
     results_display = results_filt.head(100).copy() # limit to top 100 hits for display in HTML report
-    results_display = add_alignments_to_results(results_display)
 
     rows = []
 
     for i, row in results_display.iterrows():
-        alignment_str_color = build_alignment_string(row, color=True)
-
+        try: 
+            alignment_str_color = build_alignment_string(row, color=True)
+        except Exception as e:
+            alignment_str_color = (
+                '<span style="color:red; font-weight:bold;">'
+                'ALIGNMENT VISUALISATION ERROR</span><br>'
+                f'{type(e).__name__}: {str(e)}'
+            )
         rows.append(f"""
     <tr>
         <td>{row['query']}</td>
