@@ -24,7 +24,8 @@ def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
                         {tmp_dir} \
                         --format-output query,target,qcov,tcov,pident,evalue,qstart,qend,tstart,tend,alnlen,qseq,tseq,qaln,taln \
                         --format-mode 4 \
-                        --search-type 3 >/dev/null 2>&1")
+                        --search-type 3 \
+                        --strand 1 >/dev/null 2>&1")
     if errcode != 0:
         logging.error(f"MMseqs2 search failed with error code {errcode}.")
         raise RuntimeError(f"MMseqs2 search failed with error code {errcode}.")
