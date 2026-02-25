@@ -139,18 +139,39 @@ HTML_TEMPLATE = """
                 </div>
 
                 <div id="results-explanation" class="explanation-text">
-                    This table lists the top 100 alignments between test (query) and train (target) sequences
-                    that exceed the data leakage threshold.
+                    <p>
+                        This table lists the top 100 alignments between test (query) and train (target)
+                        sequences that exceed the defined similarity threshold.
+                    </p>
 
-                    <ul style="margin-top: 10px;">
-                        <li><strong>Query (Q):</strong> 0-based index of the test sequence in the input test file order.</li>
-                        <li><strong>Target (T):</strong> 0-based index of the train sequence in the input train file order.</li>
-                        <li><strong>Q Cov.:</strong> Fraction of the query sequence covered by the alignment (0–1).</li>
-                        <li><strong>T Cov.:</strong> Fraction of the target sequence covered by the alignment (0–1).</li>
-                        <li><strong>% Identity:</strong> Percent identical aligned positions in the aligned region.</li>
-                        <li><strong>E-value:</strong> MMSeqs2 E-value (lower is more "significant").</li>
-                        <li><strong>Alignment:</strong> Click “Show” to expand the alignment visualisation for a row.</li>
-                    </ul>
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 180px 1fr;
+                        gap: 4px 14px;
+                        margin-top: 10px;
+                        margin-left: 20px;
+                    ">
+                        <div><strong>Query (Q)</strong></div>
+                        <div>0-based index of the test sequence in the input test file order.</div>
+
+                        <div><strong>Target (T)</strong></div>
+                        <div>0-based index of the train sequence in the input train file order.</div>
+
+                        <div><strong>Q Cov.</strong></div>
+                        <div>Fraction of the query sequence covered by the alignment (0–1).</div>
+
+                        <div><strong>T Cov.</strong></div>
+                        <div>Fraction of the target sequence covered by the alignment (0–1).</div>
+
+                        <div><strong>% Identity</strong></div>
+                        <div>Percent identical aligned positions in the aligned region.</div>
+
+                        <div><strong>E-value</strong></div>
+                        <div>MMSeqs2 E-value (lower is more "significant").</div>
+
+                        <div><strong>Alignment</strong></div>
+                        <div>Click “Show” to expand the alignment visualisation for a row.</div>
+                    </div>
                 </div>
 
                 <table style="width: 100%; border-collapse: collapse;">
