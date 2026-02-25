@@ -96,14 +96,22 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="data-leakage-explanation" class="explanation-text">
-                    Using MMSeqs2, test set sequencies (queries) are aligned against train set sequences (target database), to identify similar sequences across splits.
-                    Query and target sequences are 0-based indexed, in the order they appear in the input files. Refer to fasta files for index-to-sequence mapping. 
-                    Data leakage is defined as the percentage of sequences in the train/test sets that have exceeded a set coverage threshold.
-                    Coverage is the sequence length overlap. The alignment covers at least this threshold of the query sequence and of the target sequence.
+                    <p>
+                        GenBenchQC evaluate-splits uses 
+                        <a href="https://github.com/soedinglab/MMseqs2" target="_blank">MMseqs2</a> 
+                        to perform an ultra fast and sensitive test sequence search against a train set database and compute alignment-based 
+                        metrics for detecting data leakage across train–test splits.
+                    </p>
+                    <p>
+                        Data leakage is defined as the percentage of sequences in the test/train set that have exceeded a set similarity threshold. 
+                        The similarity threshold is defined as the alignment coverage factored by the percentage identity. 
+                        Coverage is the fraction of the test (query) and train (target) sequences covered by the alignment, 
+                        and percentage identity is the proportion of identical aligned positions in the aligned region.
+                    </p>
                 </div>
                 <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
                     <tr>
-                        <td><span>Threshold (%)</span></td>
+                        <td><span>Similarity threshold (%)</span></td>
                         <td style="text-align: right;">{{coverage_threshold}}</td>
                     </tr>
                     <tr style="height: 15px;">
