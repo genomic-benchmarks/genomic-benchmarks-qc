@@ -103,10 +103,10 @@ HTML_TEMPLATE = """
                         metrics for detecting data leakage across train–test splits.
                     </p>
                     <p>
-                        Data leakage is defined as the percentage of sequences in the test/train set that have exceeded a set similarity threshold. 
-                        Similarity is defined as the alignment coverage factored by the percentage identity. 
-                        Coverage is the fraction of the test (query) and train (target) sequences covered by the alignment, 
-                        and percentage identity is the proportion of identical aligned positions in the aligned region.
+                        Data leakage is the percentage of train/test sequences whose best alignment exceeds the configured similarity threshold. 
+                        Here, similarity equals min(query coverage, target coverage) × percent identity, 
+                        where coverage is the fraction of each sequence spanned by the alignment, 
+                        and percent identity is the proportion of identical aligned positions.
                     </p>
                 </div>
                 <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
