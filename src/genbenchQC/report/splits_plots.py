@@ -1,10 +1,13 @@
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 import numpy as np
 import pandas as pd
+import seaborn as sns
+
+from genbenchQC.report.classes_plots import HuePalette, prepare_legend
 
 def plot_similarity_histograms(results, threshold_stats):
 
-    # Get the maximum signal (min_cov*pident) for each unique query and target
     def _max_signal_per_id(df: pd.DataFrame, id_col: str, metric_col: str):
         if df.empty:
             return pd.Series(dtype=float)
@@ -21,7 +24,6 @@ def plot_similarity_histograms(results, threshold_stats):
         unique_queries = pd.Series(dtype=float)
         unique_targets = pd.Series(dtype=float)
 
-    # Count combinations without any hits
     missing_data = max(threshold_stats['total_combinations'] - threshold_stats['hits'], 0)
 
     def _build_hist_arrays(values: pd.Series):
@@ -35,22 +37,40 @@ def plot_similarity_histograms(results, threshold_stats):
     qcov, qweights = _build_hist_arrays(unique_queries)
     tcov, tweights = _build_hist_arrays(unique_targets)
 
-    # Define bins for histogram
-    bins = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    
-    # Create histogram plot
-    fig, ax = plt.subplots()
+    bins = np.arange(0, 110, 10)
+
+    fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
+    sns.set_style("white")
+    palette = HuePalette()
+    hist_kwargs = dict(alpha=0.65, edgecolor="black")
+
     if qcov.size:
-        ax.hist(qcov, bins=bins, weights=qweights, alpha=0.5, label="Test")
-    else:
-        ax.hist([], bins=bins, alpha=0.5, label="Test")
+        ax.hist(qcov, bins=bins, weights=qweights, label="Test", color=palette[0], **hist_kwargs)
     if tcov.size:
-        ax.hist(tcov, bins=bins, weights=tweights, alpha=0.5, label="Train")
-    else:
-        ax.hist([], bins=bins, alpha=0.5, label="Train")
-    ax.axvline(threshold_stats["similarity_threshold"], linestyle="--", linewidth=1.2, color="red", label="Threshold")
+        ax.hist(tcov, bins=bins, weights=tweights, label="Train", color=palette[1], **hist_kwargs)
+
+    ax.axvline(
+        threshold_stats["similarity_threshold"],
+        linestyle="--",
+        linewidth=1.2,
+        color="red",
+        label="Threshold",
+    )
+    ax.set_xlim(0, 100)
+    ax.set_xticks(np.arange(0, 101, 10))
     ax.set_yscale("log")
-    ax.set_xlabel("Sequence Similarity") # Max of min(qcov, tcov) per unique query/target
-    ax.set_ylabel("Count (log scale)")
-    ax.legend()
+    ax.set_xlabel("Sequence similarity (%)", fontsize=14)
+    ax.set_ylabel("Count (log scale)", fontsize=14)
+    ax.tick_params(axis='both', labelsize=12)
+    ax.yaxis.set_major_locator(ticker.LogLocator(base=10))
+    ax.yaxis.set_minor_locator(ticker.NullLocator())
+    ax.yaxis.set_major_formatter(ticker.LogFormatterSciNotation(base=10))
+    ax.grid(False)
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.0)
+        spine.set_edgecolor("black")
+
+    prepare_legend(ax, box_to_anchor=(0.5, -0.2))
+    fig.tight_layout()
     return fig

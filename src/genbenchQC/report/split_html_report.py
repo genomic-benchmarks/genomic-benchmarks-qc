@@ -104,7 +104,7 @@ HTML_TEMPLATE = """
                     </p>
                     <p>
                         Data leakage is defined as the percentage of sequences in the test/train set that have exceeded a set similarity threshold. 
-                        The similarity threshold is defined as the alignment coverage factored by the percentage identity. 
+                        Similarity is defined as the alignment coverage factored by the percentage identity. 
                         Coverage is the fraction of the test (query) and train (target) sequences covered by the alignment, 
                         and percentage identity is the proportion of identical aligned positions in the aligned region.
                     </p>
@@ -127,7 +127,8 @@ HTML_TEMPLATE = """
                         <td style="text-align: right;">{{perc_queries_above_thr}}</td>
                     </tr>
                 </table>
-                <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
+                <!-- <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 90%; width: 90%; height: auto; display: block; margin: 0 auto;">   -->
+                <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 100%; width: 100%; height: auto; display: block; margin: 0 auto;">
             </section>
 
             <section id="results-section">
@@ -151,10 +152,10 @@ HTML_TEMPLATE = """
                         margin-top: 10px;
                         margin-left: 20px;
                     ">
-                        <div><strong>Query (Q)</strong></div>
+                        <div><strong>Query</strong></div>
                         <div>0-based index of the test sequence in the input test file order.</div>
 
-                        <div><strong>Target (T)</strong></div>
+                        <div><strong>Target</strong></div>
                         <div>0-based index of the train sequence in the input train file order.</div>
 
                         <div><strong>Q Cov.</strong></div>
@@ -177,8 +178,8 @@ HTML_TEMPLATE = """
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr>
-                            <th>Query (Q)</th>
-                            <th>Target (T)</th>
+                            <th style="text-align: left;">Query (Q)</th>
+                            <th style="text-align: left;">Target (T)</th>
                             <th>Q Cov.</th>
                             <th>T Cov.</th>
                             <th>% Identity</th>
@@ -295,7 +296,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         <td style="text-align: center; ">{row['qcov']:.2f}</td>
         <td style="text-align: center; ">{row['tcov']:.2f}</td>
         <td style="text-align: center; ">{row['pident']:.1f}</td>
-        <td style="text-align: center; ">{row['evalue']:2e}</td>
+        <td style="text-align: center; ">{row['evalue']:.2e}</td>
         <td style="text-align: center;">
             <button onclick="toggleAlignment('aln-{i}', this)">
                 Show
