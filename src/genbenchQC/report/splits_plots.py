@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-def plot_coverage_histograms(results, threshold_stats):
+def plot_similarity_histograms(results, threshold_stats):
 
     # Get the maximum signal (min_cov*pident) for each unique query and target
     def _max_signal_per_id(df: pd.DataFrame, id_col: str, metric_col: str):
@@ -48,7 +48,7 @@ def plot_coverage_histograms(results, threshold_stats):
         ax.hist(tcov, bins=bins, weights=tweights, alpha=0.5, label="Train")
     else:
         ax.hist([], bins=bins, alpha=0.5, label="Train")
-    ax.axvline(threshold_stats["coverage_threshold"], linestyle="--", linewidth=1.2, color="red", label="Threshold")
+    ax.axvline(threshold_stats["similarity_threshold"], linestyle="--", linewidth=1.2, color="red", label="Threshold")
     ax.set_yscale("log")
     ax.set_xlabel("Sequence Similarity") # Max of min(qcov, tcov) per unique query/target
     ax.set_ylabel("Count (log scale)")

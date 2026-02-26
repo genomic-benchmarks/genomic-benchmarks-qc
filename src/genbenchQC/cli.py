@@ -91,7 +91,7 @@ def evaluate_splits(
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    coverage_threshold: float = typer.Option(80.0, help="Coverage threshold for clustering (between 0 and 1)."),
+    similarity_threshold: float = typer.Option(80.0, help="Similarity threshold for data leakage detection (%)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
 ):
@@ -142,7 +142,7 @@ def evaluate_splits(
         out_folder=out_folder,
         sequence_column=sequence_column,
         report_types=report_types,
-        coverage_threshold=coverage_threshold,
+        similarity_threshold=similarity_threshold,
         log_level=log_level,
         log_file=log_file,
     )

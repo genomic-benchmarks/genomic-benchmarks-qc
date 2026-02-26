@@ -111,9 +111,9 @@ def generate_split_plots(results, threshold_stats, plots_dir):
 
     plots_paths_dict = {}
 
-    fig = splits_plots.plot_coverage_histograms(results, threshold_stats)
-    plots_paths_dict['Coverage histograms'] = plots_dir / 'coverage_histograms.png'
-    fig.savefig(plots_dir / 'coverage_histograms.png', bbox_inches='tight')
+    fig = splits_plots.plot_similarity_histograms(results, threshold_stats)
+    plots_paths_dict['Similarity histograms'] = plots_dir / 'similarity_histograms.png'
+    fig.savefig(plots_dir / 'similarity_histograms.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths_dict

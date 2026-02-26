@@ -112,7 +112,7 @@ HTML_TEMPLATE = """
                 <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
                     <tr>
                         <td><span>Similarity threshold (%)</span></td>
-                        <td style="text-align: right;">{{coverage_threshold}}</td>
+                        <td style="text-align: right;">{{similarity_threshold}}</td>
                     </tr>
                     <tr style="height: 15px;">
                         <td></td>
@@ -127,7 +127,7 @@ HTML_TEMPLATE = """
                         <td style="text-align: right;">{{perc_queries_above_thr}}</td>
                     </tr>
                 </table>
-                <img src="data:image/png;base64, {{histogram_coverage_base64}}" alt="Histogram of Coverage" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
+                <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">  
             </section>
 
             <section id="results-section">
@@ -257,13 +257,13 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats['min_length_test']))
     html_template = put_data(html_template, "{{mean_length_test}}", f"{basic_stats['mean_length_test']:.2f}")
     html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats['max_length_test']))
-    html_template = put_data(html_template, "{{coverage_threshold}}", f"{threshold_stats['coverage_threshold']:.1f}")
+    html_template = put_data(html_template, "{{similarity_threshold}}", f"{threshold_stats['similarity_threshold']:.1f}")
     html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}")
     html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}")
 
     # insert plots as base64-encoded images
-    html_template = put_data(html_template, "{{histogram_coverage_base64}}", 
-                             encode_image_to_base64(plots_paths_dict['Coverage histograms']))
+    html_template = put_data(html_template, "{{histogram_similarity_base64}}", 
+                             encode_image_to_base64(plots_paths_dict['Similarity histograms']))
 
     if len(results_filt) == 0:
         html_template = put_data(

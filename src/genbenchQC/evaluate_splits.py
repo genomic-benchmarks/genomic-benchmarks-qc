@@ -60,7 +60,7 @@ def run(train_files, test_files, format,
         out_folder: Optional[str] = '.', 
         sequence_column: Optional[list[str]] = None, 
         report_types: Optional[list[str]] = None, 
-        coverage_threshold: Optional[float] = 80.0, 
+        similarity_threshold: Optional[float] = 80.0, 
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
     ):
@@ -76,7 +76,7 @@ def run(train_files, test_files, format,
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
                             Default: ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param coverage_threshold: Coverage threshold for considering a hit from mmseqs2 easy-search as potential leakage. Default: 0.8.
+    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 80.0.
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
@@ -117,10 +117,10 @@ def run(train_files, test_files, format,
         outfile ="mmseqs2_search_result.tsv"
         results = run_search(test_fasta_path, train_fasta_path, tmp_dir / outfile, tmp_dir)
 
-        # Add columns to results for coverage and whether the hit is above the threshold for potential leakage
+        # Add columns to results for similarity and whether the hit is above the threshold for potential leakage
         results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
         results['min_cov*pident'] = results['min_cov'] * results['pident']
-        results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov*pident'] >= coverage_threshold else 'False', axis=1)
+        results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov*pident'] >= similarity_threshold else 'False', axis=1)
 
         # Build filename for reports based on input file names
         filename = ("split_check_" 
@@ -129,13 +129,13 @@ def run(train_files, test_files, format,
                     + Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), ""))
 
 
-        # Filter results for hits above threshold and sort by coverage
+        # Filter results for hits above threshold and sort by similarity
         results_filt = results[results['Leaked'] == 'True'].sort_values(by=['min_cov*pident'], ascending=False)
 
         # Get threshold stats
         num_train_seqs = len(train_sequences)
         num_test_seqs = len(test_sequences)
-        threshold_stats = get_threshold_stats(results, results_filt, coverage_threshold, num_train_seqs, num_test_seqs)
+        threshold_stats = get_threshold_stats(results, results_filt, similarity_threshold, num_train_seqs, num_test_seqs)
 
         if 'simple' in report_types:
             simple_report_path = out_folder / (filename + '.csv')

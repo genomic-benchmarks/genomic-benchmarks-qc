@@ -15,7 +15,7 @@ def get_basic_stats(filename_train, train_sequences, filename_test, test_sequenc
     }
     return basic_stats
 
-def get_threshold_stats(results, results_filt, coverage_threshold, num_train_seqs, num_test_seqs):
+def get_threshold_stats(results, results_filt, similarity_threshold, num_train_seqs, num_test_seqs):
 
     num_queries_above_thr = len(results_filt['query'].unique())
     perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 # Assuming num_test_seqs contains unique test sequences
@@ -24,7 +24,7 @@ def get_threshold_stats(results, results_filt, coverage_threshold, num_train_seq
     perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 # Assuming num_train_seqs contains unique train sequences
 
     threshold_stats = {
-        "coverage_threshold": coverage_threshold,
+        "similarity_threshold": similarity_threshold,
         "perc_queries_above_thr": perc_queries_above_thr,
         "perc_targets_above_thr": perc_targets_above_thr,
         "hits": len(results),
