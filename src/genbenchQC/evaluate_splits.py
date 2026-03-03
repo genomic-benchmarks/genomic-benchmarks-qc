@@ -117,6 +117,13 @@ def run(train_files, test_files, format,
         outfile ="mmseqs2_search_result.tsv"
         results = run_search(test_fasta_path, train_fasta_path, tmp_dir / outfile, tmp_dir)
 
+        # Validate MMseqs2 output
+        required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','qseq','tseq','qaln','taln']
+        invalid_rows = results[required_cols].isna().any(axis=1).sum()
+        if invalid_rows > 0:
+            logging.debug(f"Found {invalid_rows} rows with missing values in MMseqs2 output. Removing them.")
+            results = results.dropna(subset=required_cols)
+
         # Add columns to results for similarity and whether the hit is above the threshold for potential leakage
         results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
         results['min_cov*pident'] = results['min_cov'] * results['pident']
@@ -127,7 +134,6 @@ def run(train_files, test_files, format,
                     + Path(train_files[0]).name.replace("".join(Path(train_files[0]).suffixes), "") 
                     + "_vs_" 
                     + Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), ""))
-
 
         # Filter results for hits above threshold and sort by similarity
         results_filt = results[results['Leaked'] == 'True'].sort_values(by=['min_cov*pident'], ascending=False)
@@ -167,11 +173,6 @@ def run(train_files, test_files, format,
             new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
             filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, set(results_filt["query"]))
             filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, set(results_filt["target"]))
-
-            # # Prepare results (hits over threshold) for HTML report
-            # results_filt['qcov'] = results_filt['qcov'].round(2)
-            # results_filt['tcov'] = results_filt['tcov'].round(2)
-            # results_filt['evalue'] = results_filt['evalue'].apply(lambda x: f"{x:.2e}")
             
             # Get basic stats for HTML report
             basic_stats = get_basic_stats(train_filenames, train_sequences, test_filenames, test_sequences)
