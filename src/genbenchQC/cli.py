@@ -126,7 +126,7 @@ def evaluate_splits(
         typer.echo(f"Error: Invalid log level '{log_level}'. Must be one of: {', '.join(VALID_LOG_LEVELS)}", err=True)
         raise typer.Exit(code=1)
     
-    # Validate thresholds are in valid range [0, 1]
+    # Validate thresholds are in valid range [0, 100]
     if not 0 <= similarity_threshold <= 100:
         typer.echo(f"Error: similarity_threshold must be between 0 and 100, got {similarity_threshold}", err=True)
         raise typer.Exit(code=1)
