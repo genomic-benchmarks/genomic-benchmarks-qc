@@ -87,7 +87,7 @@ HTML_TEMPLATE = """
                 </table>            
             </section>
 
-            <section id="similarity-section">
+            <section id="similarity-section" class="table-section">
                 <div class="sidebar-item">
                     {{icon_data_leakage}}
                     <div class="section-header">
@@ -109,24 +109,25 @@ HTML_TEMPLATE = """
                         and percent identity is the proportion of identical aligned positions.
                     </p>
                 </div>
-                <table style="width: 49%; border-collapse: collapse; margin: 20px 0;">
-                    <tr>
-                        <td><span>Similarity threshold (%)</span></td>
-                        <td style="text-align: right;">{{similarity_threshold}}</td>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr id="filename">
+                        <td><span>Filename</span></td>
+                        <td style="text-align: center;">{{test_filename}}</td>
+                        <td style="text-align: center;">{{train_filename}}</td>
                     </tr>
-                    <tr style="height: 15px;">
-                        <td></td>
-                        <td></td>
+                    <tr id="leakage-percentage">
+                        <td><span>Data Leakage (percentage)</span></td>
+                        <td style="text-align: center;">{{perc_queries_above_thr}}%</td>
+                        <td style="text-align: center;">{{perc_targets_above_thr}}%</td>
                     </tr>
-                    <tr>
-                        <td><span>Data leakage in train set (%)</span></td>
-                        <td style="text-align: right;">{{perc_targets_above_thr}}</td>
-                    </tr>                    
-                    <tr>
-                        <td><span>Data leakage in test set (%)</span></td>
-                        <td style="text-align: right;">{{perc_queries_above_thr}}</td>
+                    <tr id="leakage-count">
+                        <td><span>Data Leakage (count)</span></td>
+                        <td style="text-align: center;">{{num_queries_above_thr}}</td>
+                        <td style="text-align: center;">{{num_targets_above_thr}}</td>
                     </tr>
-                </table>
+                </table> 
+                <span>Similarity threshold {{similarity_threshold}}%</span>
+
                 <!-- <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 90%; width: 90%; height: auto; display: block; margin: 0 auto;">   -->
                 <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 100%; width: 100%; height: auto; display: block; margin: 0 auto;">
             </section>
@@ -183,6 +184,7 @@ HTML_TEMPLATE = """
                             <th>Q Cov.</th>
                             <th>T Cov.</th>
                             <th>% Identity</th>
+                            <th>Similarity</th>
                             <th>E-value</th>
                             <th>Alignment</th>
                         </tr>
@@ -258,9 +260,11 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats['min_length_test']))
     html_template = put_data(html_template, "{{mean_length_test}}", f"{basic_stats['mean_length_test']:.2f}")
     html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats['max_length_test']))
-    html_template = put_data(html_template, "{{similarity_threshold}}", f"{threshold_stats['similarity_threshold']:.1f}")
-    html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.1f}")
-    html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.1f}")
+    html_template = put_data(html_template, "{{similarity_threshold}}", f"{threshold_stats['similarity_threshold']:.2f}")
+    html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.2f}")
+    html_template = put_data(html_template, "{{num_queries_above_thr}}", f"{threshold_stats['num_queries_above_thr']}")
+    html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.2f}")
+    html_template = put_data(html_template, "{{num_targets_above_thr}}", f"{threshold_stats['num_targets_above_thr']}")
 
     # insert plots as base64-encoded images
     html_template = put_data(html_template, "{{histogram_similarity_base64}}", 
@@ -296,6 +300,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         <td style="text-align: center; ">{row['qcov']:.2f}</td>
         <td style="text-align: center; ">{row['tcov']:.2f}</td>
         <td style="text-align: center; ">{row['pident']:.1f}</td>
+        <td style="text-align: center; ">{row['min_cov*pident']:.2f}</td>
         <td style="text-align: center; ">{row['evalue']:.2e}</td>
         <td style="text-align: center;">
             <button onclick="toggleAlignment('aln-{i}', this)">
