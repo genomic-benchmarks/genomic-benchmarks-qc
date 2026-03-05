@@ -127,7 +127,6 @@ HTML_TEMPLATE = """
                         <td style="text-align: center;">{{num_targets_above_thr}}</td>
                     </tr>
                 </table> 
-                <span>Similarity threshold {{similarity_threshold}}%</span>
 
                 <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 100%; width: 100%; height: auto; display: block; margin: 0 auto;">
             </section>
@@ -263,7 +262,6 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{min_length_test}}", str(basic_stats['min_length_test']))
     html_template = put_data(html_template, "{{mean_length_test}}", f"{basic_stats['mean_length_test']:.2f}")
     html_template = put_data(html_template, "{{max_length_test}}", str(basic_stats['max_length_test']))
-    html_template = put_data(html_template, "{{similarity_threshold}}", f"{threshold_stats['similarity_threshold']:.2f}")
     html_template = put_data(html_template, "{{perc_queries_above_thr}}", f"{threshold_stats['perc_queries_above_thr']:.2f}")
     html_template = put_data(html_template, "{{num_queries_above_thr}}", f"{threshold_stats['num_queries_above_thr']}")
     html_template = put_data(html_template, "{{perc_targets_above_thr}}", f"{threshold_stats['perc_targets_above_thr']:.2f}")

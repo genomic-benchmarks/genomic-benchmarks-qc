@@ -27,17 +27,39 @@ def plot_similarity_histograms(results, threshold_stats):
     qcov, qweights = _build_hist_arrays(unique_queries, missing_data_query)
     tcov, tweights = _build_hist_arrays(unique_targets, missing_data_target)
 
-    bins = np.arange(0, 110, 10)
+    bins = list(range(0, 110, 10))
 
-    sns.set_style("white")
     fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
-    hist_kwargs = dict(alpha=0.65, edgecolor="black")
 
     if qcov.size:
-        ax.hist(qcov, bins=bins, weights=qweights, label="Test", color=palette[0], **hist_kwargs)
+        qhist_df = pd.DataFrame({"similarity": qcov, "weight": qweights})
+        sns.histplot(
+            data=qhist_df,
+            x="similarity",
+            weights="weight",
+            bins=bins,
+            stat="count",
+            element="bars",
+            color=palette[0],
+            label="Test",
+            ax=ax,
+            alpha=0.7,
+        )
     if tcov.size:
-        ax.hist(tcov, bins=bins, weights=tweights, label="Train", color=palette[1], **hist_kwargs)
+        thist_df = pd.DataFrame({"similarity": tcov, "weight": tweights})
+        sns.histplot(
+            data=thist_df,
+            x="similarity",
+            weights="weight",
+            bins=bins,
+            stat="count",
+            element="bars",
+            color=palette[1],
+            label="Train",
+            ax=ax,
+            alpha=0.7,
+        )
 
     ax.axvline(
         threshold_stats["similarity_threshold"],
@@ -52,15 +74,6 @@ def plot_similarity_histograms(results, threshold_stats):
     ax.set_xlabel("Sequence similarity (%)", fontsize=14)
     ax.set_ylabel("Count (log scale)", fontsize=14)
     ax.tick_params(axis='both', labelsize=12)
-    ax.yaxis.set_major_locator(ticker.LogLocator(base=10))
-    ax.yaxis.set_minor_locator(ticker.NullLocator())
-    ax.yaxis.set_major_formatter(ticker.LogFormatterSciNotation(base=10))
-    ax.grid(False)
-    for spine in ax.spines.values():
-        spine.set_visible(True)
-        spine.set_linewidth(1.0)
-        spine.set_edgecolor("black")
 
-    prepare_legend(ax, box_to_anchor=(0.5, -0.2))
-    fig.tight_layout()
+    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.2))
     return fig
