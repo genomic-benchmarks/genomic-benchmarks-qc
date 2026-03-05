@@ -182,7 +182,7 @@ def run(train_files, test_files, format,
 
             logging.info("Train-test split evaluation successfully completed.")
     except Exception:
-        logging.exception(f"Train-test split evaluation failed. ")
+        logging.exception("Train-test split evaluation failed. ")
         raise
     finally: 
         logging.debug("Removing temporary files.")

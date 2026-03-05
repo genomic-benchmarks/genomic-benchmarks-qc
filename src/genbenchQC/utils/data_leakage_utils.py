@@ -91,14 +91,14 @@ def build_alignment_string(row, width=80, color=True, validate=True):
 
         if ungapped_qaln != expected_q:
             raise ValueError(
-                f"Query alignment mismatch:\n"
-                f"  Ungapped aligned sequence does not match original sequence slice."
+                "Query alignment mismatch:\n"
+                "  Ungapped aligned sequence does not match original sequence slice."
             )
 
         if ungapped_taln != expected_t:
             raise ValueError(
-                f"Target alignment mismatch:\n"
-                f"  Ungapped aligned sequence does not match original sequence slice."
+                "Target alignment mismatch:\n"
+                "  Ungapped aligned sequence does not match original sequence slice."
             )    
     
     # Get aligned sequences with appropriate padding to show the alignment in the correct position relative to the original sequences
