@@ -6,10 +6,11 @@ import logging
 
 from genbenchQC.report.sequence_html_report import get_sequence_html_template
 from genbenchQC.report.classes_html_report import get_dataset_html_template
-from genbenchQC.report.split_html_report import get_train_test_html_template
+from genbenchQC.report.split_html_report import get_splits_html_template
 from genbenchQC.utils.input_utils import write_stats_json
 from genbenchQC.report import classes_plots
 from genbenchQC.report import sequences_plots
+from genbenchQC.report import splits_plots
 
 def generate_sequence_plots(stats_dict, output_path, end_position, plot_type='boxen'):
     """
@@ -92,15 +93,30 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_train_test_html_report(clusters, train_filename, train_seq, test_filename, test_seq, output_path, identity_threshold, alignment_coverage):
+def generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, output_path, plots_dir):
     """
-    Generate an HTML report listing mixed clusters.
+    Generate an HTML report visualising data leakage. 
     """
-    # Load the HTML template
-    template = get_train_test_html_template(clusters, train_filename, train_seq, test_filename, test_seq, identity_threshold, alignment_coverage)
+    plots_dir.mkdir(parents=True, exist_ok=True)
 
+    logging.info(f"Generating HTML report: {output_path}")
+
+    plots_paths_dict = generate_split_plots(results, threshold_stats, plots_dir)
+
+    template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict)
     with open(output_path, 'w') as file:
         file.write(template)
+        
+def generate_split_plots(results, threshold_stats, plots_dir):
+
+    plots_paths_dict = {}
+
+    fig = splits_plots.plot_similarity_histograms(results, threshold_stats)
+    plots_paths_dict['Similarity histograms'] = plots_dir / 'similarity_histograms.png'
+    fig.savefig(plots_dir / 'similarity_histograms.png', bbox_inches='tight')
+    plt.close(fig)
+
+    return plots_paths_dict
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results):
     """

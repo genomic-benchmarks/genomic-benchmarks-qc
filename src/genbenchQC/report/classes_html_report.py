@@ -69,8 +69,14 @@ HTML_TEMPLATE = """
                 <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
             </div>
             <h2>Summary</h2>
-            <div class="sidebar-item"><span style="display: inline-block; width: 40px;"></span><a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a></div>
-            <div class="sidebar-item">{{icon_unique_bases}}<a href="#unique-bases">Unique Bases</a></div>
+            <div class="sidebar-item">
+                <span style="display: inline-block; width: 40px;"></span>
+                <a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a>
+            </div>
+            <div class="sidebar-item">
+                {{icon_unique_bases}}
+                <a href="#unique-bases">Unique Bases</a>
+            </div>
             <div class="sidebar-item">{{icon_sequence_duplications_within_classes}}<a href="#sequence-duplications-within-classes">Sequence Duplications within Labels</a></div>
             <div class="sidebar-item">{{icon_sequence_duplication_levels}}<a href="#sequence-duplication-levels">Duplicate Sequences between Labels</a></div>
             <div class="sidebar-item">{{icon_sequence_lengths}}<a href="#sequence-lengths">Sequence lengths</a></div>

@@ -85,7 +85,6 @@ html, body {
 }
 body {
     font-family: Arial, sans-serif;
-    display: flex;
     max-width: 100%; /* Prevents content from exceeding the viewport width */
 }
 .sidebar {
