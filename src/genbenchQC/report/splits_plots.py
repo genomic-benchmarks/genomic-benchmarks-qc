@@ -8,25 +8,15 @@ from genbenchQC.report.classes_plots import HuePalette, prepare_legend
 
 def plot_similarity_histograms(results, threshold_stats):
 
-    def _max_signal_per_id(df: pd.DataFrame, id_col: str, metric_col: str):
-        if df.empty:
-            return pd.Series(dtype=float)
-        idx = df.groupby(id_col)[metric_col].idxmax()
-        return df.loc[idx, f"{id_col[0]}cov*pident"]
-    
-    results = results.copy()
-    if not results.empty:
-        results['qcov*pident'] = results['qcov'] * results['pident']
-        results['tcov*pident'] = results['tcov'] * results['pident']
-        unique_queries = _max_signal_per_id(results, 'query', 'min_cov*pident')
-        unique_targets = _max_signal_per_id(results, 'target', 'min_cov*pident')
-    else:
-        unique_queries = pd.Series(dtype=float)
-        unique_targets = pd.Series(dtype=float)
+    # Get unique queries and targets with their max similarity
+    unique_queries = results.groupby('query')['min_cov*pident'].max()
+    unique_targets = results.groupby('target')['min_cov*pident'].max()
 
-    missing_data = max(threshold_stats['total_combinations'] - threshold_stats['hits'], 0)
+    # Get counts of missing data (queries/targets without hits) to add to histogram
+    missing_data_query = threshold_stats["num_queries_without_hits"]
+    missing_data_target = threshold_stats["num_targets_without_hits"]
 
-    def _build_hist_arrays(values: pd.Series):
+    def _build_hist_arrays(values: pd.Series, missing_data: int):
         data = values.to_numpy(dtype=float)
         weights = np.ones_like(data, dtype=float)
         if missing_data > 0:
@@ -34,8 +24,8 @@ def plot_similarity_histograms(results, threshold_stats):
             weights = np.concatenate([weights, np.array([missing_data], dtype=float)])
         return data, weights
 
-    qcov, qweights = _build_hist_arrays(unique_queries)
-    tcov, tweights = _build_hist_arrays(unique_targets)
+    qcov, qweights = _build_hist_arrays(unique_queries, missing_data_query)
+    tcov, tweights = _build_hist_arrays(unique_targets, missing_data_target)
 
     bins = np.arange(0, 110, 10)
 
