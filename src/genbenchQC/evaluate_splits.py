@@ -119,6 +119,12 @@ def run(train_files, test_files, format,
 
         # Validate MMseqs2 output
         required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','qseq','tseq','qaln','taln']
+        missing_cols = [c for c in required_cols if c not in results.columns]
+        if missing_cols:
+            raise RuntimeError(
+                "MMSeqs2 output is missing required columns: "
+                + ", ".join(missing_cols)
+            )
         invalid_rows = results[required_cols].isna().any(axis=1).sum()
         if invalid_rows > 0:
             logging.debug(f"Found {invalid_rows} rows with missing values in MMseqs2 output. Removing them.")
