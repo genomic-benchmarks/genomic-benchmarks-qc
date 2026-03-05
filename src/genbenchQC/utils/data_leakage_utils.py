@@ -17,16 +17,24 @@ def get_basic_stats(filename_train, train_sequences, filename_test, test_sequenc
 
 def get_threshold_stats(results, results_filt, similarity_threshold, num_train_seqs, num_test_seqs):
 
+    num_queries_with_hits = len(results['query'].unique())
     num_queries_above_thr = len(results_filt['query'].unique())
     perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 # Assuming num_test_seqs contains unique test sequences
 
+    num_targets_with_hits = len(results['target'].unique())
     num_targets_above_thr = len(results_filt['target'].unique())
     perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 # Assuming num_train_seqs contains unique train sequences
 
     threshold_stats = {
         "similarity_threshold": similarity_threshold,
         "perc_queries_above_thr": perc_queries_above_thr,
+        "num_queries_above_thr": num_queries_above_thr,
+        "num_all_queries": num_test_seqs,
+        "num_queries_without_hits": max(num_test_seqs - num_queries_with_hits, 0),
         "perc_targets_above_thr": perc_targets_above_thr,
+        "num_targets_above_thr": num_targets_above_thr,
+        "num_all_targets": num_train_seqs,
+        "num_targets_without_hits": max(num_train_seqs - num_targets_with_hits, 0),
         "hits": len(results),
         "total_combinations": num_train_seqs * num_test_seqs,
     }
