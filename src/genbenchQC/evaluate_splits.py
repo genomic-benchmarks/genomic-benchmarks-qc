@@ -56,6 +56,20 @@ def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
 
     return pd.read_csv(out_file, sep="\t", header=0)
 
+def validate_mmseqs_output(results):
+    required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','qseq','tseq','qaln','taln']
+    missing_cols = [c for c in required_cols if c not in results.columns]
+    if missing_cols:
+        raise RuntimeError(
+            "MMSeqs2 output is missing required columns: "
+            + ", ".join(missing_cols)
+        )
+    invalid_rows = results[required_cols].isna().any(axis=1).sum()
+    if invalid_rows > 0:
+        logging.debug(f"Found {invalid_rows} rows with missing values in MMSeqs2 output. Removing them.")
+        results = results.dropna(subset=required_cols)
+    return results
+
 def run(train_files, test_files, format, 
         out_folder: Optional[str] = '.', 
         sequence_column: Optional[list[str]] = None, 
@@ -118,17 +132,7 @@ def run(train_files, test_files, format,
         results = run_search(test_fasta_path, train_fasta_path, tmp_dir / outfile, tmp_dir)
 
         # Validate MMseqs2 output
-        required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','qseq','tseq','qaln','taln']
-        missing_cols = [c for c in required_cols if c not in results.columns]
-        if missing_cols:
-            raise RuntimeError(
-                "MMSeqs2 output is missing required columns: "
-                + ", ".join(missing_cols)
-            )
-        invalid_rows = results[required_cols].isna().any(axis=1).sum()
-        if invalid_rows > 0:
-            logging.debug(f"Found {invalid_rows} rows with missing values in MMseqs2 output. Removing them.")
-            results = results.dropna(subset=required_cols)
+        results = validate_mmseqs_output(results)
 
         # Add columns to results for similarity and whether the hit is above the threshold for potential leakage
         results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
@@ -145,9 +149,13 @@ def run(train_files, test_files, format,
         results_filt = results[results['Leaked'] == 'True'].sort_values(by=['min_cov*pident'], ascending=False)
 
         # Get threshold stats
-        num_train_seqs = len(train_sequences)
-        num_test_seqs = len(test_sequences)
-        threshold_stats = get_threshold_stats(results, results_filt, similarity_threshold, num_train_seqs, num_test_seqs)
+        threshold_stats = get_threshold_stats(
+            results = results, 
+            results_filt = results_filt, 
+            similarity_threshold = similarity_threshold, 
+            num_train_seqs = len(train_sequences), 
+            num_test_seqs = len(test_sequences)
+        )
 
         if 'simple' in report_types:
             simple_report_path = out_folder / (filename + '.csv')
