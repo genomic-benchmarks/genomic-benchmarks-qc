@@ -57,7 +57,7 @@ def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
     return pd.read_csv(out_file, sep="\t", header=0)
 
 def validate_mmseqs_output(results):
-    required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','qseq','tseq','qaln','taln']
+    required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','alnlen','qseq','tseq','qaln','taln']
     missing_cols = [c for c in required_cols if c not in results.columns]
     if missing_cols:
         raise RuntimeError(
@@ -128,7 +128,7 @@ def run(train_files, test_files, format,
         write_fasta(test_sequences, test_fasta_path, test_index)
         
         # Run MMseqs2 search and get results as a DataFrame
-        outfile ="mmseqs2_search_result.tsv"
+        outfile = "mmseqs2_search_result.tsv"
         results = run_search(test_fasta_path, train_fasta_path, tmp_dir / outfile, tmp_dir)
 
         # Validate MMseqs2 output
@@ -194,7 +194,7 @@ def run(train_files, test_files, format,
             # Generate HTML report
             generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, html_report_path, plots_dir)
 
-            logging.info("Train-test split evaluation successfully completed.")
+        logging.info("Train-test split evaluation successfully completed.")
     except Exception:
         logging.exception("Train-test split evaluation failed. ")
         raise

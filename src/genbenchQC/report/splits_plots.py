@@ -29,8 +29,8 @@ def plot_similarity_histograms(results, threshold_stats):
 
     bins = np.arange(0, 110, 10)
 
-    fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     sns.set_style("white")
+    fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
     hist_kwargs = dict(alpha=0.65, edgecolor="black")
 

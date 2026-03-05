@@ -20,11 +20,11 @@ def get_threshold_stats(results, results_filt, similarity_threshold, num_train_s
 
     num_queries_with_hits = len(results['query'].unique())
     num_queries_above_thr = len(results_filt['query'].unique())
-    perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 # Assuming num_test_seqs contains unique test sequences
+    perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 if num_test_seqs > 0 else 0.0
 
     num_targets_with_hits = len(results['target'].unique())
     num_targets_above_thr = len(results_filt['target'].unique())
-    perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 # Assuming num_train_seqs contains unique train sequences
+    perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 if num_train_seqs > 0 else 0.0
 
     threshold_stats = {
         "similarity_threshold": similarity_threshold,
@@ -42,7 +42,8 @@ def get_threshold_stats(results, results_filt, similarity_threshold, num_train_s
     return threshold_stats
 
 # Filter fasta file, keeping only sequences with IDs in ids_to_keep (for hits)
-def filter_fasta_by_ids(fasta_path, new_fasta_path,ids_to_keep):
+def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
+    ids_to_keep = set(ids_to_keep)
     with fasta_path.open() as file_in, new_fasta_path.open("w") as file_out:
         write = False
 

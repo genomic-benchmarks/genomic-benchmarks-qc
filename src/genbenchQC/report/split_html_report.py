@@ -1,4 +1,5 @@
 from datetime import datetime
+import html
 from genbenchQC.report.utils import encode_image_to_base64, put_data, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genbenchQC.utils.data_leakage_utils import build_alignment_string
 import importlib.metadata
@@ -59,7 +60,7 @@ HTML_TEMPLATE = """
                     <h2>Basic Descriptive Statistics</h2>
                 </div>            
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <tr id="filename">
+                    <tr id="leakage-filename">
                         <td><span>Filename</span></td>
                         <td style="text-align: center;">{{test_filename}}</td>
                         <td style="text-align: center;">{{train_filename}}</td>
@@ -128,7 +129,6 @@ HTML_TEMPLATE = """
                 </table> 
                 <span>Similarity threshold {{similarity_threshold}}%</span>
 
-                <!-- <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 90%; width: 90%; height: auto; display: block; margin: 0 auto;">   -->
                 <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 100%; width: 100%; height: auto; display: block; margin: 0 auto;">
             </section>
 
@@ -168,6 +168,9 @@ HTML_TEMPLATE = """
                         <div><strong>% Identity</strong></div>
                         <div>Percent identical aligned positions in the aligned region.</div>
 
+                        <div><strong>% Similarity</strong></div>
+                        <div>Similarity score used for leakage detection, calculated as min(Q Cov., T Cov.) × % Identity.</div>
+
                         <div><strong>E-value</strong></div>
                         <div>MMSeqs2 E-value (lower is more "significant").</div>
 
@@ -184,7 +187,7 @@ HTML_TEMPLATE = """
                             <th>Q Cov.</th>
                             <th>T Cov.</th>
                             <th>% Identity</th>
-                            <th>Similarity</th>
+                            <th>% Similarity</th>
                             <th>E-value</th>
                             <th>Alignment</th>
                         </tr>
@@ -274,7 +277,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         html_template = put_data(
             html_template,
             "{{results_rows}}",
-            "<tr><td colspan='7'>No leaked sequences found across train/test splits.</td></tr>"
+            "<tr><td colspan='8'>No leaked sequences found across train/test splits.</td></tr>"
         )
         html_template = put_data(html_template, "{{icon_data_leakage}}", '<span class="status-icon status-pass">✔</span>')
         return html_template
@@ -291,7 +294,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
             alignment_str_color = (
                 '<span style="color:red; font-weight:bold;">'
                 'ALIGNMENT VISUALISATION ERROR</span><br>'
-                f'{type(e).__name__}: {str(e)}'
+                f'{html.escape(type(e).__name__)}: {html.escape(str(e))}'
             )
         rows.append(f"""
     <tr>
@@ -310,7 +313,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     </tr>
 
     <tr id="aln-{i}" style="display:none;">
-        <td colspan="7">
+        <td colspan="8">
             <pre class="alignment-block">{alignment_str_color}</pre>
         </td>
     </tr>
