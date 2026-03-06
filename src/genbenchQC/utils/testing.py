@@ -2,7 +2,7 @@ import pandas as pd
 from genbenchQC.utils.bias_model import model
 
 
-def flag_significant_differences(stats1, stats2):
+def flag_significant_differences(stats1, stats2, max_class_size=None):
 
     results = {}
 
@@ -21,7 +21,7 @@ def flag_significant_differences(stats1, stats2):
         stats1.sequences, stats2.sequences
     )
 
-    model_results = model(stats1, stats2)
+    model_results = model(stats1, stats2, max_class_size=max_class_size)
 
     results.update(model_results)
 
