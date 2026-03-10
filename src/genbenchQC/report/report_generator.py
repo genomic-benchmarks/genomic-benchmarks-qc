@@ -1,18 +1,16 @@
 import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
-
 import pandas as pd
 import os
 from pathlib import Path
 import logging
 
 from genbenchQC.report.sequence_html_report import get_sequence_html_template
-from genbenchQC.report.dataset_html_report import get_dataset_html_template
-from genbenchQC.report.split_html_report import get_train_test_html_template
+from genbenchQC.report.classes_html_report import get_dataset_html_template
+from genbenchQC.report.split_html_report import get_splits_html_template
 from genbenchQC.utils.input_utils import write_stats_json
-from genbenchQC.report import dataset_plots
+from genbenchQC.report import classes_plots
 from genbenchQC.report import sequences_plots
+from genbenchQC.report import splits_plots
 
 def generate_sequence_plots(stats_dict, output_path, end_position, plot_type='boxen'):
     """
@@ -95,15 +93,30 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_train_test_html_report(clusters, train_filename, train_seq, test_filename, test_seq, output_path, identity_threshold, alignment_coverage):
+def generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, output_path, plots_dir):
     """
-    Generate an HTML report listing mixed clusters.
+    Generate an HTML report visualising data leakage. 
     """
-    # Load the HTML template
-    template = get_train_test_html_template(clusters, train_filename, train_seq, test_filename, test_seq, identity_threshold, alignment_coverage)
+    plots_dir.mkdir(parents=True, exist_ok=True)
 
+    logging.info(f"Generating HTML report: {output_path}")
+
+    plots_paths_dict = generate_split_plots(results, threshold_stats, plots_dir)
+
+    template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict)
     with open(output_path, 'w') as file:
         file.write(template)
+        
+def generate_split_plots(results, threshold_stats, plots_dir):
+
+    plots_paths_dict = {}
+
+    fig = splits_plots.plot_similarity_histograms(results, threshold_stats)
+    plots_paths_dict['Similarity histograms'] = plots_dir / 'similarity_histograms.png'
+    fig.savefig(plots_dir / 'similarity_histograms.png', bbox_inches='tight')
+    plt.close(fig)
+
+    return plots_paths_dict
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results):
     """
@@ -116,6 +129,8 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
 
     # find duplicate sequences between labels
     duplicate_seqs = list(set(stats1.sequences).intersection(stats2.sequences))
+    # remove extension from output path, add '_duplicates.txt'
+    duplicate_seqs_path = os.path.splitext(output_path)[0] + '_duplicates.txt'
 
     # Make dictionary of summary statuses
     if results is not None:
@@ -123,20 +138,19 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     else:
         summary_statuses = None
     # Load the HTML template
-    template = get_dataset_html_template(stats1, stats2, plots_paths, duplicate_seqs, summary_statuses=summary_statuses)
+    template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path)
 
     with open(output_path, 'w') as file:
         file.write(template)
 
     if len(duplicate_seqs) > 0:
-        # remove extension from output path, add '_duplicates.txt'
-        duplicate_seqs_path = os.path.splitext(output_path)[0] + '_duplicates.txt'
         with open(duplicate_seqs_path, 'w') as f:
             for seq in duplicate_seqs:
                 f.write(f"{seq}\n")
         logging.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
 
 def generate_json_report(stats_dict, output_path):
+    logging.info(f"Generating JSON report: {output_path}")
     write_stats_json(stats_dict, output_path)
 
 def generate_simple_report(results, output_path):
@@ -153,76 +167,83 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
 
     plots_paths = {}
 
-    bases_overlap = list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
+    bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
     # Plot per sequence nucleotide content
-    fig = dataset_plots.plot_nucleotides(
+    fig = classes_plots.plot_nucleotides(
         stats1,
         stats2,
         nucleotides = bases_overlap,
         plot_type=plot_type
     )
-    plots_paths['Per sequence nucleotide content'] = Path(output_path.name) / 'per_sequence_nucleotide_content.png'
+    plots_paths['Per sequence nucleotide content'] = output_path / 'per_sequence_nucleotide_content.png'
     fig.savefig(output_path / 'per_sequence_nucleotide_content.png', bbox_inches='tight')
     plt.close(fig)
 
     # Plot per sequence dinucleotide content
-    fig = dataset_plots.plot_dinucleotides(
+    fig = classes_plots.plot_dinucleotides(
         stats1,
         stats2,
         nucleotides = bases_overlap,
         plot_type=plot_type
     )
-    plots_paths['Per sequence dinucleotide content'] = Path(output_path.name) / 'per_sequence_dinucleotide_content.png'
+    plots_paths['Per sequence dinucleotide content'] = output_path / 'per_sequence_dinucleotide_content.png'
     fig.savefig(output_path / 'per_sequence_dinucleotide_content.png', bbox_inches='tight')
     plt.close(fig)
     
     # Plot per position nucleotide content
-    fig = dataset_plots.plot_per_base_sequence_comparison(
+    fig = classes_plots.plot_per_base_sequence_comparison(
         stats1,
         stats2,
         stats_name='Per position nucleotide content',
         nucleotides = bases_overlap,
         end_position=end_position,
-        x_label='Position in sequence',
-        title='Nucleotide composition per position',
+        x_label='Position in sequence'
     )
-    plots_paths['Per position nucleotide content'] = Path(output_path.name) / 'per_position_nucleotide_content.png'
+    plots_paths['Per position nucleotide content'] = output_path / 'per_position_nucleotide_content.png'
     fig.savefig(output_path / 'per_position_nucleotide_content.png', bbox_inches='tight')   
     plt.close(fig)
 
     # Plot per reversed position nucleotide content
-    fig = dataset_plots.plot_per_base_sequence_comparison(
+    fig = classes_plots.plot_per_base_sequence_comparison(
         stats1,
         stats2,
         stats_name='Per position reversed nucleotide content',
         nucleotides = bases_overlap,
         end_position=end_position,
-        x_label='Position in reversed sequence',
-        title='Reversed nucleotide composition per position',
+        x_label='Position in reversed sequence'
     )
-    plots_paths['Per position reversed nucleotide content'] = Path(output_path.name) / 'per_position_reversed_nucleotide_content.png'
+    plots_paths['Per position reversed nucleotide content'] = output_path / 'per_position_reversed_nucleotide_content.png'
     fig.savefig(output_path / 'per_position_reversed_nucleotide_content.png', bbox_inches='tight')
     plt.close(fig)
 
     # Plot length distribution
-    fig = dataset_plots.plot_lengths(
+    fig = classes_plots.plot_lengths(
         stats1,
         stats2,
         plot_type=plot_type,
     )
-    plots_paths['Sequence lengths'] = Path(output_path.name) / 'sequence_lengths.png'
+    plots_paths['Sequence lengths'] = output_path / 'sequence_lengths.png'
     fig.savefig(output_path / 'sequence_lengths.png', bbox_inches='tight')
     plt.close(fig)
 
     # Plot per sequence GC content
-    fig = dataset_plots.plot_gc_content(
+    fig = classes_plots.plot_gc_content(
         stats1,
         stats2,
         plot_type=plot_type,
     )
-    plots_paths['Per sequence GC content'] = Path(output_path.name) / 'per_sequence_gc_content.png'
+    plots_paths['Per sequence GC content'] = output_path / 'per_sequence_gc_content.png'
     fig.savefig(output_path / 'per_sequence_gc_content.png', bbox_inches='tight')
+    plt.close(fig)
+
+    # Plot sequence duplications within classes
+    fig = classes_plots.plot_sequence_duplications_within_classes(
+        stats1,
+        stats2
+    )
+    plots_paths['Sequence Duplications within Labels'] = output_path / 'sequence_duplications_within_labels.png'
+    fig.savefig(output_path / 'sequence_duplications_within_labels.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths

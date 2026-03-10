@@ -7,8 +7,8 @@ requirements = [
     'seaborn>=0.12',
     'biopython>=1.8',
     'scikit-learn>=1.2',
-    'cdhit-reader==0.2.0',
     'statsmodels>=0.13',
+    'typer>=0.20',
 ]
 
 test_requirements = [
@@ -20,7 +20,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='genbenchQC',
-    version='1.0.2',
+    version='1.1.0',
     description='Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -36,9 +36,7 @@ setup(
     test_suite='tests',
     entry_points='''
       [console_scripts]
-      evaluate_sequences=genbenchQC.evaluate_sequences:main
-      evaluate_dataset=genbenchQC.evaluate_dataset:main
-      evaluate_split=genbenchQC.evaluate_split:main
+      genbenchQC=genbenchQC.cli:main
       ''',
     keywords=["genomic benchmarks", "deep learning", "machine learning",
       "computational biology", "bioinformatics", "genomics", "quality control"],
