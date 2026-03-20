@@ -33,6 +33,9 @@ def read_csv_file(file_path, input_format, seq_columns, label_column=None):
         df = df.dropna(subset=[label_column])
         logging.debug(f"Dropped rows with missing labels, new shape: {df.shape}")
 
+    # Replace NaN values in sequence columns with empty strings
+    df[seq_columns] = df[seq_columns].fillna('')
+
     # Convert sequences to uppercase
     df[seq_columns] = df[seq_columns].apply(lambda col: col.str.upper())
 
