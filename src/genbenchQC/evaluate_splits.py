@@ -4,6 +4,7 @@ from typing import Optional
 import platform
 import subprocess
 import shutil
+import threading
 import pandas as pd
 
 from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
@@ -113,21 +114,52 @@ def run_search(
     logging.debug(f"Running command: {' '.join(cmd)}")
 
     try:
-        subprocess.run(
+        process = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            check=True
+            bufsize=1,
         )
 
-    except subprocess.CalledProcessError as e:
-        logging.error("MMSeqs2 search failed.")
-        logging.error(f"Return code: {e.returncode}")
-        if e.stderr:
-            logging.error(f"STDERR:\n{e.stderr.strip()}")
-        if e.stdout:
-            logging.debug(f"STDOUT:\n{e.stdout.strip()}")
-        raise RuntimeError("MMSeqs2 search failed.") from e
+        def _forward_stream(stream, stream_name):
+            if stream is None:
+                return
+            try:
+                for line in iter(stream.readline, ''):
+                    line = line.rstrip("\r\n")
+                    if line:
+                        logging.debug("MMSeqs2 %s: %s", stream_name, line)
+            finally:
+                stream.close()
+
+        stdout_thread = threading.Thread(
+            target=_forward_stream,
+            args=(process.stdout, "stdout"),
+            daemon=True,
+        )
+        stderr_thread = threading.Thread(
+            target=_forward_stream,
+            args=(process.stderr, "stderr"),
+            daemon=True,
+        )
+        stdout_thread.start()
+        stderr_thread.start()
+
+        return_code = process.wait()
+        stdout_thread.join()
+        stderr_thread.join()
+
+        if return_code != 0:
+            logging.error("MMSeqs2 search failed.")
+            logging.error(f"Return code: {return_code}")
+            raise RuntimeError("MMSeqs2 search failed.")
+
+    except Exception:
+        if 'process' in locals() and process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
 
     logging.debug("MMSeqs2 easy-search completed.")
 
