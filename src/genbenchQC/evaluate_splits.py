@@ -78,7 +78,9 @@ def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
         "query,target,qcov,tcov,pident,evalue,qstart,qend,tstart,tend,alnlen,qseq,tseq,qaln,taln",
         "--format-mode", "4",
         "--search-type", "3",
-        "--strand", "1"
+        "--strand", "1",
+        "--max-seqs", "100",
+        "-s", "4.0"
     ]
 
     logging.debug(f"Running command: {' '.join(cmd)}")
