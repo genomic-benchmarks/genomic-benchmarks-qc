@@ -374,8 +374,11 @@ def run(
             )
 
         logging.info("Train-test split evaluation successfully completed.")
-    except Exception:
-        logging.exception("Train-test split evaluation failed. ")
+    except Exception as exc:
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            logging.exception("Train-test split evaluation failed.")
+        else:
+            logging.error(f"Train-test split evaluation failed: {exc}")
         raise
     finally:
         if keep_tmp_files:

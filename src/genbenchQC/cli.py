@@ -1,6 +1,7 @@
-import typer
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
+
+import typer
 
 from genbenchQC.evaluate_classes import run as run_evaluate_classes
 from genbenchQC.evaluate_splits import run as run_evaluate_splits
@@ -12,6 +13,16 @@ VALID_FORMATS = ['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+
+
+def _run_command(command, *args, **kwargs):
+    try:
+        command(*args, **kwargs)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1)
 
 @app.command()
 def evaluate_classes(
@@ -68,7 +79,8 @@ def evaluate_classes(
         typer.echo(f"Error: end_position must be a positive integer, got {end_position}", err=True)
         raise typer.Exit(code=1)
     
-    run_evaluate_classes(
+    _run_command(
+        run_evaluate_classes,
         input=input,
         format=format,
         out_folder=out_folder,
@@ -139,7 +151,8 @@ def evaluate_splits(
         typer.echo(f"Error: threads must be a positive integer, got {threads}", err=True)
         raise typer.Exit(code=1)
 
-    run_evaluate_splits(
+    _run_command(
+        run_evaluate_splits,
         train_files=train_input,
         test_files=test_input,
         format=format,
