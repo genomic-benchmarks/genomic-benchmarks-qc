@@ -1,0 +1,356 @@
+import logging
+from pathlib import Path
+from typing import Optional
+import platform
+import subprocess
+import shutil
+import pandas as pd
+
+from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
+from genbenchQC.utils.input_utils import (
+    setup_logger,
+    stream_files_to_sequences,
+    append_fasta_record,
+    init_sequence_stats,
+    update_sequence_stats,
+    finalize_sequence_stats,
+    read_selected_fasta_sequences,
+)
+from genbenchQC.utils.data_leakage_utils import (
+    get_basic_stats_from_aggregates,
+    get_threshold_stats,
+    filter_fasta_by_ids,
+)
+
+SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
+
+def _read_linux_cpu_flags():
+    try:
+        with open("/proc/cpuinfo", "r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.lower().startswith("flags"):
+                    _, flags_str = line.split(":", 1)
+                    return set(flags_str.strip().split())
+    except FileNotFoundError:
+        return None
+    return None
+
+def check_mmseqs_preflight():
+    mmseqs_path = shutil.which("mmseqs")
+    if mmseqs_path is None:
+        raise RuntimeError(
+            "MMSeqs2 executable not found in PATH. "
+            "Please install MMSeqs2 and ensure it is available in your environment."
+        )
+    logging.debug(f"Found MMSeqs2 at: {mmseqs_path}")
+
+    system = platform.system()
+    if system != "Linux":
+        logging.warning(
+            "Skipping CPU feature checks for non-Linux system (%s). "
+            "Ensure your MMSeqs2 binary is compatible with this platform.",
+            system
+        )
+        return
+
+    arch = platform.machine().lower()
+    if arch not in ("x86_64", "amd64"):
+        raise RuntimeError(
+            f"Unsupported architecture for MMSeqs2 preflight checks: {arch}. "
+            "Expected x86_64."
+        )
+
+    flags = _read_linux_cpu_flags()
+    if flags is None:
+        raise RuntimeError(
+            "Unable to read CPU flags from /proc/cpuinfo to verify MMSeqs2 support."
+        )
+    matched_flags = [flag for flag in SUPPORTED_CPU_FLAGS if flag in flags]
+    if not matched_flags:
+        raise RuntimeError(
+            "CPU does not support any of the MMSeqs2-supported instruction set flags: "
+            + ", ".join(SUPPORTED_CPU_FLAGS)
+        )
+    logging.debug(
+        "CPU feature checks passed for MMSeqs2 using supported flags: %s",
+        ", ".join(matched_flags),
+    )
+
+def run_search(
+    test_fasta_file,
+    train_fasta_file,
+    out_file,
+    tmp_dir,
+    threads: Optional[int] = None,
+    split_memory_limit: Optional[str] = None,
+):
+    logging.info(
+        "Running MMSeqs2, an ultrafast and sensitive search, for test sequences (query) against train sequences (db)."
+    )
+
+    check_mmseqs_preflight()
+
+    cmd = [
+        "mmseqs", "easy-search",
+        str(test_fasta_file),
+        str(train_fasta_file),
+        str(out_file),
+        str(tmp_dir),
+        "--format-output",
+        "query,target,qcov,tcov,pident,evalue,qstart,qend,tstart,tend,alnlen,qaln,taln",
+        "--format-mode", "4",
+        "--search-type", "3",
+        "--strand", "1",
+        "--max-seqs", "100",
+        "-s", "4.0"
+    ]
+
+    if threads is not None:
+        cmd.extend(["--threads", str(threads)])
+    if split_memory_limit is not None:
+        cmd.extend(["--split-memory-limit", split_memory_limit])
+
+    logging.debug(f"Running command: {' '.join(cmd)}")
+
+    try:
+        subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+    except subprocess.CalledProcessError as e:
+        logging.error("MMSeqs2 search failed.")
+        logging.error(f"Return code: {e.returncode}")
+        if e.stderr:
+            logging.error(f"STDERR:\n{e.stderr.strip()}")
+        if e.stdout:
+            logging.debug(f"STDOUT:\n{e.stdout.strip()}")
+        raise RuntimeError("MMSeqs2 search failed.") from e
+
+    logging.debug("MMSeqs2 easy-search completed.")
+
+    return pd.read_csv(out_file, sep="\t", header=0)
+
+def validate_mmseqs_output(results):
+    required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','alnlen','qaln','taln']
+    missing_cols = [c for c in required_cols if c not in results.columns]
+    if missing_cols:
+        raise RuntimeError(
+            "MMSeqs2 output is missing required columns: "
+            + ", ".join(missing_cols)
+        )
+    invalid_rows = results[required_cols].isna().any(axis=1).sum()
+    if invalid_rows > 0:
+        logging.debug(f"Found {invalid_rows} rows with missing values in MMSeqs2 output. Removing them.")
+        results = results.dropna(subset=required_cols)
+    return results
+
+
+def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
+    if results_filt.empty:
+        return results_filt
+
+    query_ids = set(results_filt['query'])
+    target_ids = set(results_filt['target'])
+    test_seq_by_id = read_selected_fasta_sequences(test_fasta_path, query_ids)
+    train_seq_by_id = read_selected_fasta_sequences(train_fasta_path, target_ids)
+
+    results_filt = results_filt.copy()
+    results_filt['qseq'] = results_filt['query'].map(test_seq_by_id)
+    results_filt['tseq'] = results_filt['target'].map(train_seq_by_id)
+
+    missing_qseq = results_filt['qseq'].isna().sum()
+    missing_tseq = results_filt['tseq'].isna().sum()
+    if missing_qseq or missing_tseq:
+        raise RuntimeError(
+            "Failed to map MMSeqs2 hit identifiers to input sequences for alignment rendering. "
+            f"Missing qseq: {missing_qseq}, missing tseq: {missing_tseq}."
+        )
+
+    return results_filt
+
+def run(
+    train_files,
+    test_files,
+    format,
+    out_folder: Optional[str] = '.',
+    sequence_column: Optional[list[str]] = None,
+    report_types: Optional[list[str]] = None,
+    similarity_threshold: Optional[float] = 80.0,
+    threads: Optional[int] = None,
+    split_memory_limit: Optional[str] = None,
+    keep_tmp_files: Optional[bool] = False,
+    log_level: Optional[str] = 'INFO',
+    log_file: Optional[str] = None,
+):
+    """Run the train-test split evaluation.
+
+    This function reads sequences from the provided training and testing files, performs easy-search using MMseqs2, 
+    and generates reports about potential data leakage between the training and testing datasets.
+
+    @param train_files: List of paths to training files.
+    @param test_files: List of paths to testing files.
+    @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
+    @param out_folder: Path to the output folder. Default: '.'.
+    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
+                            Default: ['sequence'].
+    @param report_types: Types of reports to generate. Default: ['html', 'simple'].
+    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 80.0.
+    @param threads: Maximum number of threads MMseqs2 will use. Default: None.
+    @param split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T). Default: None.
+    @param keep_tmp_files: Keep temporary files generated for MMseqs2 debugging. Default: False.
+    @param log_level: Logging level, default to INFO.
+    @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
+    @return: None
+    """
+
+    if sequence_column is None:
+        sequence_column = ['sequence']
+    if report_types is None:
+        report_types = ['html', 'simple']
+
+    setup_logger(log_level, log_file)
+    logging.info("Starting train-test split evaluation.")
+
+    out_folder = Path(out_folder)
+    if not out_folder.exists():
+        logging.info(f"Output folder {out_folder} does not exist. Creating it.")
+        out_folder.mkdir(parents=True, exist_ok=True)
+
+    tmp_dir =  out_folder / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    train_fasta_path = tmp_dir / 'train_sequences.fasta'
+    test_fasta_path = tmp_dir / 'test_sequences.fasta'
+
+    try:
+        # Stream sequences from source files, write MMSeqs2 FASTA inputs, and collect basic stats.
+        train_stats_acc = init_sequence_stats()
+        test_stats_acc = init_sequence_stats()
+
+        with train_fasta_path.open("w", encoding="utf-8") as train_fasta_handle:
+            for i, seq in enumerate(stream_files_to_sequences(train_files, format, sequence_column)):
+                append_fasta_record(train_fasta_handle, seq, f"seq_{i}_train")
+                update_sequence_stats(train_stats_acc, seq)
+
+        with test_fasta_path.open("w", encoding="utf-8") as test_fasta_handle:
+            for i, seq in enumerate(stream_files_to_sequences(test_files, format, sequence_column)):
+                append_fasta_record(test_fasta_handle, seq, f"seq_{i}_test")
+                update_sequence_stats(test_stats_acc, seq)
+
+        train_stats = finalize_sequence_stats(train_stats_acc)
+        test_stats = finalize_sequence_stats(test_stats_acc)
+        num_train_seqs = train_stats["count"]
+        num_test_seqs = test_stats["count"]
+
+        logging.info(f"Read {num_train_seqs} sequences from training files.")
+        logging.info(f"Read {num_test_seqs} sequences from testing files.")
+        
+        # Run MMseqs2 search and get results as a DataFrame
+        outfile = "mmseqs2_search_result.tsv"
+        results = run_search(
+            test_fasta_path,
+            train_fasta_path,
+            tmp_dir / outfile,
+            tmp_dir,
+            threads=threads,
+            split_memory_limit=split_memory_limit,
+        )
+
+        # Validate MMseqs2 output
+        results = validate_mmseqs_output(results)
+
+        # Add columns to results for similarity and whether the hit is above the threshold for potential leakage
+        results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
+        results['min_cov*pident'] = results['min_cov'] * results['pident']
+        results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov*pident'] >= similarity_threshold else 'False', axis=1)
+
+        # Build filename for reports based on input file names
+        filename = ("split_check_" 
+                    + Path(train_files[0]).name.replace("".join(Path(train_files[0]).suffixes), "") 
+                    + "_vs_" 
+                    + Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), ""))
+
+        # Filter results for hits above threshold and sort by similarity
+        results_filt = results[results['Leaked'] == 'True'].sort_values(by=['min_cov*pident'], ascending=False)
+
+        # Get threshold stats
+        threshold_stats = get_threshold_stats(
+            results = results, 
+            results_filt = results_filt, 
+            similarity_threshold = similarity_threshold, 
+            num_train_seqs = num_train_seqs,
+            num_test_seqs = num_test_seqs
+        )
+
+        if 'simple' in report_types:
+            simple_report_path = out_folder / (filename + '.csv')
+            has_leakage = (results['Leaked'] == 'True').any()
+            result = {}
+            result["Data Leakage"] = {"Flag": "Fail" if has_leakage else "Pass"}
+            result["Data Leakage"]["Percentage of leaked queries"] = f"{threshold_stats['perc_queries_above_thr']:.2f}%"
+            result["Data Leakage"]["Percentage of leaked targets"] = f"{threshold_stats['perc_targets_above_thr']:.2f}%"
+            df = pd.DataFrame.from_dict(result, orient='index')
+            df.index.name = "Statistic"
+            generate_simple_report(df, simple_report_path)
+        
+        if 'html' in report_types:
+            # Build paths for output files
+            train_filenames = ",".join([Path(f).name for f in train_files])
+            test_filenames = ",".join([Path(f).name for f in test_files])
+            html_report_path = out_folder / (filename + '_report.html')
+            plots_dir = out_folder / (filename + '_plots')
+            mmseqs_dir = out_folder / (filename + '_mmseqs')
+            seq_index_mapping = mmseqs_dir / 'seq_index_mapping'
+
+            # Write mmseqs2 results, including flag for hits above threshold, to file 
+            mmseqs_dir.mkdir(parents=True, exist_ok=True)
+            results.to_csv(mmseqs_dir / outfile, sep='\t', index=False)
+
+            # Write filtered fasta files for mapping hits seq IDs back to seqs
+            seq_index_mapping.mkdir(parents=True, exist_ok=True)
+            new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
+            new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
+            filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, set(results_filt["query"]))
+            filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, set(results_filt["target"]))
+            
+            # Get basic stats for HTML report
+            basic_stats = get_basic_stats_from_aggregates(
+                train_filenames,
+                train_stats,
+                test_filenames,
+                test_stats,
+            )
+
+            # Attach full query/target sequences only for rows rendered in HTML alignments.
+            results_filt_for_html = add_alignment_sequences(
+                results_filt.head(100),
+                test_fasta_path,
+                train_fasta_path,
+            )
+
+            # Generate HTML report
+            generate_splits_html_report(
+                basic_stats,
+                threshold_stats,
+                results,
+                results_filt_for_html,
+                html_report_path,
+                plots_dir,
+            )
+
+        logging.info("Train-test split evaluation successfully completed.")
+    except Exception:
+        logging.exception("Train-test split evaluation failed. ")
+        raise
+    finally:
+        if keep_tmp_files:
+            logging.info(f"Keeping temporary files for debugging at: {tmp_dir}")
+        else:
+            logging.debug("Removing temporary files.")
+            try:
+                shutil.rmtree(tmp_dir)
+            except Exception as cleanup_error:
+                logging.warning(f"Failed to remove temporary directory: {cleanup_error}")
