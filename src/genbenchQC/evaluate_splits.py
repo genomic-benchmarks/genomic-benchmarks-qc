@@ -2,10 +2,12 @@ import logging
 from pathlib import Path
 from typing import Optional
 import platform
+import heapq
 import subprocess
 import shutil
 import threading
 import pandas as pd
+from pandas.errors import EmptyDataError
 
 from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
 from genbenchQC.utils.input_utils import (
@@ -24,6 +26,21 @@ from genbenchQC.utils.data_leakage_utils import (
 )
 
 SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
+MMSEQS_REQUIRED_COLS = [
+    'query',
+    'target',
+    'qcov',
+    'tcov',
+    'pident',
+    'evalue',
+    'qstart',
+    'qend',
+    'tstart',
+    'tend',
+    'alnlen',
+    'qaln',
+    'taln',
+]
 
 def _read_linux_cpu_flags():
     try:
@@ -163,21 +180,106 @@ def run_search(
 
     logging.debug("MMSeqs2 easy-search completed.")
 
-    return pd.read_csv(out_file, sep="\t", header=0)
+    return Path(out_file)
 
 def validate_mmseqs_output(results):
-    required_cols = ['query','target','qcov','tcov','pident','evalue','qstart','qend','tstart','tend','alnlen','qaln','taln']
-    missing_cols = [c for c in required_cols if c not in results.columns]
+    missing_cols = [c for c in MMSEQS_REQUIRED_COLS if c not in results.columns]
     if missing_cols:
         raise RuntimeError(
             "MMSeqs2 output is missing required columns: "
             + ", ".join(missing_cols)
         )
-    invalid_rows = results[required_cols].isna().any(axis=1).sum()
+    invalid_rows = results[MMSEQS_REQUIRED_COLS].isna().any(axis=1).sum()
     if invalid_rows > 0:
         logging.debug(f"Found {invalid_rows} rows with missing values in MMSeqs2 output. Removing them.")
-        results = results.dropna(subset=required_cols)
+        results = results.dropna(subset=MMSEQS_REQUIRED_COLS)
     return results
+
+
+def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunksize=100000):
+    query_similarity_max = {}
+    target_similarity_max = {}
+    query_ids_with_hits = set()
+    target_ids_with_hits = set()
+    query_ids_above_threshold = set()
+    target_ids_above_threshold = set()
+    top_rows_heap = []
+    row_order = 0
+    total_hits = 0
+
+    try:
+        chunk_iter = pd.read_csv(results_path, sep="\t", chunksize=chunksize)
+    except EmptyDataError:
+        chunk_iter = []
+
+    for chunk in chunk_iter:
+        missing_cols = [c for c in MMSEQS_REQUIRED_COLS if c not in chunk.columns]
+        if missing_cols:
+            raise RuntimeError(
+                "MMSeqs2 output is missing required columns: "
+                + ", ".join(missing_cols)
+            )
+
+        chunk = chunk.dropna(subset=MMSEQS_REQUIRED_COLS)
+        if chunk.empty:
+            continue
+
+        min_cov = chunk[['qcov', 'tcov']].min(axis=1)
+        similarity = min_cov * chunk['pident']
+        chunk = chunk.copy()
+        chunk['min_cov'] = min_cov
+        chunk['min_cov*pident'] = similarity
+
+        total_hits += len(chunk)
+
+        query_ids_with_hits.update(chunk['query'].unique().tolist())
+        target_ids_with_hits.update(chunk['target'].unique().tolist())
+
+        query_max = chunk.groupby('query')['min_cov*pident'].max()
+        for query_id, similarity_value in query_max.items():
+            similarity_value = float(similarity_value)
+            if similarity_value > query_similarity_max.get(query_id, float('-inf')):
+                query_similarity_max[query_id] = similarity_value
+
+        target_max = chunk.groupby('target')['min_cov*pident'].max()
+        for target_id, similarity_value in target_max.items():
+            similarity_value = float(similarity_value)
+            if similarity_value > target_similarity_max.get(target_id, float('-inf')):
+                target_similarity_max[target_id] = similarity_value
+
+        leaked = chunk[chunk['min_cov*pident'] >= similarity_threshold]
+        if leaked.empty:
+            continue
+
+        query_ids_above_threshold.update(leaked['query'].unique().tolist())
+        target_ids_above_threshold.update(leaked['target'].unique().tolist())
+
+        leaked_top = leaked.nlargest(top_n, 'min_cov*pident')
+        for _, row in leaked_top.iterrows():
+            row_dict = row.to_dict()
+            heapq.heappush(
+                top_rows_heap,
+                (float(row_dict['min_cov*pident']), row_order, row_dict),
+            )
+            row_order += 1
+            if len(top_rows_heap) > top_n:
+                heapq.heappop(top_rows_heap)
+
+    top_rows = [row_dict for _, _, row_dict in sorted(top_rows_heap, key=lambda item: (-item[0], item[1]))]
+    results_filt = pd.DataFrame(top_rows)
+    if not results_filt.empty:
+        results_filt = results_filt.sort_values(by=['min_cov*pident'], ascending=False).reset_index(drop=True)
+
+    return {
+        "query_similarity_max": query_similarity_max,
+        "target_similarity_max": target_similarity_max,
+        "query_ids_with_hits": query_ids_with_hits,
+        "target_ids_with_hits": target_ids_with_hits,
+        "query_ids_above_threshold": query_ids_above_threshold,
+        "target_ids_above_threshold": target_ids_above_threshold,
+        "results_filt": results_filt,
+        "total_hits": total_hits,
+    }
 
 
 def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
@@ -280,9 +382,9 @@ def run(
         logging.info(f"Read {num_train_seqs} sequences from training files.")
         logging.info(f"Read {num_test_seqs} sequences from testing files.")
         
-        # Run MMseqs2 search and get results as a DataFrame
+        # Run MMseqs2 search and keep raw TSV path for chunked post-processing.
         outfile = "mmseqs2_search_result.tsv"
-        results = run_search(
+        results_path = run_search(
             test_fasta_path,
             train_fasta_path,
             tmp_dir / outfile,
@@ -291,13 +393,8 @@ def run(
             split_memory_limit=split_memory_limit,
         )
 
-        # Validate MMseqs2 output
-        results = validate_mmseqs_output(results)
-
-        # Add columns to results for similarity and whether the hit is above the threshold for potential leakage
-        results['min_cov'] = results[['qcov', 'tcov']].min(axis=1)
-        results['min_cov*pident'] = results['min_cov'] * results['pident']
-        results['Leaked'] = results.apply(lambda row: 'True' if row['min_cov*pident'] >= similarity_threshold else 'False', axis=1)
+        summary = summarize_mmseqs_output(results_path, similarity_threshold)
+        results_filt = summary["results_filt"]
 
         # Build filename for reports based on input file names
         filename = ("split_check_" 
@@ -305,13 +402,9 @@ def run(
                     + "_vs_" 
                     + Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), ""))
 
-        # Filter results for hits above threshold and sort by similarity
-        results_filt = results[results['Leaked'] == 'True'].sort_values(by=['min_cov*pident'], ascending=False)
-
         # Get threshold stats
         threshold_stats = get_threshold_stats(
-            results = results, 
-            results_filt = results_filt, 
+            summary = summary,
             similarity_threshold = similarity_threshold, 
             num_train_seqs = num_train_seqs,
             num_test_seqs = num_test_seqs
@@ -319,7 +412,7 @@ def run(
 
         if 'simple' in report_types:
             simple_report_path = out_folder / (filename + '.csv')
-            has_leakage = (results['Leaked'] == 'True').any()
+            has_leakage = not results_filt.empty
             result = {}
             result["Data Leakage"] = {"Flag": "Fail" if has_leakage else "Pass"}
             result["Data Leakage"]["Percentage of leaked queries"] = f"{threshold_stats['perc_queries_above_thr']:.2f}%"
@@ -337,9 +430,9 @@ def run(
             mmseqs_dir = out_folder / (filename + '_mmseqs')
             seq_index_mapping = mmseqs_dir / 'seq_index_mapping'
 
-            # Write mmseqs2 results, including flag for hits above threshold, to file 
+            # Preserve raw MMSeqs2 results for the report bundle.
             mmseqs_dir.mkdir(parents=True, exist_ok=True)
-            results.to_csv(mmseqs_dir / outfile, sep='\t', index=False)
+            shutil.copy2(results_path, mmseqs_dir / outfile)
 
             # Write filtered fasta files for mapping hits seq IDs back to seqs
             seq_index_mapping.mkdir(parents=True, exist_ok=True)
@@ -367,10 +460,11 @@ def run(
             generate_splits_html_report(
                 basic_stats,
                 threshold_stats,
-                results,
                 results_filt_for_html,
                 html_report_path,
                 plots_dir,
+                summary["query_similarity_max"],
+                summary["target_similarity_max"],
             )
 
         logging.info("Train-test split evaluation successfully completed.")

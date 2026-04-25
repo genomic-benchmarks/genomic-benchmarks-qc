@@ -93,7 +93,7 @@ def generate_sequence_html_report(stats_dict, output_path, plots_path, end_posit
     with open(output_path, 'w') as file:
         file.write(template)
 
-def generate_splits_html_report(basic_stats, threshold_stats, results, results_filt, output_path, plots_dir):
+def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max):
     """
     Generate an HTML report visualising data leakage. 
     """
@@ -101,17 +101,17 @@ def generate_splits_html_report(basic_stats, threshold_stats, results, results_f
 
     logging.info(f"Generating HTML report: {output_path}")
 
-    plots_paths_dict = generate_split_plots(results, threshold_stats, plots_dir)
+    plots_paths_dict = generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
 
     template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict)
     with open(output_path, 'w') as file:
         file.write(template)
         
-def generate_split_plots(results, threshold_stats, plots_dir):
+def generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir):
 
     plots_paths_dict = {}
 
-    fig = splits_plots.plot_similarity_histograms(results, threshold_stats)
+    fig = splits_plots.plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats)
     plots_paths_dict['Similarity histograms'] = plots_dir / 'similarity_histograms.png'
     fig.savefig(plots_dir / 'similarity_histograms.png', bbox_inches='tight')
     plt.close(fig)

@@ -15,15 +15,27 @@ def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, 
     }
     return basic_stats
 
-def get_threshold_stats(results, results_filt, similarity_threshold, num_train_seqs, num_test_seqs):
+def get_threshold_stats(results=None, results_filt=None, summary=None, similarity_threshold=None, num_train_seqs=None, num_test_seqs=None):
+    if summary is not None:
+        num_queries_with_hits = len(summary['query_ids_with_hits'])
+        num_queries_above_thr = len(summary['query_ids_above_threshold'])
+        perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 if num_test_seqs > 0 else 0.0
 
-    num_queries_with_hits = len(results['query'].unique())
-    num_queries_above_thr = len(results_filt['query'].unique())
-    perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 if num_test_seqs > 0 else 0.0
+        num_targets_with_hits = len(summary['target_ids_with_hits'])
+        num_targets_above_thr = len(summary['target_ids_above_threshold'])
+        perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 if num_train_seqs > 0 else 0.0
 
-    num_targets_with_hits = len(results['target'].unique())
-    num_targets_above_thr = len(results_filt['target'].unique())
-    perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 if num_train_seqs > 0 else 0.0
+        hits = summary['total_hits']
+    else:
+        num_queries_with_hits = len(results['query'].unique())
+        num_queries_above_thr = len(results_filt['query'].unique())
+        perc_queries_above_thr = (num_queries_above_thr / num_test_seqs) * 100 if num_test_seqs > 0 else 0.0
+
+        num_targets_with_hits = len(results['target'].unique())
+        num_targets_above_thr = len(results_filt['target'].unique())
+        perc_targets_above_thr = (num_targets_above_thr / num_train_seqs) * 100 if num_train_seqs > 0 else 0.0
+
+        hits = len(results)
 
     threshold_stats = {
         "similarity_threshold": similarity_threshold,
@@ -35,7 +47,7 @@ def get_threshold_stats(results, results_filt, similarity_threshold, num_train_s
         "num_targets_above_thr": num_targets_above_thr,
         "num_all_targets": num_train_seqs,
         "num_targets_without_hits": max(num_train_seqs - num_targets_with_hits, 0),
-        "hits": len(results),
+        "hits": hits,
         "total_combinations": num_train_seqs * num_test_seqs,
     }
     return threshold_stats
