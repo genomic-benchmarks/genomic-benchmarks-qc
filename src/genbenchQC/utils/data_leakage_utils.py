@@ -1,18 +1,17 @@
 from itertools import zip_longest
-import numpy as np
 
-def get_basic_stats(filename_train, train_sequences, filename_test, test_sequences):
+def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, test_stats):
     basic_stats = {
         "train_filename": str(filename_train),
         "test_filename": str(filename_test),
-        "number_of_sequences_train": len(train_sequences),
-        "number_of_sequences_test": len(test_sequences),
-        "min_length_train": min(len(seq) for seq in train_sequences),
-        "mean_length_train": np.mean([len(seq) for seq in train_sequences]),
-        "max_length_train": max(len(seq) for seq in train_sequences),
-        "min_length_test": min(len(seq) for seq in test_sequences),
-        "mean_length_test": np.mean([len(seq) for seq in test_sequences]),
-        "max_length_test": max(len(seq) for seq in test_sequences),
+        "number_of_sequences_train": int(train_stats["count"]),
+        "number_of_sequences_test": int(test_stats["count"]),
+        "min_length_train": int(train_stats["min_length"]),
+        "mean_length_train": float(train_stats["mean_length"]),
+        "max_length_train": int(train_stats["max_length"]),
+        "min_length_test": int(test_stats["min_length"]),
+        "mean_length_test": float(test_stats["mean_length"]),
+        "max_length_test": int(test_stats["max_length"]),
     }
     return basic_stats
 

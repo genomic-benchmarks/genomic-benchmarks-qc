@@ -3,9 +3,60 @@ import pandas as pd
 import logging
 import json
 
+
+def init_sequence_stats():
+    return {
+        "count": 0,
+        "min_length": None,
+        "max_length": None,
+        "total_length": 0,
+    }
+
+
+def update_sequence_stats(stats, sequence):
+    seq_len = len(sequence)
+    stats["count"] += 1
+    stats["total_length"] += seq_len
+    if stats["min_length"] is None or seq_len < stats["min_length"]:
+        stats["min_length"] = seq_len
+    if stats["max_length"] is None or seq_len > stats["max_length"]:
+        stats["max_length"] = seq_len
+
+
+def finalize_sequence_stats(stats):
+    count = stats["count"]
+    return {
+        "count": count,
+        "min_length": stats["min_length"] if stats["min_length"] is not None else 0,
+        "mean_length": (stats["total_length"] / count) if count > 0 else 0.0,
+        "max_length": stats["max_length"] if stats["max_length"] is not None else 0,
+    }
+
 def read_fasta(fasta_file):
     logging.debug(f"Reading FASTA file: {fasta_file}")
     return [str(record.seq).upper() for record in SeqIO.parse(fasta_file, 'fasta')]
+
+
+def stream_fasta_sequences(fasta_file):
+    logging.debug(f"Streaming FASTA file: {fasta_file}")
+    for record in SeqIO.parse(fasta_file, 'fasta'):
+        yield str(record.seq).upper()
+
+
+def read_selected_fasta_sequences(fasta_file, ids_to_keep):
+    ids_to_keep = set(ids_to_keep)
+    if not ids_to_keep:
+        return {}
+
+    out = {}
+    for record in SeqIO.parse(str(fasta_file), 'fasta'):
+        seq_id = record.id
+        if seq_id in ids_to_keep:
+            out[seq_id] = str(record.seq).upper()
+            if len(out) == len(ids_to_keep):
+                break
+
+    return out
 
 def write_fasta(sequences, output_file, indices=None):
     if indices is None:
@@ -14,6 +65,10 @@ def write_fasta(sequences, output_file, indices=None):
         records = [SeqRecord.SeqRecord(Seq.Seq(sequences[i]), id=f'seq_{indices[i]}', description="") for i in range(len(sequences))]
     logging.debug(f"Writing FASTA file: {output_file} with {len(sequences)} sequences")
     SeqIO.write(records, output_file, 'fasta')
+
+
+def append_fasta_record(file_handle, sequence, seq_id):
+    file_handle.write(f">{seq_id}\n{sequence}\n")
 
 def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     delim = '\t' if input_format == 'tsv' or input_format == 'tsv.gz' else ','
@@ -42,6 +97,31 @@ def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     logging.debug(f"Read CSV/TSV file: {file_path}, shape: {df.shape}, columns: {columns}")
 
     return df
+
+
+def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000):
+    delim = '\t' if input_format == 'tsv' or input_format == 'tsv.gz' else ','
+    compression = 'gzip' if file_path.endswith('.gz') else None
+
+    reader = pd.read_csv(
+        file_path,
+        delimiter=delim,
+        usecols=seq_columns,
+        dtype=str,
+        compression=compression,
+        chunksize=chunksize,
+    )
+
+    for chunk in reader:
+        for col in seq_columns:
+            chunk[col] = chunk[col].fillna('').str.upper()
+
+        if len(seq_columns) == 1:
+            for seq in chunk[seq_columns[0]].tolist():
+                yield seq
+        else:
+            for seq in chunk[seq_columns].agg(''.join, axis=1).tolist():
+                yield seq
 
 def read_sequences_from_df(df, seq_column, label_column=None, label=None):
     if label_column is None:
@@ -112,3 +192,14 @@ def read_files_to_sequence_list(files, input_format, sequence_column):
             logging.error(f"Unsupported input format: {input_format}")
             raise ValueError(f"Unsupported input format: {input_format}")
     return sequences
+
+
+def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10000):
+    for file in files:
+        if input_format == 'fasta':
+            yield from stream_fasta_sequences(file)
+        elif input_format.startswith('csv') or input_format.startswith('tsv'):
+            yield from stream_table_sequences(file, input_format, sequence_column, chunksize=chunksize)
+        else:
+            logging.error(f"Unsupported input format: {input_format}")
+            raise ValueError(f"Unsupported input format: {input_format}")
