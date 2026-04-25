@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Optional
+import platform
 import subprocess
 import shutil
 import pandas as pd
@@ -9,16 +10,63 @@ from genbenchQC.report.report_generator import generate_splits_html_report, gene
 from genbenchQC.utils.input_utils import setup_logger, read_files_to_sequence_list, write_fasta
 from genbenchQC.utils.data_leakage_utils import get_basic_stats, get_threshold_stats, filter_fasta_by_ids
 
+REQUIRED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
+
+def _read_linux_cpu_flags():
+    try:
+        with open("/proc/cpuinfo", "r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.lower().startswith("flags"):
+                    _, flags_str = line.split(":", 1)
+                    return set(flags_str.strip().split())
+    except FileNotFoundError:
+        return None
+    return None
+
+def check_mmseqs_preflight():
+    mmseqs_path = shutil.which("mmseqs")
+    if mmseqs_path is None:
+        raise RuntimeError(
+            "MMSeqs2 executable not found in PATH. "
+            "Please install MMSeqs2 and ensure it is available in your environment."
+        )
+    logging.debug(f"Found MMSeqs2 at: {mmseqs_path}")
+
+    system = platform.system()
+    if system != "Linux":
+        logging.warning(
+            "Skipping CPU feature checks for non-Linux system (%s). "
+            "Ensure your MMSeqs2 binary is compatible with this platform.",
+            system
+        )
+        return
+
+    arch = platform.machine().lower()
+    if arch not in ("x86_64", "amd64"):
+        raise RuntimeError(
+            f"Unsupported architecture for MMSeqs2 preflight checks: {arch}. "
+            "Expected x86_64."
+        )
+
+    flags = _read_linux_cpu_flags()
+    if flags is None:
+        raise RuntimeError(
+            "Unable to read CPU flags from /proc/cpuinfo to verify MMSeqs2 support."
+        )
+    missing_flags = [flag for flag in REQUIRED_CPU_FLAGS if flag not in flags]
+    if missing_flags:
+        raise RuntimeError(
+            "CPU is missing required instruction set support for MMSeqs2: "
+            + ", ".join(missing_flags)
+        )
+    logging.debug("CPU feature checks passed for MMSeqs2.")
+
 def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
     logging.info(
         "Running MMSeqs2, an ultrafast and sensitive search, for test sequences (query) against train sequences (db)."
     )
 
-    if shutil.which("mmseqs") is None:
-        raise RuntimeError(
-            "MMSeqs2 executable not found in PATH. "
-            "Please install MMSeqs2 and ensure it is available in your environment."
-        )
+    check_mmseqs_preflight()
 
     cmd = [
         "mmseqs", "easy-search",
