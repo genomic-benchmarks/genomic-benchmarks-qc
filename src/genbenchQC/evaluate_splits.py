@@ -10,7 +10,7 @@ from genbenchQC.report.report_generator import generate_splits_html_report, gene
 from genbenchQC.utils.input_utils import setup_logger, read_files_to_sequence_list, write_fasta
 from genbenchQC.utils.data_leakage_utils import get_basic_stats, get_threshold_stats, filter_fasta_by_ids
 
-REQUIRED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
+SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
 
 def _read_linux_cpu_flags():
     try:
@@ -53,13 +53,16 @@ def check_mmseqs_preflight():
         raise RuntimeError(
             "Unable to read CPU flags from /proc/cpuinfo to verify MMSeqs2 support."
         )
-    missing_flags = [flag for flag in REQUIRED_CPU_FLAGS if flag not in flags]
-    if missing_flags:
+    matched_flags = [flag for flag in SUPPORTED_CPU_FLAGS if flag in flags]
+    if not matched_flags:
         raise RuntimeError(
-            "CPU is missing required instruction set support for MMSeqs2: "
-            + ", ".join(missing_flags)
+            "CPU does not support any of the MMSeqs2-supported instruction set flags: "
+            + ", ".join(SUPPORTED_CPU_FLAGS)
         )
-    logging.debug("CPU feature checks passed for MMSeqs2.")
+    logging.debug(
+        "CPU feature checks passed for MMSeqs2 using supported flags: %s",
+        ", ".join(matched_flags),
+    )
 
 def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
     logging.info(
