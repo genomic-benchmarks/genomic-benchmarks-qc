@@ -64,7 +64,14 @@ def check_mmseqs_preflight():
         ", ".join(matched_flags),
     )
 
-def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
+def run_search(
+    test_fasta_file,
+    train_fasta_file,
+    out_file,
+    tmp_dir,
+    threads: Optional[int] = None,
+    split_memory_limit: Optional[str] = None,
+):
     logging.info(
         "Running MMSeqs2, an ultrafast and sensitive search, for test sequences (query) against train sequences (db)."
     )
@@ -85,6 +92,11 @@ def run_search(test_fasta_file, train_fasta_file, out_file, tmp_dir):
         "--max-seqs", "100",
         "-s", "4.0"
     ]
+
+    if threads is not None:
+        cmd.extend(["--threads", str(threads)])
+    if split_memory_limit is not None:
+        cmd.extend(["--split-memory-limit", split_memory_limit])
 
     logging.debug(f"Running command: {' '.join(cmd)}")
 
@@ -123,14 +135,20 @@ def validate_mmseqs_output(results):
         results = results.dropna(subset=required_cols)
     return results
 
-def run(train_files, test_files, format, 
-        out_folder: Optional[str] = '.', 
-        sequence_column: Optional[list[str]] = None, 
-        report_types: Optional[list[str]] = None, 
-        similarity_threshold: Optional[float] = 80.0, 
-        log_level: Optional[str] = 'INFO',
-        log_file: Optional[str] = None
-    ):
+def run(
+    train_files,
+    test_files,
+    format,
+    out_folder: Optional[str] = '.',
+    sequence_column: Optional[list[str]] = None,
+    report_types: Optional[list[str]] = None,
+    similarity_threshold: Optional[float] = 80.0,
+    threads: Optional[int] = None,
+    split_memory_limit: Optional[str] = None,
+    keep_tmp_files: Optional[bool] = False,
+    log_level: Optional[str] = 'INFO',
+    log_file: Optional[str] = None,
+):
     """Run the train-test split evaluation.
 
     This function reads sequences from the provided training and testing files, performs easy-search using MMseqs2, 
@@ -144,6 +162,9 @@ def run(train_files, test_files, format,
                             Default: ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
     @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 80.0.
+    @param threads: Maximum number of threads MMseqs2 will use. Default: None.
+    @param split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T). Default: None.
+    @param keep_tmp_files: Keep temporary files generated for MMseqs2 debugging. Default: False.
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
     @return: None
@@ -182,7 +203,14 @@ def run(train_files, test_files, format,
         
         # Run MMseqs2 search and get results as a DataFrame
         outfile = "mmseqs2_search_result.tsv"
-        results = run_search(test_fasta_path, train_fasta_path, tmp_dir / outfile, tmp_dir)
+        results = run_search(
+            test_fasta_path,
+            train_fasta_path,
+            tmp_dir / outfile,
+            tmp_dir,
+            threads=threads,
+            split_memory_limit=split_memory_limit,
+        )
 
         # Validate MMseqs2 output
         results = validate_mmseqs_output(results)
@@ -251,9 +279,12 @@ def run(train_files, test_files, format,
     except Exception:
         logging.exception("Train-test split evaluation failed. ")
         raise
-    finally: 
-        logging.debug("Removing temporary files.")
-        try:
-            shutil.rmtree(tmp_dir)
-        except Exception as cleanup_error:
-            logging.warning(f"Failed to remove temporary directory: {cleanup_error}")
+    finally:
+        if keep_tmp_files:
+            logging.info(f"Keeping temporary files for debugging at: {tmp_dir}")
+        else:
+            logging.debug("Removing temporary files.")
+            try:
+                shutil.rmtree(tmp_dir)
+            except Exception as cleanup_error:
+                logging.warning(f"Failed to remove temporary directory: {cleanup_error}")

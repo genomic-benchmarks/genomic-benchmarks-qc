@@ -92,6 +92,9 @@ def evaluate_splits(
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
     similarity_threshold: float = typer.Option(80.0, help="Similarity threshold for data leakage detection (%)."),
+    threads: Optional[int] = typer.Option(None, help="Set maximum number of threads MMseqs2 will use."),
+    split_memory_limit: Optional[str] = typer.Option(None, "--split-memory-limit", help="Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T)."),
+    keep_tmp_files: bool = typer.Option(False, help="Keep temporary files for debugging."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
 ):
@@ -131,6 +134,11 @@ def evaluate_splits(
         typer.echo(f"Error: similarity_threshold must be between 0 and 100, got {similarity_threshold}", err=True)
         raise typer.Exit(code=1)
 
+    # Validate threads are positive when provided
+    if threads is not None and threads <= 0:
+        typer.echo(f"Error: threads must be a positive integer, got {threads}", err=True)
+        raise typer.Exit(code=1)
+
     run_evaluate_splits(
         train_files=train_input,
         test_files=test_input,
@@ -139,6 +147,9 @@ def evaluate_splits(
         sequence_column=sequence_column,
         report_types=report_types,
         similarity_threshold=similarity_threshold,
+        threads=threads,
+        split_memory_limit=split_memory_limit,
+        keep_tmp_files=keep_tmp_files,
         log_level=log_level,
         log_file=log_file,
     )
