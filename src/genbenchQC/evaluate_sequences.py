@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 import logging
 
-from genbenchQC.utils.statistics import SequenceStatistics
+from genbenchQC.utils.seq_stats import SequenceStatistics
 from genbenchQC.report.report_generator import generate_json_report, generate_sequence_html_report
 from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_multisequence_df, read_csv_file, setup_logger
 

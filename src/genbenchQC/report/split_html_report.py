@@ -1,7 +1,7 @@
 from datetime import datetime
 import html
 from genbenchQC.report.utils import encode_image_to_base64, put_data, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
-from genbenchQC.utils.data_leakage_utils import build_alignment_string
+from genbenchQC.report.alignment_rendering import build_alignment_string
 import importlib.metadata
 
 HTML_TEMPLATE = """
