@@ -2,10 +2,12 @@ import logging
 from collections import deque
 from pathlib import Path
 from typing import Optional
+import os
 import platform
 import subprocess
 import shutil
 import threading
+import time
 import pandas as pd
 
 from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
@@ -27,6 +29,7 @@ from genbenchQC.utils.split_stats import (
 
 SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
 MMSEQS_STDERR_TAIL_LINES = 20
+MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC = 1.0
 
 def _read_linux_cpu_flags():
     try:
@@ -115,6 +118,9 @@ def run_search(
         cmd.extend(["--split-memory-limit", split_memory_limit])
 
     logging.debug(f"Running command: {' '.join(cmd)}")
+    mmseqs_env = os.environ.copy()
+    mmseqs_env["TTY"] = "1"
+    logging.debug("Running MMSeqs2 with TTY=%s", mmseqs_env["TTY"])
     stderr_tail = deque(maxlen=MMSEQS_STDERR_TAIL_LINES)
     stderr_tail_lock = threading.Lock()
 
@@ -123,23 +129,64 @@ def run_search(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
+            text=False,
+            bufsize=0,
+            env=mmseqs_env,
         )
 
         def _forward_stream(stream, stream_name):
             if stream is None:
                 return
+            buf = bytearray()
+            last_progress_line = None
+            last_progress_log_ts = None
+
+            def _emit_message(message, separator):
+                nonlocal last_progress_line, last_progress_log_ts
+                if not message:
+                    return
+                if stream_name == "stderr":
+                    with stderr_tail_lock:
+                        stderr_tail.append(message)
+
+                if separator == "\r":
+                    # MMSeqs2 progress updates often rewrite a single terminal line.
+                    now = time.monotonic()
+                    is_new_line = message != last_progress_line
+                    interval_ok = (
+                        last_progress_log_ts is None
+                        or (now - last_progress_log_ts) >= MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC
+                    )
+                    if is_new_line and interval_ok:
+                        logging.debug("MMSeqs2 progress (%s): %s", stream_name, message)
+                        last_progress_log_ts = now
+                    if is_new_line:
+                        last_progress_line = message
+                    return
+
+                log_fn = logging.error if stream_name == "stderr" else logging.debug
+                log_fn("MMSeqs2 %s: %s", stream_name, message)
+                last_progress_line = None
+
             try:
-                for line in iter(stream.readline, ''):
-                    line = line.rstrip("\r\n")
-                    if line:
-                        if stream_name == "stderr":
-                            with stderr_tail_lock:
-                                stderr_tail.append(line)
-                            logging.error("MMSeqs2 stderr: %s", line)
-                        else:
-                            logging.debug("MMSeqs2 %s: %s", stream_name, line)
+                while True:
+                    chunk = stream.read(1)
+                    if chunk == b"":
+                        if buf:
+                            _emit_message(
+                                bytes(buf).decode("utf-8", errors="replace").strip(),
+                                "\n",
+                            )
+                        break
+                    if chunk in (b"\r", b"\n"):
+                        if buf:
+                            _emit_message(
+                                bytes(buf).decode("utf-8", errors="replace").strip(),
+                                "\r" if chunk == b"\r" else "\n",
+                            )
+                        buf.clear()
+                    else:
+                        buf.extend(chunk)
             finally:
                 stream.close()
 
