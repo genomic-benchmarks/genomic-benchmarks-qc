@@ -8,7 +8,7 @@ import threading
 import pandas as pd
 
 from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
-from genbenchQC.utils.mmseqs_summary import summarize_mmseqs_output
+from genbenchQC.utils.mmseqs_summary import summarize_mmseqs_output, MMSEQS_REQUIRED_COLS
 from genbenchQC.utils.input_utils import (
     setup_logger,
     stream_files_to_sequences,
@@ -99,7 +99,7 @@ def run_search(
         str(out_file),
         str(tmp_dir),
         "--format-output",
-        "query,target,qcov,tcov,pident,evalue,qstart,qend,tstart,tend,alnlen,qaln,taln",
+        ",".join(MMSEQS_REQUIRED_COLS),
         "--format-mode", "4",
         "--search-type", "3",
         "--strand", "1",
