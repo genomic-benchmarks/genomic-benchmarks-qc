@@ -193,6 +193,11 @@ def run(
         num_train_seqs = train_stats["count"]
         num_test_seqs = test_stats["count"]
 
+        if num_train_seqs == 0 or num_test_seqs == 0:
+            raise ValueError(
+                "Both train and test inputs must contain at least one sequence before running split evaluation."
+            )
+
         logging.info(f"Read {num_train_seqs} sequences from training files.")
         logging.info(f"Read {num_test_seqs} sequences from testing files.")
         
