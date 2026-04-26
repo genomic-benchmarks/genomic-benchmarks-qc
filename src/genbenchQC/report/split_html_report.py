@@ -153,10 +153,10 @@ HTML_TEMPLATE = """
                         margin-left: 20px;
                     ">
                         <div><strong>Query</strong></div>
-                        <div>0-based index of the test sequence in the input test file order.</div>
+                        <div>0-based index of the test sequence in the input test file order (e.g., seq_0_test).</div>
 
                         <div><strong>Target</strong></div>
-                        <div>0-based index of the train sequence in the input train file order.</div>
+                        <div>0-based index of the train sequence in the input train file order (e.g., seq_0_train).</div>
 
                         <div><strong>Q Cov.</strong></div>
                         <div>Fraction of the query sequence covered by the alignment (0–1).</div>
