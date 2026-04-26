@@ -18,7 +18,7 @@ def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, 
     return basic_stats
 
 
-def get_threshold_stats(summary, similarity_threshold=None, num_train_seqs=None, num_test_seqs=None):
+def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_seqs):
     if summary is None:
         raise ValueError("summary is required for threshold statistics computation")
 
