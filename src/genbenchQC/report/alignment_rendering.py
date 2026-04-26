@@ -1,5 +1,5 @@
 from itertools import zip_longest
-
+import html
 
 def _calculate_percentage(part, whole):
     return (part / whole) * 100 if whole > 0 else 0.0
@@ -135,18 +135,19 @@ def _wrap_text(text, width):
 
 
 def _color_base(base):
+    safe_base = html.escape(base)
     return {
         "A": '<span class="base-A">A</span>',
         "C": '<span class="base-C">C</span>',
         "G": '<span class="base-G">G</span>',
         "T": '<span class="base-T">T</span>',
         "-": '<span class="base-gap">-</span>',
-    }.get(base, f'<span class="base-other">{base}</span>')
+    }.get(base, f'<span class="base-other">{safe_base}</span>')
 
 
 def _format_sequence(seq, color):
     if not color:
-        return seq
+        return html.escape(seq)
     return "".join(_color_base(base) for base in seq)
 
 def build_alignment_string(row, width=80, color=True, validate=True):
