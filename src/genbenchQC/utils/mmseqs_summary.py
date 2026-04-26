@@ -21,6 +21,8 @@ MMSEQS_REQUIRED_COLS = [
     "taln",
 ]
 
+MMSEQS_RESULT_COLUMNS = MMSEQS_REQUIRED_COLS + ["min_cov", "min_cov*pident"]
+
 
 def _missing_required_columns(frame_columns):
     return [column for column in MMSEQS_REQUIRED_COLS if column not in frame_columns]
@@ -80,7 +82,10 @@ def _finalize_results_frame(top_rows_heap):
         row_dict
         for _, _, row_dict in sorted(top_rows_heap, key=lambda item: (-item[0], item[1]))
     ]
-    results_filt = pd.DataFrame(top_rows)
+    if top_rows:
+        results_filt = pd.DataFrame(top_rows)
+    else:
+        results_filt = pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
     if not results_filt.empty:
         results_filt = (
             results_filt.sort_values(by=["min_cov*pident"], ascending=False)

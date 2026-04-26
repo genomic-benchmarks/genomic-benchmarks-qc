@@ -269,8 +269,10 @@ def _write_mmseqs_report_bundle(
     seq_index_mapping.mkdir(parents=True, exist_ok=True)
     new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
     new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
-    filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, set(results_filt["query"]))
-    filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, set(results_filt["target"]))
+    query_ids = set(results_filt["query"]) if "query" in results_filt.columns else set()
+    target_ids = set(results_filt["target"]) if "target" in results_filt.columns else set()
+    filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, query_ids)
+    filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, target_ids)
 
     basic_stats = get_basic_stats_from_aggregates(
         train_filenames,
