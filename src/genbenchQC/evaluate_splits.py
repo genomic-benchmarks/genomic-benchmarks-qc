@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 from pathlib import Path
 from typing import Optional
 import platform
@@ -25,6 +26,7 @@ from genbenchQC.utils.split_stats import (
 )
 
 SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
+MMSEQS_STDERR_TAIL_LINES = 20
 
 def _read_linux_cpu_flags():
     try:
@@ -113,6 +115,8 @@ def run_search(
         cmd.extend(["--split-memory-limit", split_memory_limit])
 
     logging.debug(f"Running command: {' '.join(cmd)}")
+    stderr_tail = deque(maxlen=MMSEQS_STDERR_TAIL_LINES)
+    stderr_tail_lock = threading.Lock()
 
     try:
         process = subprocess.Popen(
@@ -130,7 +134,12 @@ def run_search(
                 for line in iter(stream.readline, ''):
                     line = line.rstrip("\r\n")
                     if line:
-                        logging.debug("MMSeqs2 %s: %s", stream_name, line)
+                        if stream_name == "stderr":
+                            with stderr_tail_lock:
+                                stderr_tail.append(line)
+                            logging.error("MMSeqs2 stderr: %s", line)
+                        else:
+                            logging.debug("MMSeqs2 %s: %s", stream_name, line)
             finally:
                 stream.close()
 
@@ -154,6 +163,17 @@ def run_search(
         if return_code != 0:
             logging.error("MMSeqs2 search failed.")
             logging.error(f"Return code: {return_code}")
+            with stderr_tail_lock:
+                stderr_tail_snapshot = list(stderr_tail)
+            if stderr_tail_snapshot:
+                logging.error(
+                    "MMSeqs2 stderr tail (last %d lines):",
+                    len(stderr_tail_snapshot),
+                )
+                for stderr_line in stderr_tail_snapshot:
+                    logging.error("MMSeqs2 stderr tail: %s", stderr_line)
+            else:
+                logging.error("MMSeqs2 stderr tail: <no stderr captured>")
             raise RuntimeError("MMSeqs2 search failed.")
 
     except Exception:
