@@ -100,10 +100,6 @@ def run_search(
         "3",
         "--strand",
         "1",
-        "--max-seqs",
-        "100",
-        "-s",
-        "4.0",
     ]
 
     if threads is not None:
