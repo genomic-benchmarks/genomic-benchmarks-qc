@@ -1,21 +1,6 @@
 from itertools import zip_longest
 import html
 
-# Filter fasta file, keeping only sequences with IDs in ids_to_keep (for hits)
-def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
-    ids_to_keep = set(ids_to_keep)
-    with fasta_path.open() as file_in, new_fasta_path.open("w") as file_out:
-        write = False
-
-        for line in file_in:
-            if line.startswith(">"):
-                seq_id = line[1:].split()[0]
-                write = seq_id in ids_to_keep
-
-            if write:
-                file_out.write(line)
-
-
 def _validate_alignment_coords(start, end, sequence_length, label):
     if start < 1:
         raise ValueError(f"{label} start < 1 (1-based expected): {start}")
