@@ -1,36 +1,34 @@
-from Bio import SeqIO, SeqRecord, Seq
+from Bio import SeqIO
 import pandas as pd
 import logging
 import json
 
 
-def init_sequence_stats():
-    return {
-        "count": 0,
-        "min_length": None,
-        "max_length": None,
-        "total_length": 0,
-    }
+class SequenceStatsAccumulator:
+    """Streaming accumulator for sequence length statistics."""
+    def __init__(self):
+        self.count = 0
+        self.total_length = 0
+        self.min_length = None
+        self.max_length = None
 
+    def add(self, sequence):
+        seq_len = len(sequence)
+        self.count += 1
+        self.total_length += seq_len
+        if self.min_length is None or seq_len < self.min_length:
+            self.min_length = seq_len
+        if self.max_length is None or seq_len > self.max_length:
+            self.max_length = seq_len
 
-def update_sequence_stats(stats, sequence):
-    seq_len = len(sequence)
-    stats["count"] += 1
-    stats["total_length"] += seq_len
-    if stats["min_length"] is None or seq_len < stats["min_length"]:
-        stats["min_length"] = seq_len
-    if stats["max_length"] is None or seq_len > stats["max_length"]:
-        stats["max_length"] = seq_len
-
-
-def finalize_sequence_stats(stats):
-    count = stats["count"]
-    return {
-        "count": count,
-        "min_length": stats["min_length"] if stats["min_length"] is not None else 0,
-        "mean_length": (stats["total_length"] / count) if count > 0 else 0.0,
-        "max_length": stats["max_length"] if stats["max_length"] is not None else 0,
-    }
+    def finalize(self):
+        count = self.count
+        return {
+            "count": count,
+            "min_length": self.min_length if self.min_length is not None else 0,
+            "mean_length": (self.total_length / count) if count > 0 else 0.0,
+            "max_length": self.max_length if self.max_length is not None else 0,
+        }
 
 def read_fasta(fasta_file):
     logging.debug(f"Reading FASTA file: {fasta_file}")
@@ -57,15 +55,6 @@ def read_selected_fasta_sequences(fasta_file, ids_to_keep):
                 break
 
     return out
-
-def write_fasta(sequences, output_file, indices=None):
-    if indices is None:
-        records = [SeqRecord.SeqRecord(Seq.Seq(seq), id=f'seq_{i}', description="") for i, seq in enumerate(sequences)]
-    else:
-        records = [SeqRecord.SeqRecord(Seq.Seq(sequences[i]), id=f'seq_{indices[i]}', description="") for i in range(len(sequences))]
-    logging.debug(f"Writing FASTA file: {output_file} with {len(sequences)} sequences")
-    SeqIO.write(records, output_file, 'fasta')
-
 
 def append_fasta_record(file_handle, sequence, seq_id):
     file_handle.write(f">{seq_id}\n{sequence}\n")
@@ -123,25 +112,36 @@ def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000
             for seq in chunk[seq_columns].agg(''.join, axis=1).tolist():
                 yield seq
 
-def read_sequences_from_df(df, seq_column, label_column=None, label=None):
-    if label_column is None:
-        return df[seq_column].tolist()
 
-    logging.debug(f"Filtering sequences by label: {label} in column: {label_column}")
-    df_parsed = df[df[label_column] == label]
+def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
+    """Read sequences from dataframe.
 
-    if df_parsed.empty:
-        logging.error(f"No sequences found for label '{label}' in column '{label_column}'.")
-        raise ValueError(f"No sequences found for label '{label}' in column '{label_column}'.")
+    `seq_columns` may be a single column name (str) or a list of column names.
+    If multiple columns are provided the columns are concatenated per-row.
+    If `label_column` is provided, rows are filtered by `label`.
+    """
+    # Normalize seq_columns to a list
+    if isinstance(seq_columns, str):
+        seq_columns = [seq_columns]
 
-    return df_parsed[seq_column].tolist()
+    if label_column is not None:
+        logging.debug(f"Filtering sequences by label: {label} in column: {label_column}")
+        df_parsed = df[df[label_column] == label]
+        if df_parsed.empty:
+            logging.error(f"No sequences found for label '{label}' in column '{label_column}'.")
+            raise ValueError(f"No sequences found for label '{label}' in column '{label_column}'.")
+    else:
+        df_parsed = df
 
-def read_multisequence_df(df, seq_columns, label_column=None, label=None):
-    if len(seq_columns) > 1:
-        logging.debug(f"Concatenating sequences from multiple columns: {seq_columns}")
-    all_sequences = [read_sequences_from_df(df, seq_column, label_column, label) for seq_column in seq_columns]
-    concatenated_sequences = [''.join(seqs) for seqs in zip(*all_sequences)]
-    return concatenated_sequences
+    for col in seq_columns:
+        if col not in df_parsed.columns:
+            logging.error(f"Sequence column '{col}' not found in dataframe.")
+            raise KeyError(f"Sequence column '{col}' not found in dataframe.")
+
+    if len(seq_columns) == 1:
+        return df_parsed[seq_columns[0]].tolist()
+    else:
+        return df_parsed[seq_columns].agg(''.join, axis=1).tolist()
 
 def setup_logger(level=logging.INFO, file=None):
     if file:
@@ -180,18 +180,22 @@ def write_stats_json(stats, stats_json_file):
     with open(stats_json_file, 'w') as file:
         json.dump(stats_dict, file, indent=4)
 
-def read_files_to_sequence_list(files, input_format, sequence_column):
-    sequences = []
-    for file in files:
-        if input_format == 'fasta':
-            sequences += read_fasta(file)
-        elif input_format.startswith('csv') or input_format.startswith('tsv'):
-            df = read_csv_file(file, input_format, sequence_column)
-            sequences += read_multisequence_df(df, sequence_column)
-        else:
-            logging.error(f"Unsupported input format: {input_format}")
-            raise ValueError(f"Unsupported input format: {input_format}")
-    return sequences
+def stream_fasta_records_by_ids(fasta_path, ids_to_keep):
+    """Stream FASTA records whose IDs are in ids_to_keep."""
+    ids_to_keep = set(ids_to_keep)
+    if not ids_to_keep:
+        return
+    
+    for record in SeqIO.parse(str(fasta_path), 'fasta'):
+        if record.id in ids_to_keep:
+            yield record
+
+
+def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
+    """Write FASTA records from fasta_path to new_fasta_path, keeping only those with IDs in ids_to_keep."""
+    logging.debug(f"Filtering FASTA file: {fasta_path} -> {new_fasta_path}, keeping {len(ids_to_keep)} IDs")
+    records = stream_fasta_records_by_ids(fasta_path, ids_to_keep)
+    SeqIO.write(records, str(new_fasta_path), 'fasta')
 
 
 def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10000):

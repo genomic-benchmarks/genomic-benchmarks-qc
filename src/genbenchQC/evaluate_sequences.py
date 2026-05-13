@@ -5,7 +5,7 @@ import logging
 
 from genbenchQC.utils.seq_stats import SequenceStatistics
 from genbenchQC.report.report_generator import generate_json_report, generate_sequence_html_report
-from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_multisequence_df, read_csv_file, setup_logger
+from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
 
 def run_analysis(seq_stats, out_folder, report_types, plot_type):
 
@@ -91,7 +91,7 @@ def run(input, format,
             )
 
         if len(sequence_column) > 1:
-            sequences = read_multisequence_df(df, sequence_column, label_column, label)
+            sequences = read_sequences_from_df(df, sequence_column, label_column, label)
             run_analysis(
                 SequenceStatistics(sequences, filename=Path(input).name, 
                                    filepath=input, seq_column='_'.join(sequence_column), 

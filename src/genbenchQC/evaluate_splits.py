@@ -11,15 +11,13 @@ from genbenchQC.utils.input_utils import (
     setup_logger,
     stream_files_to_sequences,
     append_fasta_record,
-    init_sequence_stats,
-    update_sequence_stats,
-    finalize_sequence_stats,
+    SequenceStatsAccumulator,
     read_selected_fasta_sequences,
+    filter_fasta_by_ids,
 )
 from genbenchQC.utils.split_stats import (
     get_basic_stats_from_aggregates,
     get_threshold_stats,
-    filter_fasta_by_ids,
 )
 
 def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
@@ -47,14 +45,14 @@ def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
 
 
 def _stage_sequences_to_fasta(fasta_path, files, input_format, sequence_column, seq_suffix):
-    sequence_stats_acc = init_sequence_stats()
+    acc = SequenceStatsAccumulator()
 
     with fasta_path.open("w", encoding="utf-8") as fasta_handle:
         for i, sequence in enumerate(stream_files_to_sequences(files, input_format, sequence_column)):
             append_fasta_record(fasta_handle, sequence, f"seq_{i}_{seq_suffix}")
-            update_sequence_stats(sequence_stats_acc, sequence)
+            acc.add(sequence)
 
-    return finalize_sequence_stats(sequence_stats_acc)
+    return acc.finalize()
 
 
 def _build_split_report_stem(train_files, test_files):
