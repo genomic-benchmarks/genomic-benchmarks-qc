@@ -41,17 +41,3 @@ def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_
         "total_combinations": num_train_seqs * num_test_seqs,
     }
     return threshold_stats
-
-# Filter fasta file, keeping only sequences with IDs in ids_to_keep (for hits)
-def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
-    ids_to_keep = set(ids_to_keep)
-    with fasta_path.open() as file_in, new_fasta_path.open("w") as file_out:
-        write = False
-
-        for line in file_in:
-            if line.startswith(">"):
-                seq_id = line[1:].split()[0]
-                write = seq_id in ids_to_keep
-
-            if write:
-                file_out.write(line)
