@@ -5,7 +5,7 @@ import shutil
 import pandas as pd
 
 from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
-from genbenchQC.utils.mmseqs_summary import summarize_mmseqs_output
+from genbenchQC.utils.mmseqs_summary import summarize_mmseqs_output, build_mmseqs_export_frame
 from genbenchQC.utils import mmseqs_runtime
 from genbenchQC.utils.input_utils import (
     setup_logger,
@@ -77,7 +77,6 @@ def _build_simple_report_frame(threshold_stats, has_leakage):
 def _write_mmseqs_report_bundle(
     out_folder,
     report_stem,
-    results_path,
     outfile,
     results_filt,
     train_files,
@@ -89,17 +88,30 @@ def _write_mmseqs_report_bundle(
     train_fasta_path,
     test_fasta_path,
 ):
+    """Generate a comprehensive report bundle for split evaluation results.
+    
+    Produces:
+    - CSV with MMseqs2 hits exceeding similarity threshold
+    - Filtered FASTA files containing only sequences involved in hits
+    - HTML report with visualizations and alignment details
+    """
     train_filenames = ",".join([Path(f).name for f in train_files])
     test_filenames = ",".join([Path(f).name for f in test_files])
 
+    # Define output paths for all report components
     html_report_path = out_folder / f"{report_stem}_report.html"
     plots_dir = out_folder / f"{report_stem}_plots"
     mmseqs_dir = out_folder / f"{report_stem}_mmseqs"
     seq_index_mapping = mmseqs_dir / 'seq_index_mapping'
 
+    # Export MMseqs2 search results to TSV format
+    # Contains hit pairs (test sequences that match training sequences) with similarity scores
     mmseqs_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(results_path, mmseqs_dir / outfile)
+    export_results_path = mmseqs_dir / outfile
+    build_mmseqs_export_frame(results_filt).to_csv(export_results_path, sep="\t", index=False)
 
+    # Create filtered FASTA files containing only sequences involved in hits
+    # Maps the internal seq_* identifiers back to original sequences for reference
     seq_index_mapping.mkdir(parents=True, exist_ok=True)
     new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
     new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
@@ -108,6 +120,7 @@ def _write_mmseqs_report_bundle(
     filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, query_ids)
     filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, target_ids)
 
+    # Aggregate sequence statistics (count, length, GC content, etc.) from train and test sets
     basic_stats = get_basic_stats_from_aggregates(
         train_filenames,
         train_stats,
@@ -115,12 +128,17 @@ def _write_mmseqs_report_bundle(
         test_stats,
     )
 
+    # Prepare top 100 hits with full alignment sequences for HTML visualization
     results_filt_for_html = add_alignment_sequences(
         results_filt.head(100),
         test_fasta_path,
         train_fasta_path,
     )
 
+    # Generate interactive HTML report with:
+    # - Summary statistics and leakage assessment
+    # - Top sequence alignments
+    # - Distribution plots comparing train vs test sets
     generate_splits_html_report(
         basic_stats,
         threshold_stats,
@@ -232,7 +250,6 @@ def run(
             _write_mmseqs_report_bundle(
                 out_folder,
                 report_stem,
-                results_path,
                 outfile,
                 results_filt,
                 train_files,

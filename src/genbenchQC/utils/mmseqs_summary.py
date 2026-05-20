@@ -21,7 +21,8 @@ MMSEQS_REQUIRED_COLS = [
     "taln",
 ]
 
-MMSEQS_RESULT_COLUMNS = MMSEQS_REQUIRED_COLS + ["min_cov", "min_cov*pident"]
+MMSEQS_DERIVED_COLS = ["min_cov", "min_cov*pident", "Leaked"]
+MMSEQS_RESULT_COLUMNS = MMSEQS_REQUIRED_COLS + MMSEQS_DERIVED_COLS
 
 
 def _missing_required_columns(frame_columns):
@@ -87,11 +88,29 @@ def _finalize_results_frame(top_rows_heap):
     else:
         results_filt = pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
     if not results_filt.empty:
+        if "Leaked" not in results_filt.columns:
+            results_filt["Leaked"] = True
         results_filt = (
             results_filt.sort_values(by=["min_cov*pident"], ascending=False)
             .reset_index(drop=True)
         )
+    results_filt = results_filt.reindex(columns=MMSEQS_RESULT_COLUMNS)
     return results_filt
+
+
+def build_mmseqs_export_frame(results_filt):
+    if results_filt is None or results_filt.empty:
+        return pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
+
+    export_frame = results_filt.copy()
+    if "Leaked" not in export_frame.columns:
+        export_frame["Leaked"] = True
+
+    for column in MMSEQS_RESULT_COLUMNS:
+        if column not in export_frame.columns:
+            export_frame[column] = pd.NA
+
+    return export_frame.loc[:, MMSEQS_RESULT_COLUMNS]
 
 
 def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunksize=100000):
