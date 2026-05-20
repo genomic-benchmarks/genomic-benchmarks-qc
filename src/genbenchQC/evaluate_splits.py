@@ -156,7 +156,7 @@ def run(
     out_folder: Optional[str] = '.',
     sequence_column: Optional[list[str]] = None,
     report_types: Optional[list[str]] = None,
-    similarity_threshold: Optional[float] = 80.0,
+    similarity_threshold: Optional[float] = 90.0,
     threads: Optional[int] = None,
     split_memory_limit: Optional[str] = None,
     keep_tmp_files: Optional[bool] = False,
@@ -175,7 +175,7 @@ def run(
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
                             Default: ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 80.0.
+    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 90.0.
     @param threads: Maximum number of threads MMseqs2 will use. Default: None.
     @param split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T). Default: None.
     @param keep_tmp_files: Keep temporary files generated for MMseqs2 debugging. Default: False.

@@ -103,7 +103,7 @@ def evaluate_splits(
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    similarity_threshold: float = typer.Option(80.0, help="Similarity threshold for data leakage detection (%)."),
+    similarity_threshold: float = typer.Option(90.0, help="Similarity threshold for data leakage detection (%)."),
     threads: Optional[int] = typer.Option(None, help="Set maximum number of threads MMseqs2 will use."),
     split_memory_limit: Optional[str] = typer.Option(None, "--split-memory-limit", help="Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T)."),
     keep_tmp_files: bool = typer.Option(False, help="Keep temporary files for debugging."),
