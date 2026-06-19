@@ -4,10 +4,10 @@ from itertools import combinations
 from typing import Optional
 import pandas as pd
 
-from genbenchQC.utils.statistics import SequenceStatistics
+from genbenchQC.utils.seq_stats import SequenceStatistics
 from genbenchQC.utils.testing import flag_significant_differences
 from genbenchQC.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
-from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_multisequence_df, read_csv_file, setup_logger
+from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
 
 def run_analysis(input_statistics, out_folder, report_types, plot_type):
    
@@ -189,7 +189,7 @@ def run(input,
             if len(sequence_column) > 1:
                 seq_stats = []
                 for label in labels:
-                    sequences = read_multisequence_df(df, sequence_column, label_column, label)
+                    sequences = read_sequences_from_df(df, sequence_column, label_column, label)
                     seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, filepath=input[0],
                                                      label=label, seq_column='_'.join(sequence_column))]
                 
@@ -206,7 +206,8 @@ def run(input,
             for seq_col in sequence_column:
                 seq_stats = []
                 for input_file in input:
-                    sequences = read_sequences_from_df(read_csv_file(input_file, format, seq_col), seq_col)
+                    df = read_csv_file(input_file, format, seq_col)
+                    sequences = read_sequences_from_df(df, seq_col)
                     logging.debug(f"Read {len(sequences)} sequences from file {input_file} in column '{seq_col}'.")
                     seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
                                                      label=Path(input_file).stem, seq_column=seq_col,
@@ -222,7 +223,8 @@ def run(input,
             if len(sequence_column) > 1:
                 seq_stats = []
                 for input_file in input:
-                    sequences = read_multisequence_df(read_csv_file(input_file, format, sequence_column), sequence_column)
+                    df = read_csv_file(input_file, format, sequence_column)
+                    sequences = read_sequences_from_df(df, sequence_column)
                     seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
                                                      label=Path(input_file).stem, seq_column='_'.join(sequence_column), 
                                                      end_position=end_position)]

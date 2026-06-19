@@ -1,6 +1,7 @@
-import typer
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
+
+import typer
 
 from genbenchQC.evaluate_classes import run as run_evaluate_classes
 from genbenchQC.evaluate_splits import run as run_evaluate_splits
@@ -12,6 +13,16 @@ VALID_FORMATS = ['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+
+
+def _run_command(command, *args, **kwargs):
+    try:
+        command(*args, **kwargs)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1)
 
 @app.command()
 def evaluate_classes(
@@ -68,7 +79,8 @@ def evaluate_classes(
         typer.echo(f"Error: end_position must be a positive integer, got {end_position}", err=True)
         raise typer.Exit(code=1)
     
-    run_evaluate_classes(
+    _run_command(
+        run_evaluate_classes,
         input=input,
         format=format,
         out_folder=out_folder,
@@ -91,7 +103,10 @@ def evaluate_splits(
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    similarity_threshold: float = typer.Option(80.0, help="Similarity threshold for data leakage detection (%)."),
+    similarity_threshold: float = typer.Option(90.0, help="Similarity threshold for data leakage detection (%)."),
+    threads: Optional[int] = typer.Option(None, help="Set maximum number of threads MMseqs2 will use."),
+    split_memory_limit: Optional[str] = typer.Option(None, "--split-memory-limit", help="Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T)."),
+    keep_tmp_files: bool = typer.Option(False, help="Keep temporary files for debugging."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
 ):
@@ -131,7 +146,13 @@ def evaluate_splits(
         typer.echo(f"Error: similarity_threshold must be between 0 and 100, got {similarity_threshold}", err=True)
         raise typer.Exit(code=1)
 
-    run_evaluate_splits(
+    # Validate threads are positive when provided
+    if threads is not None and threads <= 0:
+        typer.echo(f"Error: threads must be a positive integer, got {threads}", err=True)
+        raise typer.Exit(code=1)
+
+    _run_command(
+        run_evaluate_splits,
         train_files=train_input,
         test_files=test_input,
         format=format,
@@ -139,6 +160,9 @@ def evaluate_splits(
         sequence_column=sequence_column,
         report_types=report_types,
         similarity_threshold=similarity_threshold,
+        threads=threads,
+        split_memory_limit=split_memory_limit,
+        keep_tmp_files=keep_tmp_files,
         log_level=log_level,
         log_file=log_file,
     )

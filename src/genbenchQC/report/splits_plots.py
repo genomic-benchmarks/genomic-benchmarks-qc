@@ -6,11 +6,10 @@ import seaborn as sns
 
 from genbenchQC.report.classes_plots import HuePalette, prepare_legend
 
-def plot_similarity_histograms(results, threshold_stats):
+def plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats):
 
-    # Get unique queries and targets with their max similarity
-    unique_queries = results.groupby('query')['min_cov*pident'].max()
-    unique_targets = results.groupby('target')['min_cov*pident'].max()
+    unique_queries = pd.Series(query_similarity_max, dtype=float)
+    unique_targets = pd.Series(target_similarity_max, dtype=float)
 
     # Get counts of missing data (queries/targets without hits) to add to histogram
     missing_data_query = threshold_stats["num_queries_without_hits"]

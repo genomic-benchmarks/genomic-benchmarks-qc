@@ -27,11 +27,9 @@ Install Genomic Benchmarks QC using pip:
 pip install genbenchQC
 ```
 
-If you plan to use `evaluate-splits`, install [mmseqs2](https://mmseqs.com/latest/userguide.pdf):
+If you plan to use `evaluate-splits`, install [mmseqs2](https://github.com/soedinglab/mmseqs2). While you can install `mmseqs2` using conda, it is recommended to download precompiled binary package for your system or to compile `mmseqs2` from source which can improve performance by optimizing it for your specific system. On some systems, we have observed incorrect sequence alignments produced by `mmseqs2` when installed from conda. 
 
-```bash
-conda install -c conda-forge -c bioconda mmseqs2
-```
+Find detailed instalation instructions at [mmseqs2 wiki page](https://github.com/soedinglab/MMseqs2/wiki#installation).
 
 ## Quick Start
 
