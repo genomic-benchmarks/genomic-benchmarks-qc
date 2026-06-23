@@ -1,7 +1,8 @@
 from datetime import datetime
 import html
-from genbenchQC.report.utils import encode_image_to_base64, put_data, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genbenchQC.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genbenchQC.report.alignment_rendering import build_alignment_string
+from genbenchQC.utils.split_stats import flag_split_data_leakage
 import importlib.metadata
 
 HTML_TEMPLATE = """
@@ -109,6 +110,11 @@ HTML_TEMPLATE = """
                         where coverage is the fraction of each sequence spanned by the alignment, 
                         and percent identity is the proportion of identical aligned positions.
                     </p>
+                    <p>
+                        Status is based on the percentage of test sequences with similarity at or above the threshold: 
+                        Pass means 0% leaked test sequences, Warning means greater than 0% and less than 2%, 
+                        and Fail means 2% or more.
+                    </p>
                 </div>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr id="filename">
@@ -133,7 +139,7 @@ HTML_TEMPLATE = """
 
             <section id="results-section">
                 <div class="section-header">
-                    <h3 style="margin: 0;">Alignment of Leaked Sequences (Top 100)</h3>
+                    <h3 style="margin: 0;">Alignment of High-Similarity Sequences (Top 100)</h3>
                     <button class="toggle-btn"
                             onclick="toggleExplanation('results-explanation')"
                             title="Show explanation">?</button>
@@ -271,16 +277,21 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{histogram_similarity_base64}}", 
                              encode_image_to_base64(plots_paths_dict['Similarity histograms']))
 
+    leakage_flag = flag_split_data_leakage(threshold_stats["perc_queries_above_thr"])
+    html_template = put_data(
+        html_template,
+        "{{icon_data_leakage}}",
+        icon_html({"Data Leakage": leakage_flag}, "Data Leakage")
+    )
+
     if len(results_filt) == 0:
         html_template = put_data(
             html_template,
             "{{results_rows}}",
-            "<tr><td colspan='8'>No leaked sequences found across train/test splits.</td></tr>"
+            "<tr><td colspan='8'>No high-similarity sequences found across train/test splits.</td></tr>"
         )
-        html_template = put_data(html_template, "{{icon_data_leakage}}", '<span class="status-icon status-pass">✔</span>')
         return html_template
 
-    html_template = put_data(html_template, "{{icon_data_leakage}}", '<span class="status-icon status-fail">✘</span>')
     results_display = results_filt.head(100).copy() # limit to top 100 hits for display in HTML report
 
     rows = []

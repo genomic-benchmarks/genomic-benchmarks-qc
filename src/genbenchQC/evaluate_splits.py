@@ -18,6 +18,7 @@ from genbenchQC.utils.input_utils import (
 from genbenchQC.utils.split_stats import (
     get_basic_stats_from_aggregates,
     get_threshold_stats,
+    flag_split_data_leakage,
 )
 
 def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
@@ -61,10 +62,10 @@ def _build_split_report_stem(train_files, test_files):
     return f"split_check_{train_stem}_vs_{test_stem}"
 
 
-def _build_simple_report_frame(threshold_stats, has_leakage):
+def _build_simple_report_frame(threshold_stats):
     result = {
         "Data Leakage": {
-            "Flag": "Fail" if has_leakage else "Pass",
+            "Flag": flag_split_data_leakage(threshold_stats['perc_queries_above_thr']),
             "Percentage of leaked queries": f"{threshold_stats['perc_queries_above_thr']:.2f}%",
             "Percentage of leaked targets": f"{threshold_stats['perc_targets_above_thr']:.2f}%",
         }
@@ -243,7 +244,7 @@ def run(
 
         if 'simple' in report_types:
             simple_report_path = out_folder / f"{report_stem}.csv"
-            df = _build_simple_report_frame(threshold_stats, not results_filt.empty)
+            df = _build_simple_report_frame(threshold_stats)
             generate_simple_report(df, simple_report_path)
         
         if 'html' in report_types:

@@ -2,6 +2,14 @@ def _calculate_percentage(part, whole):
     return (part / whole) * 100 if whole > 0 else 0.0
 
 
+def flag_split_data_leakage(perc_queries_above_thr, fail_threshold=2.0):
+    if perc_queries_above_thr >= fail_threshold:
+        return "Fail"
+    if perc_queries_above_thr > 0:
+        return "Warning"
+    return "Pass"
+
+
 def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, test_stats):
     basic_stats = {
         "train_filename": str(filename_train),
