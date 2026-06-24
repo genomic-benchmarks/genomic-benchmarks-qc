@@ -4,21 +4,36 @@ from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curv
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
-def extract_per_position_base(sequences, base, reverse, end_position=None):
-    if not sequences:
-        return np.zeros((0, 0))
-    if end_position is not None:
-        sequences = [seq[:end_position] for seq in sequences]
-        max_len = end_position
-    else:
-        max_len = max([len(seq) for seq in sequences])
-    features = np.zeros((len(sequences), max_len))
+def _score_position_base(sequences, base, position, reverse):
+    values = np.zeros(len(sequences), dtype=float)
+
     for i, seq in enumerate(sequences):
         if reverse:
-            seq = seq[::-1]
-        for j, nt in enumerate(seq):
-            features[i, j] = 1 if nt == base else 0
-    return features
+            index = len(seq) - 1 - position
+            if index >= 0 and index < len(seq) and seq[index] == base:
+                values[i] = 1.0
+        elif position < len(seq) and seq[position] == base:
+            values[i] = 1.0
+
+    return values
+
+def _best_threshold_accuracy(labels, scores):
+    unique_scores = np.unique(scores)
+    if unique_scores.size == 1:
+        return float(max(labels.mean(), 1 - labels.mean()))
+
+    thresholds = np.concatenate([
+        [-np.inf],
+        (unique_scores[:-1] + unique_scores[1:]) / 2,
+        [np.inf],
+    ])
+
+    best_accuracy = 0.0
+    for threshold in thresholds:
+        predicted = scores >= threshold
+        best_accuracy = max(best_accuracy, accuracy_score(labels, predicted))
+
+    return float(best_accuracy)
 
 def _metric_bundle(values_1, values_2):
     values_1 = np.asarray(values_1, dtype=float)
@@ -49,8 +64,7 @@ def _metric_bundle(values_1, values_2):
 
     precision, recall, _ = precision_recall_curve(labels, scores)
     aupr = auc(recall, precision)
-    binary_predictions = (scores >= 0.5).astype(int)
-    accuracy = accuracy_score(labels, binary_predictions)
+    accuracy = _best_threshold_accuracy(labels, scores)
 
     return {
         'AU-ROC': float(auroc),
@@ -111,17 +125,16 @@ def _score_position_features(sequences_1, sequences_2, bases, prefix, reverse=Fa
     per_base_aggregates = {}
 
     if end_position is None:
+        if not sequences_1 or not sequences_2:
+            return results, per_base_aggregates
         end_position = min(max(len(sequence) for sequence in sequences_1), max(len(sequence) for sequence in sequences_2))
 
     for base in bases:
-        matrix_1 = extract_per_position_base(sequences_1, base, reverse, end_position=end_position)
-        matrix_2 = extract_per_position_base(sequences_2, base, reverse, end_position=end_position)
-
         # collect per-position raw metric dicts to compute per-base aggregate
         pos_metrics_list = []
         for position in range(end_position):
-            vals1 = matrix_1[:, position]
-            vals2 = matrix_2[:, position]
+            vals1 = _score_position_base(sequences_1, base, position, reverse)
+            vals2 = _score_position_base(sequences_2, base, position, reverse)
             metrics = _metric_bundle(vals1, vals2)
             metrics['Flag'] = flag_on_score(metrics['AU-ROC'])
             result_name = f'{prefix} - {base} position {position + 1}'
@@ -182,12 +195,9 @@ def direct_feature_model(stats1, stats2):
     bases = sorted(list(set(stats1.stats['Unique bases']) | set(stats2.stats['Unique bases'])))
     end_position = min(stats1.end_position, stats2.end_position)
 
-    sampled_sequences_1 = [stats1.sequences[index] for index in indices_1]
-    sampled_sequences_2 = [stats2.sequences[index] for index in indices_2]
-
     pos_results, per_base_agg = _score_position_features(
-        sampled_sequences_1,
-        sampled_sequences_2,
+        stats1.sequences,
+        stats2.sequences,
         bases,
         'Per position nucleotide content',
         reverse=False,
@@ -200,8 +210,8 @@ def direct_feature_model(stats1, stats2):
         results['Per position nucleotide content'] = _worst_case_metrics(per_base_agg.values())
 
     pos_results_rev, per_base_agg_rev = _score_position_features(
-        sampled_sequences_1,
-        sampled_sequences_2,
+        stats1.sequences,
+        stats2.sequences,
         bases,
         'Per reverse position nucleotide content',
         reverse=True,
@@ -260,17 +270,11 @@ def flag_significant_differences(stats1, stats2):
             if key.startswith(f"{stat_name} - ") and key != stat_name:
                 results[key] = all_results[key]
 
-    # Add any remaining results not in the ordered list
-    for key in all_results:
-        if key not in results:
-            results[key] = all_results[key]
-
-    results = pd.DataFrame.from_dict(results, orient='index')
-    results.index.name = 'Statistic'
-
     return results
 
 def flag_on_score(score):
+    if score is None or not np.isfinite(score):
+        raise ValueError(f"Score must be a finite number, got {score}")
     if score > 0.7:
         return "Fail"
     elif score > 0.6:

@@ -48,7 +48,7 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
             logging.info(
                 f"Comparing classes: {stat1.filename} vs {stat2.filename}")
 
-        logging.debug(f"Running significant differences analysis for {filename} with max_class_size={10000}.")
+        logging.debug(f"Running significant differences analysis for {filename}.")
         results = flag_significant_differences(
             stat1, stat2
         )
