@@ -167,7 +167,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
 
     if len(duplicate_seqs) > 0:
         with open(duplicate_seqs_path, 'w') as f:
-            for seq in duplicate_seqs:
+            for seq in sorted(duplicate_seqs):
                 f.write(f"{seq}\n")
         logging.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
 
