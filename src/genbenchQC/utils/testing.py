@@ -1,27 +1,31 @@
+"""
+Testing utilities for GenBenchQC.
+
+This module provides functions to compute quality metrics (AU-ROC, AU-PR, Accuracy)
+and generate flags for comparing two datasets.
+"""
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
-def _score_position_base(sequences, base, position, reverse):
-    values = np.zeros(len(sequences), dtype=float)
+def _compute_best_threshold_accuracy(labels: np.ndarray, scores: np.ndarray) -> float:
+    """Find the threshold that maximizes accuracy on given labels/scores.
 
-    for i, seq in enumerate(sequences):
-        if reverse:
-            index = len(seq) - 1 - position
-            if index >= 0 and index < len(seq) and seq[index] == base:
-                values[i] = 1.0
-        elif position < len(seq) and seq[position] == base:
-            values[i] = 1.0
+    Args:
+        labels: Binary ground truth labels.
+        scores: Continuous prediction scores.
 
-    return values
-
-def _best_threshold_accuracy(labels, scores):
+    Returns:
+        Best achievable accuracy (or prevalence-based baseline if single score).
+    """
     unique_scores = np.unique(scores)
     if unique_scores.size == 1:
         return float(max(labels.mean(), 1 - labels.mean()))
 
+    # Midpoints between consecutive unique scores + infinities
     thresholds = np.concatenate([
         [-np.inf],
         (unique_scores[:-1] + unique_scores[1:]) / 2,
@@ -35,14 +39,26 @@ def _best_threshold_accuracy(labels, scores):
 
     return float(best_accuracy)
 
-def _metric_bundle(values_1, values_2):
+def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> dict:
+    """Compute AU-ROC, AU-PR, and Accuracy from two arrays of scores.
+
+    Args:
+        values_1: Scores from dataset 1 (treated as positive class).
+        values_2: Scores from dataset 2 (treated as negative class).
+
+    Returns:
+        Dictionary with AU-ROC, AU-PR, Accuracy, and Flag.
+    """
     values_1 = np.asarray(values_1, dtype=float)
     values_2 = np.asarray(values_2, dtype=float)
 
+    # Empty input case
     if values_1.size == 0 or values_2.size == 0:
         return {metric: np.nan for metric in METRICS_TO_COMPUTE}
 
     combined = np.concatenate([values_1, values_2])
+
+    # Single unique value case
     if np.unique(combined).size < 2:
         prevalence = values_1.size / (values_1.size + values_2.size)
         return {
@@ -58,13 +74,15 @@ def _metric_bundle(values_1, values_2):
     scores = combined
 
     auroc = roc_auc_score(labels, scores)
+
+    # Invert scores if AU-ROC < 0.5 (indicates reverse correlation)
     if auroc < 0.5:
         scores = -scores
         auroc = 1 - auroc
 
     precision, recall, _ = precision_recall_curve(labels, scores)
     aupr = auc(recall, precision)
-    accuracy = _best_threshold_accuracy(labels, scores)
+    accuracy = _compute_best_threshold_accuracy(labels, scores)
 
     return {
         'AU-ROC': float(auroc),
@@ -72,30 +90,166 @@ def _metric_bundle(values_1, values_2):
         'Accuracy': float(accuracy),
     }
 
-def _flagged_metrics(values_1, values_2):
-    metrics = _metric_bundle(values_1, values_2)
-    metrics['Flag'] = flag_on_score(metrics['AU-ROC'])
+
+def _compute_flagged_metrics(values_1: np.ndarray, values_2: np.ndarray) -> dict:
+    """Compute metrics and add flag based on AU-ROC.
+
+    Args:
+        values_1: Scores from dataset 1.
+        values_2: Scores from dataset 2.
+
+    Returns:
+        Metrics dictionary with added 'Flag' key.
+    """
+    metrics = _compute_metrics_from_arrays(values_1, values_2)
+    metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
     return metrics
 
-def _worst_case_metrics(metric_dicts):
+
+def _aggregate_worst_case_metrics(metric_dicts: list[dict]) -> dict:
+    """Aggregate multiple metric dicts by taking worst-case (max) per metric.
+
+    Args:
+        metric_dicts: List of metric dictionaries.
+
+    Returns:
+        Aggregated dictionary with max values across inputs.
+    """
     aggregate = {}
 
     for metric_name in METRICS_TO_COMPUTE:
-        values = np.asarray([metrics.get(metric_name, np.nan) for metrics in metric_dicts], dtype=float)
+        values = np.asarray([m.get(metric_name, np.nan) for m in metric_dicts], dtype=float)
         if values.size == 0 or np.all(np.isnan(values)):
             aggregate[metric_name] = np.nan
         else:
             aggregate[metric_name] = float(np.nanmax(values))
 
-    aggregate['Flag'] = flag_on_score(aggregate.get('AU-ROC', np.nan))
+    aggregate['Flag'] = _flag_on_score(aggregate.get('AU-ROC', np.nan))
     return aggregate
 
-def _score_scalar_feature(frame_1, frame_2, column_name, indices_1, indices_2):
+def _compute_position_binary_scores(sequences: list[str], base: str, position: int, reverse: bool) -> np.ndarray:
+    """Compute binary scores for a specific base at a position across sequences.
+
+    Args:
+        sequences: List of DNA/protein sequences.
+        base: Nucleotide/amino acid to check for.
+        position: Position index (0-based).
+        reverse: If True, count from end of sequence.
+
+    Returns:
+        Array of 1.0 where base matches at position, 0.0 otherwise.
+    """
+    values = np.zeros(len(sequences), dtype=float)
+
+    for i, seq in enumerate(sequences):
+        if reverse:
+            index = len(seq) - 1 - position
+            if index >= 0 and index < len(seq) and seq[index] == base:
+                values[i] = 1.0
+        elif position < len(seq) and seq[position] == base:
+            values[i] = 1.0
+
+    return values
+
+
+def _score_position_features(
+    sequences_1: list[str],
+    sequences_2: list[str],
+    bases: list[str],
+    prefix: str,
+    reverse: bool = False,
+    end_position: int | None = None,
+) -> tuple[dict, dict]:
+    """Compute per-position metrics for all bases.
+
+    Args:
+        sequences_1: Sequences from dataset 1.
+        sequences_2: Sequences from dataset 2.
+        bases: Bases to analyze.
+        prefix: Name prefix for result keys.
+        reverse: If True, analyze from end of sequences.
+        end_position: Max position to analyze (None = auto-detect).
+
+    Returns:
+        Tuple of (detailed results dict, per-base aggregates dict).
+    """
+    results = {}
+    per_base_aggregates = {}
+
+    if end_position is None:
+        if not sequences_1 or not sequences_2:
+            return results, per_base_aggregates
+        end_position = min(
+            max(len(s) for s in sequences_1),
+            max(len(s) for s in sequences_2),
+        )
+
+    for base in bases:
+        pos_metrics_list = []
+        for position in range(end_position):
+            vals1 = _compute_position_binary_scores(sequences_1, base, position, reverse)
+            vals2 = _compute_position_binary_scores(sequences_2, base, position, reverse)
+            metrics = _compute_metrics_from_arrays(vals1, vals2)
+            metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
+            result_name = f'{prefix} - {base} position {position + 1}'
+            results[result_name] = metrics
+            pos_metrics_list.append(metrics)
+
+        # Aggregate across positions (worst-case)
+        if pos_metrics_list:
+            agg = _aggregate_worst_case_metrics(pos_metrics_list)
+        else:
+            agg = {metric: np.nan for metric in METRICS_TO_COMPUTE}
+            agg['Flag'] = _flag_on_score(np.nan)
+
+        results[f'{prefix} - {base}'] = agg
+        per_base_aggregates[base] = agg
+
+    return results, per_base_aggregates
+
+def _score_scalar_feature(
+    frame_1: pd.DataFrame,
+    frame_2: pd.DataFrame,
+    column_name: str,
+    indices_1: np.ndarray,
+    indices_2: np.ndarray,
+) -> dict:
+    """Score a single scalar feature column between two datasets.
+
+    Args:
+        frame_1: DataFrame for dataset 1.
+        frame_2: DataFrame for dataset 2.
+        column_name: Column to score.
+        indices_1: Row indices for dataset 1.
+        indices_2: Row indices for dataset 2.
+
+    Returns:
+        Flagged metrics dictionary.
+    """
     values_1 = frame_1.iloc[indices_1][column_name].fillna(0).to_numpy(dtype=float)
     values_2 = frame_2.iloc[indices_2][column_name].fillna(0).to_numpy(dtype=float)
-    return _flagged_metrics(values_1, values_2)
+    return _compute_flagged_metrics(values_1, values_2)
 
-def _score_dataframe_features(frame_1, frame_2, prefix, indices_1, indices_2):
+
+def _score_dataframe_features(
+    frame_1: pd.DataFrame,
+    frame_2: pd.DataFrame,
+    prefix: str,
+    indices_1: np.ndarray,
+    indices_2: np.ndarray,
+) -> dict:
+    """Score all numeric columns in dataframes.
+
+    Args:
+        frame_1: DataFrame for dataset 1.
+        frame_2: DataFrame for dataset 2.
+        prefix: Name prefix for result keys.
+        indices_1: Row indices for dataset 1.
+        indices_2: Row indices for dataset 2.
+
+    Returns:
+        Dictionary with per-column and aggregate metrics.
+    """
     results = {}
     columns = sorted(set(frame_1.columns) | set(frame_2.columns))
 
@@ -110,126 +264,101 @@ def _score_dataframe_features(frame_1, frame_2, prefix, indices_1, indices_2):
         else:
             values_2 = np.zeros(len(indices_2), dtype=float)
 
-        results[f'{prefix} - {column}'] = _flagged_metrics(values_1, values_2)
+        results[f'{prefix} - {column}'] = _compute_flagged_metrics(values_1, values_2)
 
-    # compute worst-case aggregate across columns (max over metrics)
+    # Compute worst-case aggregate across columns
     if columns:
-        results[f'{prefix}'] = _worst_case_metrics(
-            [results[f'{prefix} - {column}'] for column in columns]
+        results[prefix] = _aggregate_worst_case_metrics(
+            [results[f'{prefix} - {col}'] for col in columns]
         )
 
     return results
 
-def _score_position_features(sequences_1, sequences_2, bases, prefix, reverse=False, end_position=None):
-    results = {}
-    per_base_aggregates = {}
-
-    if end_position is None:
-        if not sequences_1 or not sequences_2:
-            return results, per_base_aggregates
-        end_position = min(max(len(sequence) for sequence in sequences_1), max(len(sequence) for sequence in sequences_2))
-
-    for base in bases:
-        # collect per-position raw metric dicts to compute per-base aggregate
-        pos_metrics_list = []
-        for position in range(end_position):
-            vals1 = _score_position_base(sequences_1, base, position, reverse)
-            vals2 = _score_position_base(sequences_2, base, position, reverse)
-            metrics = _metric_bundle(vals1, vals2)
-            metrics['Flag'] = flag_on_score(metrics['AU-ROC'])
-            result_name = f'{prefix} - {base} position {position + 1}'
-            results[result_name] = metrics
-            pos_metrics_list.append(metrics)
-
-        # compute per-base aggregated metrics (worst-case across positions)
-        if pos_metrics_list:
-            agg = _worst_case_metrics(pos_metrics_list)
-        else:
-            agg = {metric: np.nan for metric in METRICS_TO_COMPUTE}
-            agg['Flag'] = flag_on_score(np.nan)
-
-        results[f'{prefix} - {base}'] = agg
-        per_base_aggregates[base] = agg
-
-    return results, per_base_aggregates
-
 def direct_feature_model(stats1, stats2):
-    # Use full datasets (no balancing/subsampling) when computing raw-feature metrics.
+    """Compute all direct feature comparison metrics between two datasets.
+
+    Uses full datasets (no subsampling) for raw-feature metrics.
+
+    Args:
+        stats1: SequenceStatistics object for dataset 1.
+        stats2: SequenceStatistics object for dataset 2.
+
+    Returns:
+        Nested dictionary with all computed metrics and flags.
+    """
     indices_1 = np.arange(len(stats1.sequences))
     indices_2 = np.arange(len(stats2.sequences))
 
     results = {}
 
+    # Scalar features
     results['Sequence lengths'] = _score_scalar_feature(
         stats1.stats['Sequence lengths'],
         stats2.stats['Sequence lengths'],
         'Sequence lengths',
-        indices_1,
-        indices_2,
+        indices_1, indices_2,
     )
 
     results['Per sequence GC content'] = _score_scalar_feature(
         stats1.stats['Per sequence GC content'],
         stats2.stats['Per sequence GC content'],
         'Per sequence GC content',
-        indices_1,
-        indices_2,
+        indices_1, indices_2,
     )
 
+    # DataFrame features
     results.update(_score_dataframe_features(
         stats1.stats['Per sequence nucleotide content'],
         stats2.stats['Per sequence nucleotide content'],
         'Per sequence nucleotide content',
-        indices_1,
-        indices_2,
+        indices_1, indices_2,
     ))
 
     results.update(_score_dataframe_features(
         stats1.stats['Per sequence dinucleotide content'],
         stats2.stats['Per sequence dinucleotide content'],
         'Per sequence dinucleotide content',
-        indices_1,
-        indices_2,
+        indices_1, indices_2,
     ))
 
-    bases = sorted(list(set(stats1.stats['Unique bases']) | set(stats2.stats['Unique bases'])))
+    # Position features (forward)
+    bases = sorted(set(stats1.stats['Unique bases']) | set(stats2.stats['Unique bases']))
     end_position = min(stats1.end_position, stats2.end_position)
 
     pos_results, per_base_agg = _score_position_features(
-        stats1.sequences,
-        stats2.sequences,
-        bases,
+        stats1.sequences, stats2.sequences, bases,
         'Per position nucleotide content',
-        reverse=False,
-        end_position=end_position,
+        reverse=False, end_position=end_position,
     )
     results.update(pos_results)
-
-    # add overall worst-case across bases for forward positions
     if per_base_agg:
-        results['Per position nucleotide content'] = _worst_case_metrics(per_base_agg.values())
+        results['Per position nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg.values())
 
+    # Position features (reverse)
     pos_results_rev, per_base_agg_rev = _score_position_features(
-        stats1.sequences,
-        stats2.sequences,
-        bases,
+        stats1.sequences, stats2.sequences, bases,
         'Per reverse position nucleotide content',
-        reverse=True,
-        end_position=end_position,
+        reverse=True, end_position=end_position,
     )
     results.update(pos_results_rev)
-
-    # add overall worst-case across bases for reverse positions
     if per_base_agg_rev:
-        results['Per reverse position nucleotide content'] = _worst_case_metrics(per_base_agg_rev.values())
+        results['Per reverse position nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg_rev.values())
 
     return results
 
-def flag_significant_differences(stats1, stats2):
 
+def flag_significant_differences(stats1, stats2):
+    """Generate comprehensive QC comparison between two datasets.
+
+    Args:
+        stats1: SequenceStatistics object for dataset 1.
+        stats2: SequenceStatistics object for dataset 2.
+
+    Returns:
+        Ordered dictionary with all flags and metrics.
+    """
     results = {}
 
-    # Define the desired order of statistics
     ordered_stats = [
         'Unique bases',
         'Sequence Duplications within Labels',
@@ -242,29 +371,22 @@ def flag_significant_differences(stats1, stats2):
         'Per reverse position nucleotide content',
     ]
 
-    # Compute all results
     all_results = {}
 
-    all_results['Unique bases'] = {}
-    all_results['Unique bases']['Flag'] = flag_unique_bases(stats1, stats2)
-
-    all_results['Sequence Duplications within Labels'] = {}
-    all_results['Sequence Duplications within Labels']['Flag'] = flag_duplicate_sequences(stats1, stats2)
-
-    all_results['Duplicate Sequences between Labels'] = {}
-    all_results['Duplicate Sequences between Labels']['Flag'] = flag_duplication_between_datasets(
-        stats1.sequences, stats2.sequences
-    )
+    all_results['Unique bases'] = {'Flag': _flag_unique_bases(stats1, stats2)}
+    all_results['Sequence Duplications within Labels'] = {'Flag': _flag_duplicate_sequences(stats1, stats2)}
+    all_results['Duplicate Sequences between Labels'] = {
+        'Flag': _flag_duplication_between_datasets(stats1.sequences, stats2.sequences)
+    }
 
     model_results = direct_feature_model(stats1, stats2)
     all_results.update(model_results)
 
-    # Reorganize: add aggregates in desired order first, then all details
+    # Order: aggregates first, then details
     for stat_name in ordered_stats:
         if stat_name in all_results:
             results[stat_name] = all_results[stat_name]
-    
-    # Add all details for this statistic
+
     for stat_name in ordered_stats:
         for key in all_results:
             if key.startswith(f"{stat_name} - ") and key != stat_name:
@@ -272,28 +394,41 @@ def flag_significant_differences(stats1, stats2):
 
     return results
 
-def flag_on_score(score):
-    if score is None or not np.isfinite(score):
-        raise ValueError(f"Score must be a finite number, got {score}")
-    if score > 0.7:
-        return "Fail"
-    elif score > 0.6:
-        return "Warning"
-    else:
-        return "Pass"
 
-def flag_unique_bases(stats1, stats2):
-    if set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases']):
-        return 'Pass'
-    else:
+def _flag_on_score(score: float) -> str:
+    """Assign Pass/Warning/Fail flag based on AU-ROC score.
+
+    Args:
+        score: AU-ROC value (must be finite).
+
+    Returns:
+        'Pass' if score <= 0.6, 'Warning' if <= 0.7, 'Fail' otherwise.
+        Returns 'Unknown' for non-finite scores instead of raising.
+    """
+    if score is None or not np.isfinite(score):
+        return 'Unknown'
+    if score > 0.7:
         return 'Fail'
-    
-def flag_duplicate_sequences(stats1, stats2):
+    elif score > 0.6:
+        return 'Warning'
+    else:
+        return 'Pass'
+
+
+def _flag_unique_bases(stats1, stats2) -> str:
+    """Check if both datasets have identical base sets."""
+    return 'Pass' if set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases']) else 'Fail'
+
+
+def _flag_duplicate_sequences(stats1, stats2) -> str:
+    """Check for duplicates within each dataset."""
     if stats1.stats['Number of sequences'] != stats1.stats['Number of sequences left after deduplication']:
         return 'Warning'
     if stats2.stats['Number of sequences'] != stats2.stats['Number of sequences left after deduplication']:
         return 'Warning'
     return 'Pass'
 
-def flag_duplication_between_datasets(sequences1, sequences2):
+
+def _flag_duplication_between_datasets(sequences1: list[str], sequences2: list[str]) -> str:
+    """Check for overlapping sequences between datasets."""
     return "Fail" if bool(set(sequences1) & set(sequences2)) else "Pass"
