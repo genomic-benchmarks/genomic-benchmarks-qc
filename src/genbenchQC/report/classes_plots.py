@@ -493,7 +493,7 @@ class HuePalette:
 
     def __new__(palette):
         if palette._palette is None:
-            palette._palette = sns.color_palette(['#3E8EDE', '#B57EDC'])
+            palette._palette = sns.color_palette(['#003D99', '#66A3FF'])
 
         return palette._palette
                 
