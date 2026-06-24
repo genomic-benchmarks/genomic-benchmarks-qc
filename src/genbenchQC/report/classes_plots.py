@@ -62,7 +62,7 @@ def add_failed_outline(ax, failed_positions):
             fill=False,
             edgecolor=edgecolor,
             linewidth=4,
-            alpha=0.3,
+            alpha=0.5,
             zorder=10
         ))
 
@@ -320,7 +320,7 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
                 if 1 <= pos <= end_position:
                     color = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
                     # axvspan uses inclusive bounds, so shade from pos-0.5 to pos+0.5 for 1-wide band
-                    axs[index].axvspan(pos - 0.5, pos + 0.5, color=color, alpha=0.2, linewidth=0)
+                    axs[index].axvspan(pos - 0.5, pos + 0.5, color=color, alpha=0.5, linewidth=0)
 
         axs[index].set_ylim(-0.1, 1.1)
         axs[index].set_ylabel('Frequency', fontsize=14)
@@ -470,13 +470,30 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2)):
     )
     return ax
 
+def create_placeholder_plot(output_path, message):
+    """Create a placeholder plot when data unavailable (e.g., empty bases overlap).
+
+    Args:
+        output_path: Path to save the placeholder image.
+        message: Message to display in the plot.
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4), dpi=300)
+    ax.text(0.5, 0.5, message, ha='center', va='center', fontsize=12, color='#666')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis('off')
+    fig.savefig(output_path, bbox_inches='tight', dpi=300)
+    plt.close(fig)
+    return fig
+
+
 class HuePalette:
 
     _palette = None
 
     def __new__(palette):
         if palette._palette is None:
-            palette._palette = sns.color_palette(['#0B6B84', '#85603D'])
+            palette._palette = sns.color_palette(['#3E8EDE', '#B57EDC'])
 
         return palette._palette
                 
