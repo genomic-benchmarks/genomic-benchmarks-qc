@@ -119,18 +119,25 @@ def generate_split_plots(query_similarity_max, target_similarity_max, threshold_
     return plots_paths_dict
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results, failed_by_feature):
-    """
-    Generate an HTML report comparing the statistics of two datasets.
+    """Generate HTML report comparing two dataset statistics.
+
+    Generates plots with colored failure indicators (red #c62828 for Fail, orange #f57f17 for Warning),
+    writes HTML report and duplicate sequences file.
 
     Args:
         stats1, stats2: Statistics objects for two datasets.
-        output_path: Path to save HTML report.
+        output_path: Path to save HTML report (.html).
         plots_path: Directory to save plot images.
         end_position: Maximum position for per-position plots.
         plot_type: Plot type ('boxen' or 'violin').
-        results: Optional DataFrame with pre-computed flags. If None,
-            computes flags using flag_significant_differences.
-        failed_by_feature: Optional dict with failure information for shading plots.
+        results: Optional DataFrame with pre-computed flags. Column 'Flag' used for summary statuses.
+        failed_by_feature: Dict with failure info for plot shading:
+            {
+                'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
+                'Per sequence dinucleotide content': {'AA': 'Fail'},
+                'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail'}},
+                'Per reverse position nucleotide content': {...}
+            }
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
