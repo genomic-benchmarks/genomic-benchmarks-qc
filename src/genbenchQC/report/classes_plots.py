@@ -442,8 +442,7 @@ class HuePalette:
 
     def __new__(palette):
         if palette._palette is None:
-            # Purple (#6a1b9a) and blue (#1565c0) - avoids red/orange/green for warning/fail colors
-            palette._palette = sns.color_palette(['#6a1b9a', '#1565c0'])
+            palette._palette = sns.color_palette(['#0B6B84', '#85603D'])
 
         return palette._palette
                 

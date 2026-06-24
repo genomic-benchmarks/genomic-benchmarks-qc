@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 
 from genbenchQC.report.classes_plots import HuePalette, prepare_legend
+from genbenchQC.report.utils import FAIL_COLOR
 
 def plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats):
 
@@ -64,7 +65,7 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
         threshold_stats["similarity_threshold"],
         linestyle="--",
         linewidth=1.2,
-        color="red",
+        color=FAIL_COLOR,
         label="Threshold",
     )
     ax.set_xlim(0, 100)
