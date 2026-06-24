@@ -133,6 +133,8 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
         results: Optional DataFrame with pre-computed flags. Column 'Flag' used for summary statuses.
         failed_by_feature: Dict with failure info for plot shading:
             {
+                'Sequence lengths': {'Pass'},
+                'Per sequence GC content': {'Warning'},
                 'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
                 'Per sequence dinucleotide content': {'AA': 'Fail'},
                 'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail'}},
@@ -205,10 +207,12 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
     # Get failed nucleotides and dinucleotides for boxen plot outlines
+    failed_lengths = failed_by_feature.get('Sequence lengths', {}) if failed_by_feature else None
+    failed_gc = failed_by_feature.get('Per sequence GC content', {}) if failed_by_feature else None
     failed_nucleotides = failed_by_feature.get('Per sequence nucleotide content', {}) if failed_by_feature else None
     failed_dinucleotides = failed_by_feature.get('Per sequence dinucleotide content', {}) if failed_by_feature else None
     failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
-    failed_pos_reverse = failed_by_feature.get('Per position reversed nucleotide content', {}) if failed_by_feature else None
+    failed_pos_reverse = failed_by_feature.get('Per reverse position nucleotide content', {}) if failed_by_feature else None
 
     # Plot per sequence nucleotide content - create both versions
     # No-flags version
@@ -259,10 +263,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     plots_paths['Per sequence dinucleotide content'] = output_path / 'per_sequence_dinucleotide_content_with_flags.png'
     fig.savefig(output_path / 'per_sequence_dinucleotide_content_with_flags.png', bbox_inches='tight')
     plt.close(fig)
-
-    # Get failed positions for per-position plots
-    failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
-    failed_pos_reverse = failed_by_feature.get('Per reverse position nucleotide content', {}) if failed_by_feature else None
 
     # Plot per position nucleotide content (forward) - create both versions
     # No-flags version
@@ -328,24 +328,48 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     # Return with-flags version for HTML (or no-flags if no failures)
     plots_paths['Per position reversed nucleotide content'] = with_flags_path if failed_pos_reverse else no_flags_path
 
-    # Plot length distribution
+    # Plot length distribution - create both versions
+    # No-flags version
     fig = classes_plots.plot_lengths(
         stats1,
         stats2,
         plot_type=plot_type,
+        flag=None
     )
-    plots_paths['Sequence lengths'] = output_path / 'sequence_lengths.png'
-    fig.savefig(output_path / 'sequence_lengths.png', bbox_inches='tight')
+    no_flags_path = output_path / 'sequence_lengths_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
+    plt.close(fig)
+    fig = classes_plots.plot_lengths(
+        stats1,
+        stats2,
+        plot_type=plot_type,
+        flag=failed_lengths
+    )
+    plots_paths['Sequence lengths'] = output_path / 'sequence_lengths_with_flags.png'
+    fig.savefig(output_path / 'sequence_lengths_with_flags.png', bbox_inches='tight')
     plt.close(fig)
 
-    # Plot per sequence GC content
+    # Plot per sequence GC content - create both versions
+    # No-flags version
     fig = classes_plots.plot_gc_content(
         stats1,
         stats2,
         plot_type=plot_type,
+        flag=None
     )
-    plots_paths['Per sequence GC content'] = output_path / 'per_sequence_gc_content.png'
-    fig.savefig(output_path / 'per_sequence_gc_content.png', bbox_inches='tight')
+    no_flags_path = output_path / 'per_sequence_gc_content_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
+    plt.close(fig)
+
+    # With-flags version
+    fig = classes_plots.plot_gc_content(
+        stats1,
+        stats2,
+        plot_type=plot_type,
+        flag=failed_gc
+    )
+    plots_paths['Per sequence GC content'] = output_path / 'per_sequence_gc_content_with_flags.png'
+    fig.savefig(output_path / 'per_sequence_gc_content_with_flags.png', bbox_inches='tight')
     plt.close(fig)
 
     # Plot sequence duplications within classes

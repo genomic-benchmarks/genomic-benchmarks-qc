@@ -415,13 +415,17 @@ def _extract_failed_features(all_results: dict) -> dict:
     Returns:
         Nested dict structured as:
         {
+            'Sequence lengths': {'Pass'},
+            'Per sequence GC content': {'Warning'},
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
             'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per reverse position nucleotide content': {'A': {10: 'Fail'}, ...}
+            'Per reverse position nucleotide content': {'A': {10: 'Fail'}, ...},
         }
     """
     failed_by_feature = {
+        'Sequence lengths': {},
+        'Per sequence GC content': {},
         'Per sequence nucleotide content': {},
         'Per sequence dinucleotide content': {},
         'Per position nucleotide content': {},
@@ -431,7 +435,15 @@ def _extract_failed_features(all_results: dict) -> dict:
     for key, value in all_results.items():
         flag = value.get('Flag', 'Unknown') if isinstance(value, dict) else 'Unknown'
 
-        if key.startswith('Per sequence nucleotide content - '):
+        if key == 'Sequence lengths':
+            if flag in ('Fail', 'Warning'):
+                failed_by_feature['Sequence lengths'] = flag
+
+        elif key == 'Per sequence GC content':
+            if flag in ('Fail', 'Warning'):
+                failed_by_feature['Per sequence GC content'] = flag
+
+        elif key.startswith('Per sequence nucleotide content - '):
             nucleotide = key.replace('Per sequence nucleotide content - ', '')
             if flag in ('Fail', 'Warning'):
                 failed_by_feature['Per sequence nucleotide content'][nucleotide] = flag

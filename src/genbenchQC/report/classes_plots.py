@@ -4,24 +4,26 @@ import pandas as pd
 import logging
 from genbenchQC.report.utils import FAIL_COLOR, WARN_COLOR
 
-def plot_lengths(stats1, stats2, plot_type='boxen'):
+def plot_lengths(stats1, stats2, plot_type='boxen', flag=None):
     """
     Plot the sequence lengths of two sequences.
     """
     return plot_one_stat(
         stats1, stats2, 
         'Sequence lengths', 
-        plot_type=plot_type
+        plot_type=plot_type,
+        flag=flag
     )
 
-def plot_gc_content(stats1, stats2, plot_type='boxen'):
+def plot_gc_content(stats1, stats2, plot_type='boxen', flag=None):
     """
     Plot the GC content of two sequences.
     """
     return plot_one_stat(
         stats1, stats2, 
         'Per sequence GC content',
-        plot_type=plot_type
+        plot_type=plot_type,
+        flag=flag
     )
 
 def add_failed_outline(ax, failed_positions):
@@ -31,12 +33,32 @@ def add_failed_outline(ax, failed_positions):
     @param failed_positions: Dict mapping position index -> flag status ('Fail' or 'Warning').
     """
 
+    # determine axis limits and tick spacing to compute rectangle geometry
+    ylim = ax.get_ylim()
+
+    xticks = list(ax.get_xticks())
+    if len(xticks) > 1:
+        # average spacing between ticks
+        spacings = [xticks[i+1] - xticks[i] for i in range(len(xticks)-1)]
+        spacing = sum(spacings) / len(spacings)
+    else:
+        spacing = 1.0
+
     for pos, flag in failed_positions.items():
         edgecolor = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
+
+        # center rectangle around the position with a fraction of tick spacing
+        width = spacing * 0.9
+        x = pos - (width / 2.0)
+
+        # cover the full y-axis range exactly (don't limit to data extents)
+        y = ylim[0] + 0.05 * (ylim[1] - ylim[0])
+        height = (ylim[1] - ylim[0]) * 0.9
+
         ax.add_patch(plt.Rectangle(
-            (pos - 0.45, -0.05),  # x, y
-            0.9,  # width
-            1.1,  # height
+            (x, y),  # x, y
+            width,
+            height,
             fill=False,
             edgecolor=edgecolor,
             linewidth=4,
@@ -87,6 +109,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
             palette=HuePalette(),
             cut=0
         )
+        ax.set_ylim(-0.1, 1.1)
 
         # Add colored outlines to failed nucleotides if provided
         if failed_nucleotides:
@@ -104,6 +127,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
             palette=HuePalette(),
             width=0.8
         )
+        ax.set_ylim(-0.1, 1.1)
         # Add colored outlines to failed nucleotides if provided
         if failed_nucleotides:
             add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
@@ -115,7 +139,6 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
     ax.tick_params(axis='x', labelsize=12)
     ax.tick_params(axis='y', labelsize=12)
     ax = prepare_legend(ax)
-    ax.set_ylim(-0.1, 1.1)
 
     return fig
 
@@ -155,6 +178,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
                 palette=HuePalette(),
                 cut=0
             )
+            axs[index].set_ylim(-0.1, 1.1)
             # Add colored outlines to failed dinucleotides if provided
             if failed_dinucleotides:
                 add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
@@ -171,6 +195,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
                 palette=HuePalette(),
                 width=0.8
             )
+            axs[index].set_ylim(-0.1, 1.1)
             # Add colored outlines to failed dinucleotides if provided
             if failed_dinucleotides:
                 add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
@@ -185,11 +210,10 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
 
     axs[index] = prepare_legend(axs[index])
     axs[index].set_xlabel('Dinucleotide', fontsize=14)
-    axs[index].set_ylim(-0.1, 1.1)
 
     return fig
 
-def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
+def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', flag=None):
     """
     Plot a single statistic from two stats objects.
     """
@@ -219,6 +243,11 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
             palette=HuePalette(),
             cut=0
         )
+        if min_y != max_y:
+            ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
+        # Add colored outlines to failed stats if provided
+        if flag:
+            add_failed_outline(ax, {0: flag})
     elif plot_type == 'boxen':
         sns.boxenplot(
             y=stats_name, 
@@ -229,6 +258,11 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
             palette=HuePalette(),
             width=0.8
         )
+        if min_y != max_y:
+            ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
+        # Add colored outlines to failed stats if provided
+        if flag:
+            add_failed_outline(ax, {0: flag})
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
