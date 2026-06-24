@@ -50,7 +50,7 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
 
         logging.debug(f"Running significant differences analysis for {filename} with max_class_size={10000}.")
         results = flag_significant_differences(
-            stat1, stat2, max_class_size=10000
+            stat1, stat2
         )
         
         if 'simple' in report_types:
