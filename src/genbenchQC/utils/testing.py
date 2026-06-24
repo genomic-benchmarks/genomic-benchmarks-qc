@@ -355,7 +355,15 @@ def flag_significant_differences(stats1, stats2):
         stats2: SequenceStatistics object for dataset 2.
 
     Returns:
-        Ordered dictionary with all flags and metrics.
+        Tuple of (summary_statuses, failed_by_feature) where:
+        - summary_statuses: Ordered dictionary with all flags and metrics.
+        - failed_by_feature: Nested dict with failure info for visualization:
+          {
+            'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
+            'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
+            'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
+            'Per reverse position nucleotide content': {...}
+          }
     """
     results = {}
 
@@ -392,7 +400,79 @@ def flag_significant_differences(stats1, stats2):
             if key.startswith(f"{stat_name} - ") and key != stat_name:
                 results[key] = all_results[key]
 
-    return results
+    # Build failed_by_feature dict for visualization
+    failed_by_feature = _extract_failed_features(all_results)
+
+    return results, failed_by_feature
+
+
+def _extract_failed_features(all_results: dict) -> dict:
+    """Extract failure information organized by feature type for plotting.
+
+    Args:
+        all_results: Dictionary from direct_feature_model + manual flags.
+
+    Returns:
+        Nested dict structured as:
+        {
+            'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
+            'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
+            'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
+            'Per reverse position nucleotide content': {'A': {10: 'Fail'}, ...}
+        }
+    """
+    failed_by_feature = {
+        'Per sequence nucleotide content': {},
+        'Per sequence dinucleotide content': {},
+        'Per position nucleotide content': {},
+        'Per reverse position nucleotide content': {},
+    }
+
+    for key, value in all_results.items():
+        flag = value.get('Flag', 'Unknown') if isinstance(value, dict) else 'Unknown'
+
+        if key.startswith('Per sequence nucleotide content - '):
+            nucleotide = key.replace('Per sequence nucleotide content - ', '')
+            if flag in ('Fail', 'Warning'):
+                failed_by_feature['Per sequence nucleotide content'][nucleotide] = flag
+
+        elif key.startswith('Per sequence dinucleotide content - '):
+            dinucleotide = key.replace('Per sequence dinucleotide content - ', '')
+            if flag in ('Fail', 'Warning'):
+                failed_by_feature['Per sequence dinucleotide content'][dinucleotide] = flag
+
+        elif key.startswith('Per position nucleotide content - ') and ' position ' in key:
+            # Parse "Per position nucleotide content - G position 52"
+            # Split from the right to handle "Per position" in the prefix
+            parts = key.rsplit(' position ', 1)
+            if len(parts) == 2:
+                base = parts[0].replace('Per position nucleotide content - ', '')
+                try:
+                    position = int(parts[1])
+                    if base not in failed_by_feature['Per position nucleotide content']:
+                        failed_by_feature['Per position nucleotide content'][base] = {}
+                    if flag in ('Fail', 'Warning'):
+                        failed_by_feature['Per position nucleotide content'][base][position] = flag
+                except ValueError:
+                    # Not a position entry (e.g., aggregate "Per position nucleotide content - A")
+                    pass
+
+        elif key.startswith('Per reverse position nucleotide content - ') and ' position ' in key:
+            # Parse "Per reverse position nucleotide content - G position 52"
+            parts = key.rsplit(' position ', 1)
+            if len(parts) == 2:
+                base = parts[0].replace('Per reverse position nucleotide content - ', '')
+                try:
+                    position = int(parts[1])
+                    if base not in failed_by_feature['Per reverse position nucleotide content']:
+                        failed_by_feature['Per reverse position nucleotide content'][base] = {}
+                    if flag in ('Fail', 'Warning'):
+                        failed_by_feature['Per reverse position nucleotide content'][base][position] = flag
+                except ValueError:
+                    # Not a position entry (e.g., aggregate "Per reverse position nucleotide content - A")
+                    pass
+
+    return failed_by_feature
 
 
 def _flag_on_score(score: float) -> str:

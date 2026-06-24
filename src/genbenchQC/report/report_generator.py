@@ -118,25 +118,38 @@ def generate_split_plots(query_similarity_max, target_similarity_max, threshold_
 
     return plots_paths_dict
 
-def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results):
+def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results, failed_by_feature):
     """
     Generate an HTML report comparing the statistics of two datasets.
+
+    Args:
+        stats1, stats2: Statistics objects for two datasets.
+        output_path: Path to save HTML report.
+        plots_path: Directory to save plot images.
+        end_position: Maximum position for per-position plots.
+        plot_type: Plot type ('boxen' or 'violin').
+        results: Optional DataFrame with pre-computed flags. If None,
+            computes flags using flag_significant_differences.
+        failed_by_feature: Optional dict with failure information for shading plots.
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
-    # generate 
-    plots_paths = generate_dataset_plots(stats1, stats2, plots_path, end_position, plot_type)
+    if results is not None:
+        summary_statuses = results['Flag'].to_dict()
+    else:
+        summary_statuses = None
+
+    # generate plots (with failure shading if failed_by_feature available)
+    plots_paths = generate_dataset_plots(
+        stats1, stats2, plots_path, end_position, plot_type,
+        failed_by_feature=failed_by_feature
+    )
 
     # find duplicate sequences between labels
     duplicate_seqs = list(set(stats1.sequences).intersection(stats2.sequences))
     # remove extension from output path, add '_duplicates.txt'
     duplicate_seqs_path = os.path.splitext(output_path)[0] + '_duplicates.txt'
 
-    # Make dictionary of summary statuses
-    if results is not None:
-        summary_statuses = results['Flag'].to_dict()
-    else:
-        summary_statuses = None
     # Load the HTML template
     template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path)
 
@@ -161,7 +174,22 @@ def generate_simple_report(results, output_path):
         results = pd.DataFrame.from_dict(results, orient='index')
     results.to_csv(output_path)
 
-def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen'):
+def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', failed_by_feature=None):
+    """Generate comparison plots between two datasets.
+
+    Args:
+        stats1, stats2: Statistics objects for two datasets.
+        output_path: Directory to save plots.
+        end_position: Maximum position for per-position plots.
+        plot_type: Plot type ('boxen' or 'violin').
+        failed_by_feature: Dict with failure info for shading (optional).
+            If provided, creates both _no_flags and _with_flags versions
+            for per-position nucleotide content plots.
+
+    Returns:
+        Dictionary mapping plot names to file paths. For per-position plots,
+        returns the _with_flags version if failed_by_feature is provided.
+    """
 
     logging.info(f"Generating PNG plots at: {output_path}")
 
@@ -169,53 +197,129 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
 
     bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
-    # Plot per sequence nucleotide content
+    # Get failed nucleotides and dinucleotides for boxen plot outlines
+    failed_nucleotides = failed_by_feature.get('Per sequence nucleotide content', {}) if failed_by_feature else None
+    failed_dinucleotides = failed_by_feature.get('Per sequence dinucleotide content', {}) if failed_by_feature else None
+    failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
+    failed_pos_reverse = failed_by_feature.get('Per position reversed nucleotide content', {}) if failed_by_feature else None
+
+    # Plot per sequence nucleotide content - create both versions
+    # No-flags version
     fig = classes_plots.plot_nucleotides(
         stats1,
         stats2,
         nucleotides = bases_overlap,
-        plot_type=plot_type
+        plot_type=plot_type,
+        failed_nucleotides=None
     )
-    plots_paths['Per sequence nucleotide content'] = output_path / 'per_sequence_nucleotide_content.png'
-    fig.savefig(output_path / 'per_sequence_nucleotide_content.png', bbox_inches='tight')
+    no_flags_path = output_path / 'per_sequence_nucleotide_content_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
 
-    # Plot per sequence dinucleotide content
+    # With-flags version
+    fig = classes_plots.plot_nucleotides(
+        stats1,
+        stats2,
+        nucleotides = bases_overlap,
+        plot_type=plot_type,
+        failed_nucleotides=failed_nucleotides
+    )
+    plots_paths['Per sequence nucleotide content'] = output_path / 'per_sequence_nucleotide_content_with_flags.png'
+    fig.savefig(output_path / 'per_sequence_nucleotide_content_with_flags.png', bbox_inches='tight')
+    plt.close(fig)
+
+    # Plot per sequence dinucleotide content - create both versions
+    # No-flags version
     fig = classes_plots.plot_dinucleotides(
         stats1,
         stats2,
         nucleotides = bases_overlap,
-        plot_type=plot_type
+        plot_type=plot_type,
+        failed_dinucleotides=None
     )
-    plots_paths['Per sequence dinucleotide content'] = output_path / 'per_sequence_dinucleotide_content.png'
-    fig.savefig(output_path / 'per_sequence_dinucleotide_content.png', bbox_inches='tight')
+    no_flags_path = output_path / 'per_sequence_dinucleotide_content_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
-    
-    # Plot per position nucleotide content
+
+    # With-flags version
+    fig = classes_plots.plot_dinucleotides(
+        stats1,
+        stats2,
+        nucleotides = bases_overlap,
+        plot_type=plot_type,
+        failed_dinucleotides=failed_dinucleotides
+    )
+    plots_paths['Per sequence dinucleotide content'] = output_path / 'per_sequence_dinucleotide_content_with_flags.png'
+    fig.savefig(output_path / 'per_sequence_dinucleotide_content_with_flags.png', bbox_inches='tight')
+    plt.close(fig)
+
+    # Get failed positions for per-position plots
+    failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
+    failed_pos_reverse = failed_by_feature.get('Per reverse position nucleotide content', {}) if failed_by_feature else None
+
+    # Plot per position nucleotide content (forward) - create both versions
+    # No-flags version
     fig = classes_plots.plot_per_base_sequence_comparison(
         stats1,
         stats2,
         stats_name='Per position nucleotide content',
         nucleotides = bases_overlap,
         end_position=end_position,
-        x_label='Position in sequence'
+        x_label='Position in sequence',
+        failed_positions=None
     )
-    plots_paths['Per position nucleotide content'] = output_path / 'per_position_nucleotide_content.png'
-    fig.savefig(output_path / 'per_position_nucleotide_content.png', bbox_inches='tight')   
+    no_flags_path = output_path / 'per_position_nucleotide_content_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
 
-    # Plot per reversed position nucleotide content
+    # With-flags version
+    fig = classes_plots.plot_per_base_sequence_comparison(
+        stats1,
+        stats2,
+        stats_name='Per position nucleotide content',
+        nucleotides = bases_overlap,
+        end_position=end_position,
+        x_label='Position in sequence',
+        failed_positions=failed_pos_forward
+    )
+    with_flags_path = output_path / 'per_position_nucleotide_content_with_flags.png'
+    fig.savefig(with_flags_path, bbox_inches='tight')
+    plt.close(fig)
+
+    # Return with-flags version for HTML (or no-flags if no failures)
+    plots_paths['Per position nucleotide content'] = with_flags_path if failed_pos_forward else no_flags_path
+
+    # Plot per reversed position nucleotide content - create both versions
+    # No-flags version
     fig = classes_plots.plot_per_base_sequence_comparison(
         stats1,
         stats2,
         stats_name='Per position reversed nucleotide content',
         nucleotides = bases_overlap,
         end_position=end_position,
-        x_label='Position in reversed sequence'
+        x_label='Position in reversed sequence',
+        failed_positions=None
     )
-    plots_paths['Per position reversed nucleotide content'] = output_path / 'per_position_reversed_nucleotide_content.png'
-    fig.savefig(output_path / 'per_position_reversed_nucleotide_content.png', bbox_inches='tight')
+    no_flags_path = output_path / 'per_position_reversed_nucleotide_content_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
+
+    # With-flags version
+    fig = classes_plots.plot_per_base_sequence_comparison(
+        stats1,
+        stats2,
+        stats_name='Per position reversed nucleotide content',
+        nucleotides = bases_overlap,
+        end_position=end_position,
+        x_label='Position in reversed sequence',
+        failed_positions=failed_pos_reverse
+    )
+    with_flags_path = output_path / 'per_position_reversed_nucleotide_content_with_flags.png'
+    fig.savefig(with_flags_path, bbox_inches='tight')
+    plt.close(fig)
+
+    # Return with-flags version for HTML (or no-flags if no failures)
+    plots_paths['Per position reversed nucleotide content'] = with_flags_path if failed_pos_reverse else no_flags_path
 
     # Plot length distribution
     fig = classes_plots.plot_lengths(
