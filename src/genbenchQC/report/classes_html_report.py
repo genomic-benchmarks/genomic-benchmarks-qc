@@ -195,8 +195,9 @@ HTML_TEMPLATE = """
                 <div id="within-dup-explanation" class="explanation-text">
                     <strong>Sequence Duplications within Labels</strong> shows how many sequences appear multiple times within each label. High duplication rates may indicate PCR artifacts, sequencing bias, or legitimate biological repeats. However, for machine learning and deep learning models, duplicate sequences can introduce bias during training. If the same sequence appears multiple times, the model may learn to overweight these repeated sequences, leading to skewed predictions and poor generalization.
                 </div>
-                <!-- This will be populated either with png plot showing duplication or with a message saying no duplications found -->
-                {{sequence_duplications_within_classes}}
+                <div class="plot-container">
+                    <img src="data:image/png;base64, {{sequence_duplications_within_classes_base64}}" alt="Sequence Duplications within Labels Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+                </div>
             </section>
 
             <section id="sequence-duplication-levels">
@@ -406,16 +407,8 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")  
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
-    if summary_statuses['Sequence Duplications within Labels'].lower() in ('pass', 'ok', 'good', 'success'):
-        # no duplicate sequences found
-        duplication_message = """
-        <p>No duplicate sequences were found in either class.</p>
-        """
-        html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", duplication_message)
-    else:
-        # insert plot showing duplicate sequences
-        html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", 
-                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">')
+    html_template = put_data(html_template, "{{sequence_duplications_within_classes_base64}}",
+                             encode_image_to_base64(plots_path["Sequence Duplications within Labels"]))
     html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
                              encode_image_to_base64(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
