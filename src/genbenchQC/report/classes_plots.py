@@ -488,7 +488,7 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
         # Draw just below the x-axis using x-data coordinates and axis-fraction y.
         xlim = ax.get_xlim()
         xpad = (xlim[1] - xlim[0]) * 0.02
-        ax = add_failed_outline(ax, {0: flag}, x_left=xlim[0] + xpad, x_right=xlim[1] - xpad)
+        ax = add_failed_outline(ax, {0: flag}, x_left_custom=xlim[0] + xpad, x_right_custom=xlim[1] - xpad)
 
     return fig
 
