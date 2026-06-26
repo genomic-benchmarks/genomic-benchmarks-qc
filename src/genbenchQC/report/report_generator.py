@@ -200,13 +200,13 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         end_position: Maximum position for per-position plots.
         plot_type: Plot type ('boxen' or 'violin').
         failed_by_feature: Dict with failure info for shading (optional).
-            If provided, creates both _no_flags and _with_flags versions
-            for per-position nucleotide content plots.
+            When a feature has failures, the corresponding _with_flags plot
+            is generated and returned; otherwise only the _no_flags plot is
+            generated and returned.
         percent_remaining: Optional float with the percentage of sequences remaining after deduplication.
 
     Returns:
-        Dictionary mapping plot names to file paths. For per-position plots,
-        returns the _with_flags version if failed_by_feature is provided.
+        Dictionary mapping plot names to file paths.
     """
 
     logging.info(f"Generating PNG plots at: {output_path}")
@@ -262,21 +262,20 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         no_flags_path = output_path / 'per_sequence_nucleotide_content_no_flags.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
-
-        # With-flags version
-        fig = classes_plots.plot_nucleotides(
-            stats1,
-            stats2,
-            nucleotides = bases_overlap,
-            plot_type=plot_type,
-            failed_nucleotides=failed_nucleotides
-        )
-        with_flags_path = output_path / 'per_sequence_nucleotide_content_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
-        plt.close(fig)
-
-        # Return with-flags version for HTML (or no-flags if no failures)
-        plots_paths['Per sequence nucleotide content'] = with_flags_path if failed_nucleotides else no_flags_path
+        if failed_nucleotides:
+            fig = classes_plots.plot_nucleotides(
+                stats1,
+                stats2,
+                nucleotides = bases_overlap,
+                plot_type=plot_type,
+                failed_nucleotides=failed_nucleotides
+            )
+            with_flags_path = output_path / 'per_sequence_nucleotide_content_with_flags.png'
+            fig.savefig(with_flags_path, bbox_inches='tight')
+            plt.close(fig)
+            plots_paths['Per sequence nucleotide content'] = with_flags_path
+        else:
+            plots_paths['Per sequence nucleotide content'] = no_flags_path
 
         # Plot per sequence dinucleotide content - create both versions
         # No-flags version
@@ -290,21 +289,20 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         no_flags_path = output_path / 'per_sequence_dinucleotide_content_no_flags.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
-
-        # With-flags version
-        fig = classes_plots.plot_dinucleotides(
-            stats1,
-            stats2,
-            nucleotides = bases_overlap,
-            plot_type=plot_type,
-            failed_dinucleotides=failed_dinucleotides
-        )
-        with_flags_path = output_path / 'per_sequence_dinucleotide_content_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
-        plt.close(fig)
-
-        # Return with-flags version for HTML (or no-flags if no failures)
-        plots_paths['Per sequence dinucleotide content'] = with_flags_path if failed_dinucleotides else no_flags_path
+        if failed_dinucleotides:
+            fig = classes_plots.plot_dinucleotides(
+                stats1,
+                stats2,
+                nucleotides = bases_overlap,
+                plot_type=plot_type,
+                failed_dinucleotides=failed_dinucleotides
+            )
+            with_flags_path = output_path / 'per_sequence_dinucleotide_content_with_flags.png'
+            fig.savefig(with_flags_path, bbox_inches='tight')
+            plt.close(fig)
+            plots_paths['Per sequence dinucleotide content'] = with_flags_path
+        else:
+            plots_paths['Per sequence dinucleotide content'] = no_flags_path
 
         # Plot per position nucleotide content (forward) - create both versions
         # No-flags version
@@ -320,23 +318,22 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         no_flags_path = output_path / 'per_position_nucleotide_content_no_flags.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
-
-        # With-flags version
-        fig = classes_plots.plot_per_base_sequence_comparison(
-            stats1,
-            stats2,
-            stats_name='Per position nucleotide content',
-            nucleotides = bases_overlap,
-            end_position=end_position,
-            x_label='Position in sequence',
-            failed_positions=failed_pos_forward
-        )
-        with_flags_path = output_path / 'per_position_nucleotide_content_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
-        plt.close(fig)
-
-        # Return with-flags version for HTML (or no-flags if no failures)
-        plots_paths['Per position nucleotide content'] = with_flags_path if failed_pos_forward else no_flags_path
+        if failed_pos_forward:
+            fig = classes_plots.plot_per_base_sequence_comparison(
+                stats1,
+                stats2,
+                stats_name='Per position nucleotide content',
+                nucleotides = bases_overlap,
+                end_position=end_position,
+                x_label='Position in sequence',
+                failed_positions=failed_pos_forward
+            )
+            with_flags_path = output_path / 'per_position_nucleotide_content_with_flags.png'
+            fig.savefig(with_flags_path, bbox_inches='tight')
+            plt.close(fig)
+            plots_paths['Per position nucleotide content'] = with_flags_path
+        else:
+            plots_paths['Per position nucleotide content'] = no_flags_path
 
         # Plot per reversed position nucleotide content - create both versions
         # No-flags version
@@ -352,23 +349,22 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         no_flags_path = output_path / 'per_position_reversed_nucleotide_content_no_flags.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
-
-        # With-flags version
-        fig = classes_plots.plot_per_base_sequence_comparison(
-            stats1,
-            stats2,
-            stats_name='Per position reversed nucleotide content',
-            nucleotides = bases_overlap,
-            end_position=end_position,
-            x_label='Position in reversed sequence',
-            failed_positions=failed_pos_reverse
-        )
-        with_flags_path = output_path / 'per_position_reversed_nucleotide_content_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
-        plt.close(fig)
-
-        # Return with-flags version for HTML (or no-flags if no failures)
-        plots_paths['Per position reversed nucleotide content'] = with_flags_path if failed_pos_reverse else no_flags_path
+        if failed_pos_reverse:
+            fig = classes_plots.plot_per_base_sequence_comparison(
+                stats1,
+                stats2,
+                stats_name='Per position reversed nucleotide content',
+                nucleotides = bases_overlap,
+                end_position=end_position,
+                x_label='Position in reversed sequence',
+                failed_positions=failed_pos_reverse
+            )
+            with_flags_path = output_path / 'per_position_reversed_nucleotide_content_with_flags.png'
+            fig.savefig(with_flags_path, bbox_inches='tight')
+            plt.close(fig)
+            plots_paths['Per position reversed nucleotide content'] = with_flags_path
+        else:
+            plots_paths['Per position reversed nucleotide content'] = no_flags_path
 
     # Plot length distribution - create both versions
     # No-flags version
@@ -381,19 +377,19 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     no_flags_path = output_path / 'sequence_lengths_no_flags.png'
     fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
-    
-    fig = classes_plots.plot_lengths(
-        stats1,
-        stats2,
-        plot_type=plot_type,
-        flag=failed_lengths
-    )
-    with_flags_path = output_path / 'sequence_lengths_with_flags.png'
-    fig.savefig(with_flags_path, bbox_inches='tight')
-    plt.close(fig)
-
-    # Return with-flags version for HTML (or no-flags if no failures)
-    plots_paths['Sequence lengths'] = with_flags_path if failed_lengths else no_flags_path
+    if failed_lengths:
+        fig = classes_plots.plot_lengths(
+            stats1,
+            stats2,
+            plot_type=plot_type,
+            flag=failed_lengths
+        )
+        with_flags_path = output_path / 'sequence_lengths_with_flags.png'
+        fig.savefig(with_flags_path, bbox_inches='tight')
+        plt.close(fig)
+        plots_paths['Sequence lengths'] = with_flags_path
+    else:
+        plots_paths['Sequence lengths'] = no_flags_path
 
     # Plot per sequence GC content - create both versions
     # No-flags version
@@ -406,44 +402,31 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     no_flags_path = output_path / 'per_sequence_gc_content_no_flags.png'
     fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
+    if failed_gc:
+        fig = classes_plots.plot_gc_content(
+            stats1,
+            stats2,
+            plot_type=plot_type,
+            flag=failed_gc
+        )
+        with_flags_path = output_path / 'per_sequence_gc_content_with_flags.png'
+        fig.savefig(with_flags_path, bbox_inches='tight')
+        plt.close(fig)
+        plots_paths['Per sequence GC content'] = with_flags_path
+    else:
+        plots_paths['Per sequence GC content'] = no_flags_path
 
-    # With-flags version
-    fig = classes_plots.plot_gc_content(
-        stats1,
-        stats2,
-        plot_type=plot_type,
-        flag=failed_gc
-    )
-    with_flags_path = output_path / 'per_sequence_gc_content_with_flags.png'
-    fig.savefig(with_flags_path, bbox_inches='tight')
-    plt.close(fig)
-
-    # Return with-flags version for HTML (or no-flags if no failures)
-    plots_paths['Per sequence GC content'] = with_flags_path if failed_gc else no_flags_path
-
-    # Plot sequence duplications within classes - no flags version
-    fig = classes_plots.plot_sequence_duplications_within_classes(
-        stats1,
-        stats2,
-        percent_remaining_after_dedup=percent_remaining,
-        flag=None
-    )
-    no_flags_path = output_path / 'sequence_duplications_within_labels_no_flags.png'
-    fig.savefig(no_flags_path, bbox_inches='tight')
-    plt.close(fig)
-
-    # With-flags version
-    fig = classes_plots.plot_sequence_duplications_within_classes(
-        stats1,
-        stats2,
-        percent_remaining_after_dedup=percent_remaining,
-        flag=failed_duplications_within
-    )
-    with_flags_path = output_path / 'sequence_duplications_within_labels_with_flags.png'
-    fig.savefig(with_flags_path, bbox_inches='tight')
-    plt.close(fig)
-
-    # Return with-flags version for HTML (or no-flags if no failures)
-    plots_paths['Sequence Duplications within Labels'] = with_flags_path if failed_duplications_within else no_flags_path
+    # Plot sequence duplications within classes - only if failed
+    if failed_duplications_within:
+        fig = classes_plots.plot_sequence_duplications_within_classes(
+            stats1,
+            stats2,
+            percent_remaining_after_dedup=percent_remaining,
+            flag=failed_duplications_within
+        )
+        with_flags_path = output_path / 'sequence_duplications_within_labels_with_flags.png'
+        fig.savefig(with_flags_path, bbox_inches='tight')
+        plt.close(fig)
+        plots_paths['Sequence Duplications within Labels'] = with_flags_path
 
     return plots_paths
