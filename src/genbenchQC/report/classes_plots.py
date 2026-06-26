@@ -2,28 +2,71 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import logging
+from genbenchQC.report.utils import FAIL_COLOR, WARN_COLOR
 
-def plot_lengths(stats1, stats2, plot_type='boxen'):
+def plot_lengths(stats1, stats2, plot_type='boxen', flag=None):
     """
     Plot the sequence lengths of two sequences.
     """
     return plot_one_stat(
         stats1, stats2, 
         'Sequence lengths', 
-        plot_type=plot_type
+        plot_type=plot_type,
+        flag=flag
     )
 
-def plot_gc_content(stats1, stats2, plot_type='boxen'):
+def plot_gc_content(stats1, stats2, plot_type='boxen', flag=None):
     """
     Plot the GC content of two sequences.
     """
     return plot_one_stat(
         stats1, stats2, 
         'Per sequence GC content',
-        plot_type=plot_type
+        plot_type=plot_type,
+        flag=flag
     )
 
-def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
+def add_failed_outline(ax, failed_positions):
+    """Add colored outlines to failed nucleotides/dinucleotides in a boxen plot.
+
+    @param ax: Matplotlib axis object.
+    @param failed_positions: Dict mapping position index -> flag status ('Fail' or 'Warning').
+    """
+
+    # determine axis limits and tick spacing to compute rectangle geometry
+    ylim = ax.get_ylim()
+
+    xticks = list(ax.get_xticks())
+    if len(xticks) > 1:
+        # average spacing between ticks
+        spacings = [xticks[i+1] - xticks[i] for i in range(len(xticks)-1)]
+        spacing = sum(spacings) / len(spacings)
+    else:
+        spacing = 1.0
+
+    for pos, flag in failed_positions.items():
+        edgecolor = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
+
+        # center rectangle around the position with a fraction of tick spacing
+        width = spacing * 0.9
+        x = pos - (width / 2.0)
+
+        # cover the full y-axis range exactly (don't limit to data extents)
+        y = ylim[0] + 0.05 * (ylim[1] - ylim[0])
+        height = (ylim[1] - ylim[0]) * 0.9
+
+        ax.add_patch(plt.Rectangle(
+            (x, y),  # x, y
+            width,
+            height,
+            fill=False,
+            edgecolor=edgecolor,
+            linewidth=4,
+            alpha=0.5,
+            zorder=10
+        ))
+
+def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=None):
     """
     Plot the nucleotide content of two sets of sequences.
 
@@ -31,6 +74,21 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
     @param stats2: Statistics for the second set of sequences.
     @param nucleotides: List of nucleotides to plot.
     @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
+    @param failed_nucleotides: Dict mapping nucleotide -> flag status
+        (e.g., {'A': 'Warning', 'G': 'Fail'}). Currently not applied as
+        seaborn boxenplot requires special handling for outline coloring.
+    @return: Matplotlib figure object.
+    """
+    """
+    Plot the nucleotide content of two sets of sequences.
+
+    @param stats1: Statistics for the first set of sequences.
+    @param stats2: Statistics for the second set of sequences.
+    @param nucleotides: List of nucleotides to plot.
+    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
+    @param failed_nucleotides: Dict mapping nucleotide -> flag status
+        (e.g., {'A': 'Warning', 'G': 'Fail'}). Used to add red outlines
+        to failed nucleotides in boxen plots.
     @return: Matplotlib figure object.
     """
 
@@ -39,10 +97,10 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
     fig, ax = plt.subplots(1, 1, figsize=(12, 4), dpi=300)
     if plot_type == 'violin':
         sns.violinplot(
-            x='Nucleotide', 
-            y='Frequency', 
-            hue="label", 
-            split=True, 
+            x='Nucleotide',
+            y='Frequency',
+            hue="label",
+            split=True,
             data=df[df['Nucleotide'].isin(nucleotides)],
             gap=.1,
             order=nucleotides,
@@ -51,18 +109,28 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
             palette=HuePalette(),
             cut=0
         )
+        ax.set_ylim(-0.1, 1.1)
+
+        # Add colored outlines to failed nucleotides if provided
+        if failed_nucleotides:
+            add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
+
     elif plot_type == 'boxen':
         sns.boxenplot(
             data=df[df['Nucleotide'].isin(nucleotides)],
-            x='Nucleotide', 
-            y='Frequency', 
-            hue="label", 
+            x='Nucleotide',
+            y='Frequency',
+            hue="label",
             order=nucleotides,
             hue_order=[str(stats1.label), str(stats2.label)],
             ax=ax,
             palette=HuePalette(),
             width=0.8
         )
+        ax.set_ylim(-0.1, 1.1)
+        # Add colored outlines to failed nucleotides if provided
+        if failed_nucleotides:
+            add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
     else:
         raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
 
@@ -74,10 +142,22 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type):
 
     return fig
 
-def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
+def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleotides=None):
+    """
+    Plot the dinucleotide content of two sets of sequences.
+
+    @param stats1: Statistics for the first set of sequences.
+    @param stats2: Statistics for the second set of sequences.
+    @param nucleotides: List of nucleotides to generate dinucleotides from.
+    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
+    @param failed_dinucleotides: Dict mapping dinucleotide -> flag status
+        (e.g., {'AA': 'Warning', 'GG': 'Fail'}). Used to add red outlines
+        to failed dinucleotides in boxen plots.
+    @return: Matplotlib figure object.
+    """
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
-    
+
     fig, axs = plt.subplots(len(nucleotides), 1, figsize=(12, len(nucleotides) * 3 + 2), sharey=True, dpi=300)
     for index, nt in enumerate(nucleotides):
         dinucleotides = [nt + nt2 for nt2 in nucleotides]
@@ -85,10 +165,10 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
 
         if plot_type == 'violin':
             sns.violinplot(
-                x='Dinucleotide', 
-                y='Frequency', 
-                hue="label", 
-                split=True, 
+                x='Dinucleotide',
+                y='Frequency',
+                hue="label",
+                split=True,
                 data=row,
                 gap=.1,
                 order=dinucleotides,
@@ -98,11 +178,16 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
                 palette=HuePalette(),
                 cut=0
             )
+            axs[index].set_ylim(-0.1, 1.1)
+            # Add colored outlines to failed dinucleotides if provided
+            if failed_dinucleotides:
+                add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
+
         elif plot_type == 'boxen':
             sns.boxenplot(
-                x='Dinucleotide', 
-                y='Frequency', 
-                hue="label", 
+                x='Dinucleotide',
+                y='Frequency',
+                hue="label",
                 data=row,
                 order=dinucleotides,
                 hue_order=[str(stats1.label), str(stats2.label)],
@@ -110,6 +195,10 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
                 palette=HuePalette(),
                 width=0.8
             )
+            axs[index].set_ylim(-0.1, 1.1)
+            # Add colored outlines to failed dinucleotides if provided
+            if failed_dinucleotides:
+                add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
         else:
             logging.error(f"Unknown plot type: {plot_type}")
 
@@ -124,7 +213,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type):
 
     return fig
 
-def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
+def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', flag=None):
     """
     Plot a single statistic from two stats objects.
     """
@@ -154,6 +243,11 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
             palette=HuePalette(),
             cut=0
         )
+        if min_y != max_y:
+            ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
+        # Add colored outlines to failed stats if provided
+        if flag:
+            add_failed_outline(ax, {0: flag})
     elif plot_type == 'boxen':
         sns.boxenplot(
             y=stats_name, 
@@ -164,6 +258,11 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
             palette=HuePalette(),
             width=0.8
         )
+        if min_y != max_y:
+            ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
+        # Add colored outlines to failed stats if provided
+        if flag:
+            add_failed_outline(ax, {0: flag})
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
@@ -180,14 +279,29 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
 
     return fig
 
-def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title=''):
+def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', failed_positions=None):
+    """Plot per-base sequence comparison with optional failure shading.
+
+    Args:
+        stats1, stats2: Statistics objects for two datasets.
+        stats_name: Name of the stats dataframe to plot.
+        nucleotides: List of nucleotides to plot (e.g., ['A', 'C', 'G', 'T']).
+        end_position: Maximum position to plot.
+        x_label, title: Plot labels.
+        failed_positions: Dict mapping nucleotide -> dict of position -> flag status
+            (e.g., {'A': {52: 'Warning', 66: 'Fail'}, 'G': {70: 'Fail'}}).
+            If None or empty, no shading applied.
+
+    Returns:
+        Matplotlib figure object.
+    """
 
     df1 = stats1.stats[stats_name]
     df2 = stats2.stats[stats_name]
 
     fig, axs = plt.subplots(
-        len(nucleotides) + 1, 1, 
-        figsize=(12, len(nucleotides) * 2 + 2), 
+        len(nucleotides) + 1, 1,
+        figsize=(12, len(nucleotides) * 2 + 2),
         height_ratios=[1] * len(nucleotides) + [0.5],
         sharey=True, dpi=300
     )
@@ -199,6 +313,14 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         # +1 so the position starts from 1
         axs[index].plot(df1.index[:end_position] + 1, df1_base, label=f"{stats1.label}", color=HuePalette()[0], alpha=0.7)
         axs[index].plot(df2.index[:end_position] + 1, df2_base, label=f"{stats2.label}", color=HuePalette()[1], alpha=0.7)
+
+        # Add shading for failed positions with color based on flag type
+        if failed_positions and nt in failed_positions:
+            for pos, flag in failed_positions[nt].items():
+                if 1 <= pos <= end_position:
+                    color = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
+                    # axvspan uses inclusive bounds, so shade from pos-0.5 to pos+0.5 for 1-wide band
+                    axs[index].axvspan(pos - 0.5, pos + 0.5, color=color, alpha=0.5, linewidth=0)
 
         axs[index].set_ylim(-0.1, 1.1)
         axs[index].set_ylabel('Frequency', fontsize=14)
@@ -348,13 +470,30 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2)):
     )
     return ax
 
+def create_placeholder_plot(output_path, message):
+    """Create a placeholder plot when data unavailable (e.g., empty bases overlap).
+
+    Args:
+        output_path: Path to save the placeholder image.
+        message: Message to display in the plot.
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4), dpi=300)
+    ax.text(0.5, 0.5, message, ha='center', va='center', fontsize=12, color='#666')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis('off')
+    fig.savefig(output_path, bbox_inches='tight', dpi=300)
+    plt.close(fig)
+    return fig
+
+
 class HuePalette:
 
     _palette = None
 
     def __new__(palette):
         if palette._palette is None:
-            palette._palette = sns.color_palette()[:2]
+            palette._palette = sns.color_palette(['#003D99', '#66A3FF'])
 
         return palette._palette
                 

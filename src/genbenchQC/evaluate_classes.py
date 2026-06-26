@@ -48,11 +48,11 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
             logging.info(
                 f"Comparing classes: {stat1.filename} vs {stat2.filename}")
 
-        logging.debug(f"Running significant differences analysis for {filename} with max_class_size={10000}.")
-        results = flag_significant_differences(
-            stat1, stat2, max_class_size=10000
+        logging.debug(f"Running significant differences analysis for {filename}.")
+        results, failed_by_feature = flag_significant_differences(
+            stat1, stat2
         )
-        
+
         if 'simple' in report_types:
             simple_report_path = out_folder / Path(f'{filename}.csv')
             generate_simple_report(results, simple_report_path)
@@ -60,13 +60,16 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
         if 'html' in report_types:
             html_report_path = out_folder / Path(f'{filename}.html')
             plots_path = out_folder / Path(f'{filename}_plots')
+            # Convert results dict to DataFrame for backwards compatibility
+            results_df = pd.DataFrame.from_dict(results, orient='index', columns=['Flag', 'AU-ROC', 'AU-PR', 'Accuracy'])
             generate_dataset_html_report(
-                stat1, stat2, 
-                html_report_path, 
-                plots_path=plots_path, 
+                stat1, stat2,
+                html_report_path,
+                plots_path=plots_path,
                 end_position=min(stat1.end_position, stat2.end_position),
                 plot_type=plot_type,
-                results=results
+                results=results_df,
+                failed_by_feature=failed_by_feature
             )
 
 def run(input, 

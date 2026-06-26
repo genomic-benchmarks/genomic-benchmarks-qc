@@ -2,6 +2,10 @@ from datetime import datetime
 import base64
 from pathlib import Path
 
+FAIL_COLOR = '#c62828'   # .status-fail background-color
+WARN_COLOR = '#f57f17'   # .status-warn background-color
+PASS_COLOR = '#2e7d32'   # .status-pass background-color
+
 def put_file_details(html_template, filename):
     """
     Populates the placeholders {{filename}} and {{date}} in the HTML template.
@@ -72,7 +76,7 @@ def encode_image_to_base64(image_path):
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 # Shared CSS used by all report HTML templates. Keep this as plain CSS (no <style> tags).
-COMMON_CSS = """
+COMMON_CSS_TEMPLATE = """
 /* Make sure the root uses border-box sizing and doesn't allow the
    page to horizontally overflow. Individual <pre> blocks will
    still allow internal horizontal scrolling. */
@@ -134,9 +138,9 @@ body {
     justify-content: center;
     margin: 0 4px 4px 0;
 }
-.status-pass { background-color: #2e7d32; color: #ffffff; }
-.status-warn { background-color: #f57f17; color: #ffffff; }
-.status-fail { background-color: #c62828; color: #ffffff; }
+.status-pass { background-color: {{PASS_COLOR}}; color: #ffffff; }
+.status-warn { background-color: {{WARN_COLOR}}; color: #ffffff; }
+.status-fail { background-color: {{FAIL_COLOR}}; color: #ffffff; }
 .nucleotide-flags-container {
     display: flex;
     flex-wrap: wrap;
@@ -281,6 +285,8 @@ pre {
 }
 """
 
+# make COMMON_CSS by substituting the color placeholders with actual color values
+COMMON_CSS = COMMON_CSS_TEMPLATE.replace("{{FAIL_COLOR}}", FAIL_COLOR).replace("{{WARN_COLOR}}", WARN_COLOR).replace("{{PASS_COLOR}}", PASS_COLOR)
 
 # Standard report header HTML fragment (uses placeholders)
 REPORT_HEADER_HTML = """

@@ -23,7 +23,13 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
         if not flag.startswith(f"{flag_prefix} - "):
             continue
 
-        nt = flag.split(" - ")[1]
+        # ignore per-position entries like "... - A position 1" and only show
+        # per-nucleotide aggregated flags like "... - A".
+        remainder = flag.split(" - ", 1)[1]
+        if ' position ' in remainder:
+            continue
+
+        nt = remainder
         flag_value = summary_statuses.get(flag, '')
         
         # Determine status class based on flag value
