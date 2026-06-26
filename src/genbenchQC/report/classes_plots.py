@@ -369,12 +369,15 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
 
     return fig
 
-def plot_sequence_duplications_within_classes(stats1, stats2):
+def _compute_duplication_bins(stats1, stats2):
+    """Compute normalized duplication bin distributions for both datasets.
 
-    fig, ax = plt.subplots(figsize=(12, 5), dpi=300)
+    Returns:
+        List of (bin_dict, stats) tuples.
+    """
+    bins_list = []
 
-    for i, stats in enumerate([stats1, stats2]):
-
+    for stats in [stats1, stats2]:
         # count_distribution_bins for bins 1, 2, 3 .. >10, >50, >100, >500, >1000
         count_distribution_bins = {
             1: 0,
@@ -416,15 +419,32 @@ def plot_sequence_duplications_within_classes(stats1, stats2):
                 count_distribution_bins[k] /= total
                 count_distribution_bins[k] *= 100  # convert to percentage
 
-        ax.plot(list(count_distribution_bins.keys()), list(count_distribution_bins.values()), label=f"{stats.label}", color=HuePalette()[i], alpha=0.7)
-        
-    total_sequences = 0
-    unique_sequences = 0
-    for stats in [stats1, stats2]:
-        total_sequences += stats.stats['Number of sequences']
-        unique_sequences += stats.stats['Number of sequences left after deduplication']
-    percent_remaining_after_dedup = (unique_sequences / total_sequences) if total_sequences > 0 else 0.0
-    ax.set_title(f"Percent of sequences remaining after deduplication: {percent_remaining_after_dedup:.2%}")
+        bins_list.append((count_distribution_bins, stats))
+
+    return bins_list
+
+
+def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None, flag=None):
+
+    fig, ax = plt.subplots(figsize=(12, 5), dpi=300)
+
+    bins_list = _compute_duplication_bins(stats1, stats2)
+
+    for i, (count_distribution_bins, stats) in enumerate(bins_list):
+        ax.plot(list(count_distribution_bins.keys()), list(count_distribution_bins.values()),
+                label=f"{stats.label}", color=HuePalette()[i], alpha=0.7)
+
+    # Set y-limits with padding
+    all_values = [v for bins, _ in bins_list for v in bins.values()]
+    if all_values:
+        min_y, max_y = min(all_values), max(all_values)
+        if min_y != max_y:
+            ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
+        else:
+            ax.set_ylim(-0.1, 1.1)
+
+    if percent_remaining_after_dedup is not None:
+        ax.set_title(f"Percent of sequences remaining after deduplication: {percent_remaining_after_dedup:.2%}")
 
     ax.set_xlabel('Sequence Duplication Level', fontsize=14)
     ax.set_ylabel('% Total Sequences', fontsize=14)
@@ -432,6 +452,25 @@ def plot_sequence_duplications_within_classes(stats1, stats2):
     ax.tick_params(axis='y', labelsize=12)
 
     ax = prepare_legend(ax, box_to_anchor=(0.5, -0.15)) 
+
+    # Add colored outline to indicate failure or warning if flag is provided
+    if flag:
+        # Span full width with padding to avoid overlapping axes
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        edgecolor = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
+        xpad = (xlim[1] - xlim[0]) * 0.02
+        ypad = (ylim[1] - ylim[0]) * 0.05
+        ax.add_patch(plt.Rectangle(
+            (xlim[0] + xpad, ylim[0] + ypad),
+            (xlim[1] - xlim[0]) - 2 * xpad,
+            (ylim[1] - ylim[0]) - 2 * ypad,
+            fill=False,
+            edgecolor=edgecolor,
+            linewidth=4,
+            alpha=0.5,
+            zorder=10
+        ))
 
     return fig
 

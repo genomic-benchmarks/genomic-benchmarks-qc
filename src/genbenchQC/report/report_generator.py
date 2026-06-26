@@ -138,7 +138,8 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
                 'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
                 'Per sequence dinucleotide content': {'AA': 'Fail'},
                 'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail'}},
-                'Per reverse position nucleotide content': {...}
+                'Per reverse position nucleotide content': {...},
+                'Sequence Duplications within Labels': {'Pass'}
             }
     """
     plots_path.mkdir(parents=True, exist_ok=True)
@@ -148,10 +149,17 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     else:
         summary_statuses = None
 
+    # Extract percent remaining from results if available
+    percent_remaining = None
+    if results is not None and 'Sequence Duplications within Labels' in results.index:
+        dup_info = results.loc['Sequence Duplications within Labels']
+        if isinstance(dup_info, pd.Series) and 'Percent Remaining' in dup_info:
+            percent_remaining = dup_info['Percent Remaining']
     # generate plots (with failure shading if failed_by_feature available)
     plots_paths = generate_dataset_plots(
         stats1, stats2, plots_path, end_position, plot_type,
-        failed_by_feature=failed_by_feature
+        failed_by_feature=failed_by_feature,
+        percent_remaining=percent_remaining
     )
 
     # find duplicate sequences between labels
@@ -183,7 +191,7 @@ def generate_simple_report(results, output_path):
         results = pd.DataFrame.from_dict(results, orient='index')
     results.to_csv(output_path)
 
-def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', failed_by_feature=None):
+def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', failed_by_feature=None, percent_remaining=None):
     """Generate comparison plots between two datasets.
 
     Args:
@@ -194,6 +202,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         failed_by_feature: Dict with failure info for shading (optional).
             If provided, creates both _no_flags and _with_flags versions
             for per-position nucleotide content plots.
+        percent_remaining: Optional float with the percentage of sequences remaining after deduplication.
 
     Returns:
         Dictionary mapping plot names to file paths. For per-position plots,
@@ -209,6 +218,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     # Get failed nucleotides and dinucleotides for boxen plot outlines
     failed_lengths = failed_by_feature.get('Sequence lengths', {}) if failed_by_feature else None
     failed_gc = failed_by_feature.get('Per sequence GC content', {}) if failed_by_feature else None
+    failed_duplications_within = failed_by_feature.get('Sequence Duplications within Labels', {}) if failed_by_feature else None
     failed_nucleotides = failed_by_feature.get('Per sequence nucleotide content', {}) if failed_by_feature else None
     failed_dinucleotides = failed_by_feature.get('Per sequence dinucleotide content', {}) if failed_by_feature else None
     failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
@@ -411,13 +421,29 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     # Return with-flags version for HTML (or no-flags if no failures)
     plots_paths['Per sequence GC content'] = with_flags_path if failed_gc else no_flags_path
 
-    # Plot sequence duplications within classes
+    # Plot sequence duplications within classes - no flags version
     fig = classes_plots.plot_sequence_duplications_within_classes(
         stats1,
-        stats2
+        stats2,
+        percent_remaining_after_dedup=percent_remaining,
+        flag=None
     )
-    plots_paths['Sequence Duplications within Labels'] = output_path / 'sequence_duplications_within_labels.png'
-    fig.savefig(output_path / 'sequence_duplications_within_labels.png', bbox_inches='tight')
+    no_flags_path = output_path / 'sequence_duplications_within_labels_no_flags.png'
+    fig.savefig(no_flags_path, bbox_inches='tight')
     plt.close(fig)
+
+    # With-flags version
+    fig = classes_plots.plot_sequence_duplications_within_classes(
+        stats1,
+        stats2,
+        percent_remaining_after_dedup=percent_remaining,
+        flag=failed_duplications_within
+    )
+    with_flags_path = output_path / 'sequence_duplications_within_labels_with_flags.png'
+    fig.savefig(with_flags_path, bbox_inches='tight')
+    plt.close(fig)
+
+    # Return with-flags version for HTML (or no-flags if no failures)
+    plots_paths['Sequence Duplications within Labels'] = with_flags_path if failed_duplications_within else no_flags_path
 
     return plots_paths
