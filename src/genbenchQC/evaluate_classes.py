@@ -60,8 +60,8 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
         if 'html' in report_types:
             html_report_path = out_folder / Path(f'{filename}.html')
             plots_path = out_folder / Path(f'{filename}_plots')
-            # Convert results dict to DataFrame for backwards compatibility
-            results_df = pd.DataFrame.from_dict(results, orient='index', columns=['Flag', 'AU-ROC', 'AU-PR', 'Accuracy'])
+            # Convert results dict to DataFrame using all available result fields
+            results_df = pd.DataFrame.from_dict(results, orient='index')
             generate_dataset_html_report(
                 stat1, stat2,
                 html_report_path,
