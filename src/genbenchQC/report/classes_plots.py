@@ -1,5 +1,6 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import pandas as pd
 import logging
 from genbenchQC.report.utils import FAIL_COLOR, WARN_COLOR
@@ -26,45 +27,39 @@ def plot_gc_content(stats1, stats2, plot_type='boxen', flag=None):
         flag=flag
     )
 
-def add_failed_outline(ax, failed_positions):
-    """Add colored outlines to failed nucleotides/dinucleotides in a boxen plot.
+def add_failed_outline(ax, failed_positions, x_left_custom=None, x_right_custom=None):
+    """Add colored underlines to failed positions.
 
     @param ax: Matplotlib axis object.
     @param failed_positions: Dict mapping position index -> flag status ('Fail' or 'Warning').
+    @param x_left_custom: Optional custom left x-coordinate for the underline.
+    @param x_right_custom: Optional custom right x-coordinate for the underline.
     """
 
-    # determine axis limits and tick spacing to compute rectangle geometry
-    ylim = ax.get_ylim()
-
+    xaxis_transform = ax.get_xaxis_transform()
     xticks = list(ax.get_xticks())
-    if len(xticks) > 1:
-        # average spacing between ticks
-        spacings = [xticks[i+1] - xticks[i] for i in range(len(xticks)-1)]
-        spacing = sum(spacings) / len(spacings)
-    else:
-        spacing = 1.0
 
     for pos, flag in failed_positions.items():
         edgecolor = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
-
-        # center rectangle around the position with a fraction of tick spacing
-        width = spacing * 0.9
-        x = pos - (width / 2.0)
-
-        # cover the full y-axis range exactly (don't limit to data extents)
-        y = ylim[0] + 0.05 * (ylim[1] - ylim[0])
-        height = (ylim[1] - ylim[0]) * 0.9
-
-        ax.add_patch(plt.Rectangle(
-            (x, y),  # x, y
-            width,
-            height,
-            fill=False,
-            edgecolor=edgecolor,
-            linewidth=4,
-            alpha=0.5,
-            zorder=10
-        ))
+        if pos < len(xticks):
+            x_center = xticks[pos]
+            if x_left_custom is None or x_right_custom is None:
+                x_left = x_center - 0.35
+                x_right = x_center + 0.35
+            else:
+                x_left = x_left_custom
+                x_right = x_right_custom
+            ax.plot(
+                [x_left, x_right],
+                [0, 0],
+                color=edgecolor,
+                linewidth=6,
+                alpha=0.8,
+                transform=xaxis_transform,
+                clip_on=False,
+                solid_capstyle='round',
+                zorder=10,
+            )
 
 def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=None):
     """
@@ -138,7 +133,7 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
     ax.set_ylabel('Frequency', fontsize=14)
     ax.tick_params(axis='x', labelsize=12)
     ax.tick_params(axis='y', labelsize=12)
-    ax = prepare_legend(ax)
+    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.15))
 
     return fig
 
@@ -426,16 +421,41 @@ def _compute_duplication_bins(stats1, stats2):
 
 def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None, flag=None):
 
-    fig, ax = plt.subplots(figsize=(12, 5), dpi=300)
+    fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
+    palette = HuePalette()
 
     bins_list = _compute_duplication_bins(stats1, stats2)
 
-    for i, (count_distribution_bins, stats) in enumerate(bins_list):
-        ax.plot(list(count_distribution_bins.keys()), list(count_distribution_bins.values()),
-                label=f"{stats.label}", color=HuePalette()[i], alpha=0.7)
+    # Extract bin keys and values for both stats
+    bin_keys = list(bins_list[0][0].keys())
+    values1 = [bins_list[0][0][k] for k in bin_keys]
+    values2 = [bins_list[1][0][k] for k in bin_keys]
+
+    label1 = str(bins_list[0][1].label)
+    label2 = str(bins_list[1][1].label)
+    plot_data = []
+    for bin_key, v1, v2 in zip(bin_keys, values1, values2):
+        plot_data.append({"duplication_bin": str(bin_key), "label": label1, "value": v1})
+        plot_data.append({"duplication_bin": str(bin_key), "label": label2, "value": v2})
+
+    df = pd.DataFrame(plot_data)
+    sns.barplot(
+        data=df,
+        x="duplication_bin",
+        y="value",
+        hue="label",
+        hue_order=[label1, label2],
+        order=[str(k) for k in bin_keys],
+        dodge=True,
+        ax=ax,
+        palette=[palette[0], palette[1]],
+        saturation=1,
+        edgecolor='none',
+        errorbar=None,
+    )
 
     # Set y-limits with padding
-    all_values = [v for bins, _ in bins_list for v in bins.values()]
+    all_values = [v for bins, _ in bins_list for v in bins.values() if v > 0]
     if all_values:
         min_y, max_y = min(all_values), max(all_values)
         if min_y != max_y:
@@ -448,29 +468,27 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
 
     ax.set_xlabel('Sequence Duplication Level', fontsize=14)
     ax.set_ylabel('% Total Sequences', fontsize=14)
-    ax.tick_params(axis='x', labelsize=12)
-    ax.tick_params(axis='y', labelsize=12)
+    ax.tick_params(axis='both', labelsize=12)
 
-    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.15)) 
+    legend_handles = [
+        Patch(facecolor=palette[0], label=label1),
+        Patch(facecolor=palette[1], label=label2),
+    ]
+    legend_labels = [label1, label2]
 
-    # Add colored outline to indicate failure or warning if flag is provided
+    ax = prepare_legend(
+        ax,
+        box_to_anchor=(0.5, -0.2),
+        legend_handles=legend_handles,
+        legend_labels=legend_labels,
+    )
+
+    # Add colored underline below the plot to indicate failure or warning if flag is provided
     if flag:
-        # Span full width with padding to avoid overlapping axes
+        # Draw just below the x-axis using x-data coordinates and axis-fraction y.
         xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        edgecolor = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
         xpad = (xlim[1] - xlim[0]) * 0.02
-        ypad = (ylim[1] - ylim[0]) * 0.05
-        ax.add_patch(plt.Rectangle(
-            (xlim[0] + xpad, ylim[0] + ypad),
-            (xlim[1] - xlim[0]) - 2 * xpad,
-            (ylim[1] - ylim[0]) - 2 * ypad,
-            fill=False,
-            edgecolor=edgecolor,
-            linewidth=4,
-            alpha=0.5,
-            zorder=10
-        ))
+        ax = add_failed_outline(ax, {0: flag}, x_left=xlim[0] + xpad, x_right=xlim[1] - xpad)
 
     return fig
 
@@ -491,17 +509,17 @@ def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value'
 
     return df
 
-def prepare_legend(ax, box_to_anchor=(0.5, -0.2)):
+def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_labels=None):
     """
     Prepare the legend for the plot.
     """
-    legend_handles = ax.get_legend_handles_labels()[0]
-    legend_labels = ax.get_legend_handles_labels()[1]
+    if legend_handles is None:
+        legend_handles = ax.get_legend_handles_labels()[0]
+    if legend_labels is None:
+        legend_labels = ax.get_legend_handles_labels()[1]
     ax.legend(
         handles = legend_handles,
         labels = legend_labels,
-        title='Label',
-        title_fontsize='14',
         fontsize='12',
         loc='upper center', 
         bbox_to_anchor=box_to_anchor, 

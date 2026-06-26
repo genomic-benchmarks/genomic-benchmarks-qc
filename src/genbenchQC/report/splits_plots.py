@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-from matplotlib import ticker
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -32,34 +33,41 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
     fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
 
-    if qcov.size:
-        qhist_df = pd.DataFrame({"similarity": qcov, "weight": qweights})
-        sns.histplot(
-            data=qhist_df,
-            x="similarity",
-            weights="weight",
-            bins=bins,
-            stat="count",
-            element="bars",
-            color=palette[0],
-            label="Test",
-            ax=ax,
-            alpha=0.7,
-        )
+    # Combine data into single DataFrame for hue-based plotting
+    hist_data = []
     if tcov.size:
-        thist_df = pd.DataFrame({"similarity": tcov, "weight": tweights})
+        for val, w in zip(tcov, tweights):
+            hist_data.append({"similarity": val, "type": "Train", "weight": w})
+    if qcov.size:
+        for val, w in zip(qcov, qweights):
+            hist_data.append({"similarity": val, "type": "Test", "weight": w})
+
+    if hist_data:
+        df = pd.DataFrame(hist_data)
+        # bars next to each other instead of stacked
         sns.histplot(
-            data=thist_df,
+            data=df,
             x="similarity",
             weights="weight",
             bins=bins,
             stat="count",
+            hue="type",
+            hue_order=["Train", "Test"],
+            multiple="dodge",
             element="bars",
-            color=palette[1],
-            label="Train",
+            shrink=0.8,
             ax=ax,
-            alpha=0.7,
+            palette=[palette[0], palette[1]],
+            legend=False,
+            linewidth=0,
         )
+
+    # Build legend handles for hue categories (Train, Test)
+    legend_handles = [
+        Patch(facecolor=palette[0], label="Train"),
+        Patch(facecolor=palette[1], label="Test"),
+    ]
+    legend_labels = ["Train", "Test"]
 
     ax.axvline(
         threshold_stats["similarity_threshold"],
@@ -68,12 +76,25 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
         color=FAIL_COLOR,
         label="Threshold",
     )
+    legend_handles.append(
+        Line2D([0], [0], linestyle="--", linewidth=1.2, color=FAIL_COLOR, label="Threshold")
+    )
+    legend_labels.append("Threshold")
+
     ax.set_xlim(0, 100)
-    ax.set_xticks(np.arange(0, 101, 10))
+    # Set x-tick labels as bin intervals (0-10, 10-20, ..., 90-100)
+    ax.set_xticks(np.arange(5, 101, 10))
+    ax.set_xticklabels([f"{i}-{i+10}" for i in range(0, 100, 10)])
     ax.set_yscale("log")
     ax.set_xlabel("Sequence similarity (%)", fontsize=14)
     ax.set_ylabel("Count (log scale)", fontsize=14)
     ax.tick_params(axis='both', labelsize=12)
 
-    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.2))
+    ax = prepare_legend(
+        ax,
+        box_to_anchor=(0.5, -0.2),
+        legend_handles=legend_handles,
+        legend_labels=legend_labels
+    )
+    
     return fig
