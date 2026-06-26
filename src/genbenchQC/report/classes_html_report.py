@@ -280,9 +280,6 @@ HTML_TEMPLATE = """
                         <button class="toggle-btn" onclick="toggleExplanation('per-position-explanation')" title="Show explanation">?</button>
                     </div>
                 </div>
-                <div class="nucleotide-flags-container" id="per-position-nucleotide-flags">
-                    {{per_position_nucleotide_content_flags}}
-                </div>
                 <div id="per-position-explanation" class="explanation-text">
                     <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of sequences extend to each position.
                 </div>
@@ -296,9 +293,6 @@ HTML_TEMPLATE = """
                         <h2>Per Position Reversed Nucleotide Content</h2>
                         <button class="toggle-btn" onclick="toggleExplanation('per-position-rev-explanation')" title="Show explanation">?</button>
                     </div>
-                </div>
-                <div class="nucleotide-flags-container" id="per-position-reversed-nucleotide-flags">
-                    {{per_position_reversed_nucleotide_content_flags}}
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
                     <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction). This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data.
@@ -483,13 +477,6 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All {len(duplicate_seqs)} duplicate sequences saved to {duplicate_seqs_file}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
-
-    # Generate nucleotide-level flags for per-position sections
-    per_position_nucleotide_flags = generate_nucleotide_flags_html(summary_statuses, 'Per position nucleotide content')
-    html_template = put_data(html_template, "{{per_position_nucleotide_content_flags}}", per_position_nucleotide_flags)
-    
-    per_position_reversed_nucleotide_flags = generate_nucleotide_flags_html(summary_statuses, 'Per reverse position nucleotide content')
-    html_template = put_data(html_template, "{{per_position_reversed_nucleotide_content_flags}}", per_position_reversed_nucleotide_flags)
 
     # Generate unique bases flags
     unique_bases_flags = generate_nucleotide_flags_html(summary_statuses, 'Unique bases')
