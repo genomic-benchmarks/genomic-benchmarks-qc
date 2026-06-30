@@ -67,7 +67,7 @@ genbenchQC evaluate-splits \
 | Format | Description |
 |--------|-------------|
 | `fasta` | One or more FASTA files. Multiple files = multiple classes. |
-| `csv` / `tsv` | Single file with label column, or multiple files (one per class). |
+| `csv` / `tsv` | One or more CSV/TSV files. Multiple will be pooled and avaluated as one. |
 | `csv.gz` / `tsv.gz` | Compressed CSV/TSV. |
 
 **Multiple sequence columns:** `evaluate-classes` analyzes each column separately, then concatenates all sequences for combined analysis. `evaluate-splits` only analyzes concatenated sequences.
@@ -90,6 +90,7 @@ genbenchQC evaluate-splits \
 - **Fail**: > 0.7 (significant bias detected)
 
 **Evaluated features:**
+- Nucleotide vocabulary
 - Sequence lengths distribution
 - GC content per sequence
 - Nucleotide composition (per sequence & per position)
