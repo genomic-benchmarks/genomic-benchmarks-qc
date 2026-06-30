@@ -4,94 +4,11 @@ import os
 from pathlib import Path
 import logging
 
-from genbenchQC.report.sequence_html_report import get_sequence_html_template
 from genbenchQC.report.classes_html_report import get_dataset_html_template
 from genbenchQC.report.split_html_report import get_splits_html_template
 from genbenchQC.utils.input_utils import write_stats_json
 from genbenchQC.report import classes_plots
-from genbenchQC.report import sequences_plots
 from genbenchQC.report import splits_plots
-
-def generate_sequence_plots(stats_dict, output_path, end_position, plot_type='boxen'):
-    """
-    Generate a plots from the given statistics dictionary.
-    """
-
-    logging.info(f"Generating PNG plots at: {output_path}")
-
-    nucleotides = sorted(stats_dict['Unique bases'])
-
-    plots_paths = {}
-    fig = sequences_plots.hist_plot_one_stat(
-        stats_dict,
-        stats_name='Sequence lengths',
-        x_label='Sequence lengths',
-        title='Sequence lengths'
-    )
-
-    plots_paths['Sequence lengths'] = Path(output_path.name) / 'sequence_lengths.png'
-    fig.savefig(output_path / 'sequence_lengths.png', bbox_inches='tight')
-    plt.close(fig)
-
-    fig = sequences_plots.hist_plot_one_stat(
-        stats_dict,
-        stats_name='Per sequence GC content',
-        x_label='GC content (%)',
-        title='Per sequence GC content'
-    )
-    plots_paths['Per sequence GC content'] = Path(output_path.name) / 'per_sequence_gc_content.png'
-    fig.savefig(output_path / 'per_sequence_gc_content.png', bbox_inches='tight')
-    plt.close(fig)
-
-    fig = sequences_plots.plot_nucleotides(stats_dict, nucleotides=nucleotides, plot_type=plot_type)
-    plots_paths['Per sequence nucleotide content'] = Path(output_path.name) / 'per_sequence_nucleotide_content.png'
-    fig.savefig(output_path / 'per_sequence_nucleotide_content.png', bbox_inches='tight')
-    plt.close(fig)  
-
-    fig = sequences_plots.plot_dinucleotides(stats_dict, nucleotides=nucleotides, plot_type=plot_type)
-    plots_paths['Per sequence dinucleotide content'] = Path(output_path.name) / 'per_sequence_dinucleotide_content.png'
-    fig.savefig(output_path / 'per_sequence_dinucleotide_content.png', bbox_inches='tight')
-    plt.close(fig)
-
-    fig = sequences_plots.plot_per_position_nucleotide_content(
-        stats_dict,
-        stat_name='Per position nucleotide content',
-        nucleotides=nucleotides,
-        end_position=end_position,
-    )
-    plots_paths['Per position nucleotide content'] = Path(output_path.name) / 'per_position_nucleotide_content.png'
-    fig.savefig(output_path / 'per_position_nucleotide_content.png', bbox_inches='tight')
-    plt.close(fig)
-
-    fig = sequences_plots.plot_per_position_nucleotide_content(
-        stats_dict,
-        stat_name='Per position reversed nucleotide content',
-        nucleotides=nucleotides,
-        end_position=end_position,
-    )
-    plots_paths['Per position reversed nucleotide content'] = Path(output_path.name) / 'per_position_reversed_nucleotide_content.png'
-    fig.savefig(output_path / 'per_position_reversed_nucleotide_content.png', bbox_inches='tight')
-    plt.close(fig)
-
-    return plots_paths
-
-def generate_sequence_html_report(stats_dict, output_path, plots_path, end_position, plot_type):
-    """
-    Generate an HTML report from the given statistics dictionary.
-    Plots are generated using the Plotly library.
-    """
-    logging.info(f"Generating HTML report: {output_path}")
-
-    plots_path.mkdir(parents=True, exist_ok=True)
-
-    # generate 
-    plots_paths = generate_sequence_plots(stats_dict, plots_path, end_position=end_position, plot_type=plot_type)
-
-    # Load the HTML template
-    template = get_sequence_html_template(stats_dict, plots_paths)
-
-    with open(output_path, 'w') as file:
-        file.write(template)
 
 def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max):
     """
