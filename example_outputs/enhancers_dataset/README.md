@@ -4,7 +4,6 @@ Outputs of running example split evaluation
 genbenchQC evaluate-splits \
   --train-input example_datasets/enhancers_train.csv \
   --test-input example_datasets/enhancers_test.csv \
-  --format csv \
   --sequence-column sequence \
   --out-folder example_outputs/enhancers_dataset
 ```
@@ -17,7 +16,6 @@ from genbenchQC import evaluate_splits
 evaluate_splits.run(
   train_files=['example_datasets/enhancers_train.csv'],
   test_files=['example_datasets/enhancers_test.csv'],
-  format='csv',
   sequence_column=['sequence'],
   out_folder='example_outputs/enhancers_dataset'
 )

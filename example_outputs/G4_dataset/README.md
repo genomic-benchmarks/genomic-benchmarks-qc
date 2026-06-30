@@ -4,7 +4,6 @@ Outputs of running example dataset evaluation
 genbenchQC evaluate-classes \
   --input example_datasets/G4_positives.fasta \
   --input example_datasets/G4_negatives.fasta \
-  --format fasta \
   --out-folder example_outputs/G4_dataset
 ```
 
@@ -15,7 +14,6 @@ from genbenchQC import evaluate_classes
 
 evaluate_classes.run(
   input=['example_datasets/G4_positives.fasta', 'example_datasets/G4_negatives.fasta'], 
-  format='fasta', 
   out_folder='example_outputs/G4_dataset'
 )
 ```

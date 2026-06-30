@@ -1,108 +1,147 @@
 ![](https://github.com/katarinagresova/GenBenchQC/blob/main/assets/logo_with_text_transparent.png?raw=True)
 
-# Automated Quality Control for Genomic Machine Learning Datasets
-
-GenBenchQC is a Python package and CLI toolkit for automated quality control of genomic datasets used in machine learning.
-It helps detect biases, inconsistencies, and potential data leakage across sequences, dataset classes, and train-test splits — ensuring your datasets are reliable before model training.
-
-## Features
-
-### Provided Tools
-- **genbenchQC evaluate-classes** – QC tool to evaluate sequence characteristics between different classes/labels in the dataset.
-- **genbenchQC evaluate-splits** – QC tool to evaluate data leakage in dataset train-test splits.
-
-### General Features
-- [**Class-level QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-classes) – Compare multiple classes for feature similarity or bias.
-- [**Train–test split QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-splits) – Detect potential data leakage through sequence similarity and clustering.
-- [**Multiple input formats**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#supported-input-file-formats) – Supports FASTA, CSV, and TSV datasets.
-- **Customizable reporting** – Generate JSON, HTML, or simple text summaries.
-- **Integration-ready** – Available as both CLI tools and a Python API.
-- **Flexible sequence handling** – Works with single or multiple sequence columns.
+Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
 
 ## Installation
-
-Install Genomic Benchmarks QC using pip:
 
 ```bash
 pip install genbenchQC
 ```
 
-If you plan to use `evaluate-splits`, install [mmseqs2](https://github.com/soedinglab/mmseqs2). While you can install `mmseqs2` using conda, it is recommended to download precompiled binary package for your system or to compile `mmseqs2` from source which can improve performance by optimizing it for your specific system. On some systems, we have observed incorrect sequence alignments produced by `mmseqs2` when installed from conda. 
-
-Find detailed instalation instructions at [mmseqs2 wiki page](https://github.com/soedinglab/MMseqs2/wiki#installation).
+For `evaluate-splits`, install [mmseqs2](https://github.com/soedinglab/MMseqs2). While conda installation works, precompiled binaries or compiling from source is recommended for better performance and to avoid alignment issues. See the [mmseqs2 installation guide](https://github.com/soedinglab/MMseqs2/wiki#installation) for details.
 
 ## Quick Start
 
-Clone the repository to access example datasets:
+### Evaluate Classes - Check Class Bias
 
-```bash
-git clone https://github.com/katarinagresova/GenBenchQC.git
-cd GenBenchQC
-```
+Compare sequence characteristics across different classes/labels to detect bias.
 
-### Evaluate Classes
-
-Running from CLI with fasta file:
-
+**FASTA files (one per class):**
 ```bash
 genbenchQC evaluate-classes \
   --input example_datasets/G4_positives.fasta \
   --input example_datasets/G4_negatives.fasta \
-  --format fasta \
   --out-folder example_outputs/G4_dataset
 ```
 
-Outputs with their description are in [example_outputs/G4_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset).
+**Multiple CSV/TSV files:**
+```bash
+genbenchQC evaluate-classes \
+  --input example_datasets/enhancers_train.csv \
+  --input example_datasets/enhancers_test.csv \
+  --out-folder example_outputs/enhancers
+```
 
-Running from CLI with tsv file and two sequence columns:
+Files are pooled; classes inferred from label column.
 
+**CSV/TSV with label column and multiple sequence columns:**
 ```bash
 genbenchQC evaluate-classes \
   --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
-  --format tsv \
-  --out-folder example_outputs/miRNA_mRNA_dataset \
   --sequence-column gene \
-  --sequence-column noncodingRNA
+  --sequence-column noncodingRNA \
+  --label-column label
+  --out-folder example_outputs/miRNA_mRNA_dataset
 ```
 
 Note: when you want to provide multiple values for some option, such as `--input` or `--sequence-column`, prefix each value with option name:
 ```bash
-genbenchQC evaluate-classes \
-  --input example_datasets/G4_positives.fasta \
-  --input example_datasets/G4_negatives.fasta 
+  --sequence-column gene \
+  --sequence-column noncodingRNA \
 ```
 
-Outputs with their description are in [example_outputs/miRNA_mRNA_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/miRNA_mRNA_dataset).
+### Evaluate Splits - Check Data Leakage
 
-### Evaluate Splits
+Detect train-test data leakage via sequence similarity.
 
 ```bash
 genbenchQC evaluate-splits \
   --train-input example_datasets/enhancers_train.csv \
   --test-input example_datasets/enhancers_test.csv \
-  --format csv \
   --sequence-column sequence \
   --out-folder example_outputs/enhancers_dataset
 ```
 
-Outputs with their description are in [example_outputs/enhancers_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/enhancers_dataset).
+## Input Formats
 
-## Supported input file formats
+| Format | Description |
+|--------|-------------|
+| `fasta` | One or more FASTA files. Multiple files = multiple classes. |
+| `csv` / `tsv` | Single file with label column, or multiple files (one per class). |
+| `csv.gz` / `tsv.gz` | Compressed CSV/TSV. |
 
-You can choose to run the tools while having different dataset formats:
-- **FASTA**: The input is a FASTA file / list of FASTA files. For *evaluate-classes* each fasta file is treated as separate class/label.
-- **CSV/TSV**: The input is a CSV/TSV file, and you provide the name of the column containing sequences. You can have either:
-  - **multiple files**, each one containing sequences from one class (similar as with FASTA input)
-  - **one file** containing sequences from multiple classes. In this case, when running *evaluate-classes* tool, you need to provide the name of the column containing class labels so the tool can split the dataset into parts. The label classes can then be inferred, or you can specify their list by yourself. The dataset will then be split into pieces containing sequences with corresponding labels and analysis will be performed similarly as with multiple files.
-- **CSV.GZ/TSV.GZ**: Functionality is the same as CSV/TSV files
+**Multiple sequence columns:** `evaluate-classes` analyzes each column separately, then concatenates all sequences for combined analysis. `evaluate-splits` only analyzes concatenated sequences.
 
-When having CSV/TSV/CSV.GZ/TSV.GZ input, you can also decide to provide multiple sequence columns to analyze. In this case, the tool *evaluate-classes* will be performed for each column separately and lastly for sequences made by concatenating sequences throughout all the columns. 
-*evaluate-splits* tool will run only the concatenated sequences.
+## Output Files
+
+### evaluate-classes outputs
+
+| File | Description |
+|------|-------------|
+| `*_report.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies). |
+| `dataset_report*.csv` | Simple comparison report with Pass/Warning/Fail flags. |
+| `dataset_report*.html` | Interactive HTML report with visualizations. |
+| `dataset_report*_plots/` | Individual plot images (PNG). |
+| `*_duplicates.txt` | Sequences appearing in multiple classes. |
+
+**Flag thresholds (AU-ROC):**
+- **Pass**: ≤ 0.6 (classes not distinguishable by feature)
+- **Warning**: ≤ 0.7
+- **Fail**: > 0.7 (significant bias detected)
+
+**Evaluated features:**
+- Sequence lengths distribution
+- GC content per sequence
+- Nucleotide composition (per sequence & per position)
+- Dinucleotide frequencies
+- Sequence duplication levels
+- Exact duplicate sequences between classes
+
+### evaluate-splits outputs
+
+| File | Description |
+|------|-------------|
+| `split_check_*.csv` | Simple leakage summary. |
+| `split_check_*.html` | Interactive HTML report with alignments. |
+| `split_check_*_mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
+| `split_check_*_plots/` | Similarity distribution plots. |
+
+**Leakage detection:** Flags when test sequences exceed similarity threshold vs training sequences.
+
+## CLI Options
+
+### evaluate-classes
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--input` | required | Input file(s)  |
+| `--sequence-column` | `sequence` | Column name(s) with sequences |
+| `--label-column` | `label` | Column with class labels |
+| `--label-list` | `infer` | Specific labels or `infer` |
+| `--regression` | False | Treat label as continuous, split high/low |
+| `--out-folder` | `.` | Output directory |
+| `--report-types` | `html simple` | `json`, `html`, `simple` |
+| `--plot-type` | `boxen` | `boxen` or `violin` |
+| `--end-position` | auto | Max position for per-position stats |
+| `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+
+### evaluate-splits
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--train-input` | required | Training file(s) |
+| `--test-input` | required | Test file(s) |
+| `--sequence-column` | `sequence` | Column with sequences |
+| `--out-folder` | `.` | Output directory |
+| `--report-types` | `html simple` | Report formats |
+| `--similarity-threshold` | `90.0` | % similarity for leakage flag |
+| `--threads` | auto | MMseqs2 thread count |
+| `--keep-tmp-files` | False | Keep temp files for debugging |
 
 ## Contributions & Support
 
-Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/katarinagresova/GenBenchQC/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. Please see the [contributing notes](https://github.com/katarinagresova/GenBenchQC/blob/main/CONTRIBUTING.md) for more information about how the process works.
+Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/katarinagresova/GenBenchQC/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. See the [contributing notes](CONTRIBUTING.md) for more information about how the process works.
 
 ## License
 
-Genomic Benchmarks QC is MIT-style licensed, as found in the [LICENSE](https://github.com/katarinagresova/GenBenchQC/blob/main/LICENSE) file.
+MIT-style. See [LICENSE](LICENSE).

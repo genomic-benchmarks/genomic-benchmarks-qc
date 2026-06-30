@@ -3,7 +3,6 @@ Outputs of running example dataset evaluation
 ```bash
 genbenchQC evaluate-classes \
   --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
-  --format tsv \
   --out-folder example_outputs/miRNA_mRNA_dataset \
   --sequence-column gene \
   --sequence-column noncodingRNA
@@ -16,7 +15,6 @@ from genbenchQC import evaluate_classes
 
 evaluate_classes.run(
   input=['example_datasets/miRNA_mRNA_pairs_dataset.tsv'], 
-  format='tsv', 
   out_folder='example_outputs/miRNA_mRNA_dataset', 
   sequence_column=['gene', 'noncodingRNA']
 )
