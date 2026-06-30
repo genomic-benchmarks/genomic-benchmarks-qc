@@ -29,7 +29,7 @@ genbenchQC evaluate-classes \
 genbenchQC evaluate-classes \
   --input example_datasets/enhancers_train.csv \
   --input example_datasets/enhancers_test.csv \
-  --out-folder example_outputs/enhancers
+  --out-folder example_outputs/enhancers_dataset
 ```
 
 Files are pooled; classes inferred from label column.
