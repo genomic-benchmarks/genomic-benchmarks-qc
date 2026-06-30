@@ -15,6 +15,22 @@ VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 
+def _infer_format(file_path: str) -> str:
+    """Infer format from file extension."""
+    path = Path(file_path)
+    suffixes = ''.join(path.suffixes)  # e.g., '.csv.gz'
+    if suffixes.endswith('.gz'):
+        base_suffix = path.suffix  # e.g., '.csv'
+        fmt = base_suffix.lstrip('.')
+        if fmt in ['csv', 'tsv']:
+            return f'{fmt}.gz'
+    else:
+        fmt = path.suffix.lstrip('.')
+        if fmt in VALID_FORMATS:
+            return fmt
+    raise ValueError(f"Cannot infer format from '{file_path}'. Supported: {', '.join(VALID_FORMATS)}")
+
+
 def _run_command(command, *args, **kwargs):
     try:
         command(*args, **kwargs)
@@ -27,7 +43,6 @@ def _run_command(command, *args, **kwargs):
 @app.command()
 def evaluate_classes(
     input: List[str] = typer.Option(..., help="Input file(s)."),
-    format: str = typer.Option(..., help="Input format: fasta, csv, csv.gz, tsv, tsv.gz"),
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     label_column: str = typer.Option('label', help="Label column name for single-file CSV inputs."),
     label_list: List[str] = typer.Option(['infer'], help='List of labels to consider or "infer" to detect labels automatically.'),
@@ -42,17 +57,19 @@ def evaluate_classes(
     """
     Evaluate sequence characteristics across different classes/labels in the dataset.
     """
-    # Validate format
-    if format not in VALID_FORMATS:
-        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
-        raise typer.Exit(code=1)
-    
     # Validate input files exist
     for file_path in input:
         if not Path(file_path).is_file():
             typer.echo(f"Error: Input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
-    
+
+    # Infer format from first input file
+    format = _infer_format(input[0])
+    # Validate format
+    if format not in VALID_FORMATS:
+        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
+        raise typer.Exit(code=1)
+
     # Validate fasta format requires at least 2 files
     if format == 'fasta' and len(input) < 2:
         typer.echo("Error: When format is 'fasta', at least 2 input files are required (one per class).", err=True)
@@ -99,7 +116,6 @@ def evaluate_classes(
 def evaluate_splits(
     train_input: List[str] = typer.Option(..., help="Path to the dataset file(s) with training data."),
     test_input: List[str] = typer.Option(..., help="Path to the dataset file(s) with testing data."),
-    format: str = typer.Option(..., help="Format of the input files: fasta, csv, csv.gz, tsv, tsv.gz"),
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
@@ -113,11 +129,6 @@ def evaluate_splits(
     """
     Evaluate data leakage in dataset train-test split.
     """
-    # Validate format
-    if format not in VALID_FORMATS:
-        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
-        raise typer.Exit(code=1)
-    
     # Validate train input files exist
     for file_path in train_input:
         if not Path(file_path).is_file():
@@ -129,6 +140,13 @@ def evaluate_splits(
         if not Path(file_path).is_file():
             typer.echo(f"Error: Test input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
+        
+    # Infer format from first input file
+    format = _infer_format(train_input[0])
+    # Validate format
+    if format not in VALID_FORMATS:
+        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
+        raise typer.Exit(code=1)
     
     # Validate report_types
     for rt in report_types:
