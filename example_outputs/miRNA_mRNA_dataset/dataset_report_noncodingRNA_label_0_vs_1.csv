@@ -1,222 +1,222 @@
-,Flag,Percent Remaining,AU-ROC,AU-PR,Accuracy
-Unique bases,Pass,,,,
-Sequence Duplications within Labels,Fail,0.41,,,
-Duplicate Sequences between Labels,Fail,,,,
-Sequence lengths,Pass,,0.5,0.505,0.5
-Per sequence GC content,Pass,,0.5044,0.5075352685050799,0.52
-Per sequence nucleotide content,Pass,,0.5092,0.5183958227512225,0.52
-Per sequence dinucleotide content,Pass,,0.5102,0.6749999999999999,0.52
-Per position nucleotide content,Pass,,0.52,0.71,0.52
-Per reverse position nucleotide content,Pass,,0.52,0.7179411764705883,0.52
-Per sequence nucleotide content - A,Pass,,0.5022,0.5183958227512225,0.52
-Per sequence nucleotide content - C,Pass,,0.5092,0.5136360475224574,0.52
-Per sequence nucleotide content - G,Pass,,0.5034,0.505936522645662,0.51
-Per sequence nucleotide content - T,Pass,,0.5,0.505,0.5
-Per sequence dinucleotide content - AA,Pass,,0.5076,0.6524294892899544,0.52
-Per sequence dinucleotide content - AC,Pass,,0.5,0.525,0.5
-Per sequence dinucleotide content - AG,Pass,,0.5042,0.5504011719630382,0.51
-Per sequence dinucleotide content - AT,Pass,,0.5064000000000001,0.5074834842182531,0.51
-Per sequence dinucleotide content - CA,Pass,,0.508,0.5321382783882784,0.52
-Per sequence dinucleotide content - CC,Pass,,0.5,0.505,0.5
-Per sequence dinucleotide content - CG,Pass,,0.5,0.6749999999999999,0.5
-Per sequence dinucleotide content - CT,Pass,,0.5,0.505,0.5
-Per sequence dinucleotide content - GA,Pass,,0.5,0.505,0.5
-Per sequence dinucleotide content - GC,Pass,,0.5,0.505,0.5
-Per sequence dinucleotide content - GG,Pass,,0.5044,0.5863395950875945,0.51
-Per sequence dinucleotide content - GT,Pass,,0.5018,0.5104545454545455,0.51
-Per sequence dinucleotide content - TA,Pass,,0.5045999999999999,0.5507799515801871,0.51
-Per sequence dinucleotide content - TC,Pass,,0.5,0.505,0.5
-Per sequence dinucleotide content - TG,Pass,,0.5102,0.5135009051651158,0.51
-Per sequence dinucleotide content - TT,Pass,,0.5,0.505,0.5
-Per position nucleotide content - A position 1,Pass,,0.52,0.6823529411764705,0.52
-Per position nucleotide content - A position 2,Pass,,0.5,0.5900000000000001,0.5
-Per position nucleotide content - A position 3,Pass,,0.5,0.62,0.5
-Per position nucleotide content - A position 4,Pass,,0.5,0.6000000000000001,0.5
-Per position nucleotide content - A position 5,Pass,,0.5,0.505,0.5
-Per position nucleotide content - A position 6,Pass,,0.5,0.545,0.5
-Per position nucleotide content - A position 7,Pass,,0.5,0.635,0.5
-Per position nucleotide content - A position 8,Pass,,0.5,0.525,0.5
-Per position nucleotide content - A position 9,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - A position 10,Pass,,0.5,0.56,0.5
-Per position nucleotide content - A position 11,Pass,,0.5,0.545,0.5
-Per position nucleotide content - A position 12,Pass,,0.5,0.555,0.5
-Per position nucleotide content - A position 13,Pass,,0.5,0.56,0.5
-Per position nucleotide content - A position 14,Pass,,0.5,0.555,0.5
-Per position nucleotide content - A position 15,Pass,,0.5,0.525,0.5
-Per position nucleotide content - A position 16,Pass,,0.5,0.545,0.5
-Per position nucleotide content - A position 17,Pass,,0.51,0.5792592592592594,0.51
-Per position nucleotide content - A position 18,Pass,,0.5,0.545,0.5
-Per position nucleotide content - A position 19,Pass,,0.51,0.5836206896551723,0.51
-Per position nucleotide content - A position 20,Pass,,0.5,0.6749999999999999,0.5
-Per position nucleotide content - A position 21,Pass,,0.5,0.55,0.5
-Per position nucleotide content - A position 22,Pass,,0.5,0.545,0.5
-Per position nucleotide content - A position 23,Pass,,0.5,0.545,0.5
-Per position nucleotide content - A,Pass,,0.52,0.6823529411764705,0.52
-Per position nucleotide content - C position 1,Pass,,0.52,0.5757142857142856,0.52
-Per position nucleotide content - C position 2,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - C position 3,Pass,,0.5,0.5900000000000001,0.5
-Per position nucleotide content - C position 4,Pass,,0.5,0.55,0.5
-Per position nucleotide content - C position 5,Pass,,0.5,0.585,0.5
-Per position nucleotide content - C position 6,Pass,,0.5,0.56,0.5
-Per position nucleotide content - C position 7,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - C position 8,Pass,,0.5,0.605,0.5
-Per position nucleotide content - C position 9,Pass,,0.5,0.535,0.5
-Per position nucleotide content - C position 10,Pass,,0.5,0.555,0.5
-Per position nucleotide content - C position 11,Pass,,0.5,0.505,0.5
-Per position nucleotide content - C position 12,Pass,,0.5,0.55,0.5
-Per position nucleotide content - C position 13,Pass,,0.5,0.565,0.5
-Per position nucleotide content - C position 14,Pass,,0.5,0.525,0.5
-Per position nucleotide content - C position 15,Pass,,0.5,0.525,0.5
-Per position nucleotide content - C position 16,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - C position 17,Pass,,0.5,0.585,0.5
-Per position nucleotide content - C position 18,Pass,,0.5,0.5700000000000001,0.5
-Per position nucleotide content - C position 19,Pass,,0.5000000000000001,0.53,0.5
-Per position nucleotide content - C position 20,Pass,,0.5000000000000001,0.53,0.5
-Per position nucleotide content - C position 21,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - C position 22,Pass,,0.5,0.525,0.5
-Per position nucleotide content - C position 23,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - C,Pass,,0.52,0.605,0.52
-Per position nucleotide content - G position 1,Pass,,0.5,0.5,0.5
-Per position nucleotide content - G position 2,Pass,,0.5,0.615,0.5
-Per position nucleotide content - G position 3,Pass,,0.5,0.515,0.5
-Per position nucleotide content - G position 4,Pass,,0.5,0.58,0.5
-Per position nucleotide content - G position 5,Pass,,0.5,0.64,0.5
-Per position nucleotide content - G position 6,Pass,,0.5,0.525,0.5
-Per position nucleotide content - G position 7,Pass,,0.5,0.585,0.5
-Per position nucleotide content - G position 8,Pass,,0.5,0.555,0.5
-Per position nucleotide content - G position 9,Pass,,0.5,0.5,0.5
-Per position nucleotide content - G position 10,Pass,,0.5,0.6000000000000001,0.5
-Per position nucleotide content - G position 11,Pass,,0.5,0.6749999999999999,0.5
-Per position nucleotide content - G position 12,Pass,,0.5,0.6100000000000001,0.5
-Per position nucleotide content - G position 13,Pass,,0.5,0.545,0.5
-Per position nucleotide content - G position 14,Pass,,0.5,0.56,0.5
-Per position nucleotide content - G position 15,Pass,,0.5,0.6599999999999999,0.5
-Per position nucleotide content - G position 16,Pass,,0.5,0.5900000000000001,0.5
-Per position nucleotide content - G position 17,Pass,,0.51,0.663968253968254,0.51
-Per position nucleotide content - G position 18,Pass,,0.5,0.515,0.5
-Per position nucleotide content - G position 19,Pass,,0.51,0.6786231884057972,0.51
-Per position nucleotide content - G position 20,Pass,,0.5,0.58,0.5
-Per position nucleotide content - G position 21,Pass,,0.5,0.555,0.5
-Per position nucleotide content - G position 22,Pass,,0.5,0.55,0.5
-Per position nucleotide content - G position 23,Pass,,0.5,0.545,0.5
-Per position nucleotide content - G,Pass,,0.51,0.6786231884057972,0.51
-Per position nucleotide content - T position 1,Pass,,0.5,0.635,0.5
-Per position nucleotide content - T position 2,Pass,,0.5,0.525,0.5
-Per position nucleotide content - T position 3,Pass,,0.5,0.525,0.5
-Per position nucleotide content - T position 4,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - T position 5,Pass,,0.5000000000000001,0.52,0.5
-Per position nucleotide content - T position 6,Pass,,0.5,0.62,0.5
-Per position nucleotide content - T position 7,Pass,,0.5,0.51,0.5
-Per position nucleotide content - T position 8,Pass,,0.5,0.565,0.5
-Per position nucleotide content - T position 9,Pass,,0.5,0.695,0.5
-Per position nucleotide content - T position 10,Pass,,0.5,0.535,0.5
-Per position nucleotide content - T position 11,Pass,,0.5,0.625,0.5
-Per position nucleotide content - T position 12,Pass,,0.5,0.535,0.5
-Per position nucleotide content - T position 13,Pass,,0.5,0.58,0.5
-Per position nucleotide content - T position 14,Pass,,0.5,0.6100000000000001,0.5
-Per position nucleotide content - T position 15,Pass,,0.5,0.71,0.5
-Per position nucleotide content - T position 16,Pass,,0.5,0.655,0.5
-Per position nucleotide content - T position 17,Pass,,0.5,0.505,0.5
-Per position nucleotide content - T position 18,Pass,,0.5,0.62,0.5
-Per position nucleotide content - T position 19,Pass,,0.5,0.5700000000000001,0.5
-Per position nucleotide content - T position 20,Pass,,0.5,0.565,0.5
-Per position nucleotide content - T position 21,Pass,,0.5,0.62,0.5
-Per position nucleotide content - T position 22,Pass,,0.5,0.5900000000000001,0.5
-Per position nucleotide content - T position 23,Pass,,0.5,0.5,0.5
-Per position nucleotide content - T,Pass,,0.5000000000000001,0.71,0.5
-Per reverse position nucleotide content - A position 1,Pass,,0.5,0.58,0.5
-Per reverse position nucleotide content - A position 2,Pass,,0.5,0.585,0.5
-Per reverse position nucleotide content - A position 3,Pass,,0.5,0.51,0.5
-Per reverse position nucleotide content - A position 4,Pass,,0.51,0.6064102564102565,0.51
-Per reverse position nucleotide content - A position 5,Pass,,0.5,0.525,0.5
-Per reverse position nucleotide content - A position 6,Pass,,0.51,0.6158139534883722,0.51
-Per reverse position nucleotide content - A position 7,Pass,,0.5,0.545,0.5
-Per reverse position nucleotide content - A position 8,Pass,,0.5,0.515,0.5
-Per reverse position nucleotide content - A position 9,Pass,,0.5,0.545,0.5
-Per reverse position nucleotide content - A position 10,Pass,,0.5,0.56,0.5
-Per reverse position nucleotide content - A position 11,Pass,,0.5,0.525,0.5
-Per reverse position nucleotide content - A position 12,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - A position 13,Pass,,0.5,0.5900000000000001,0.5
-Per reverse position nucleotide content - A position 14,Pass,,0.5,0.525,0.5
-Per reverse position nucleotide content - A position 15,Pass,,0.5,0.55,0.5
-Per reverse position nucleotide content - A position 16,Pass,,0.5,0.565,0.5
-Per reverse position nucleotide content - A position 17,Pass,,0.5,0.585,0.5
-Per reverse position nucleotide content - A position 18,Pass,,0.5,0.71,0.5
-Per reverse position nucleotide content - A position 19,Pass,,0.5,0.51,0.5
-Per reverse position nucleotide content - A position 20,Pass,,0.5,0.6599999999999999,0.5
-Per reverse position nucleotide content - A position 21,Pass,,0.5,0.55,0.5
-Per reverse position nucleotide content - A position 22,Pass,,0.5,0.56,0.5
-Per reverse position nucleotide content - A position 23,Pass,,0.52,0.6823529411764705,0.52
-Per reverse position nucleotide content - A,Pass,,0.52,0.71,0.52
-Per reverse position nucleotide content - C position 1,Pass,,0.5000000000000001,0.53,0.5
-Per reverse position nucleotide content - C position 2,Pass,,0.5,0.535,0.5
-Per reverse position nucleotide content - C position 3,Pass,,0.5000000000000001,0.52,0.5
-Per reverse position nucleotide content - C position 4,Pass,,0.5,0.545,0.5
-Per reverse position nucleotide content - C position 5,Pass,,0.5,0.565,0.5
-Per reverse position nucleotide content - C position 6,Pass,,0.5,0.6749999999999999,0.5
-Per reverse position nucleotide content - C position 7,Pass,,0.5000000000000001,0.53,0.5
-Per reverse position nucleotide content - C position 8,Pass,,0.5000000000000001,0.52,0.5
-Per reverse position nucleotide content - C position 9,Pass,,0.5,0.515,0.5
-Per reverse position nucleotide content - C position 10,Pass,,0.5000000000000001,0.52,0.5
-Per reverse position nucleotide content - C position 11,Pass,,0.5,0.5900000000000001,0.5
-Per reverse position nucleotide content - C position 12,Pass,,0.5,0.71,0.5
-Per reverse position nucleotide content - C position 13,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - C position 14,Pass,,0.5,0.55,0.5
-Per reverse position nucleotide content - C position 15,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - C position 16,Pass,,0.5,0.545,0.5
-Per reverse position nucleotide content - C position 17,Pass,,0.5,0.515,0.5
-Per reverse position nucleotide content - C position 18,Pass,,0.5,0.5900000000000001,0.5
-Per reverse position nucleotide content - C position 19,Pass,,0.5,0.605,0.5
-Per reverse position nucleotide content - C position 20,Pass,,0.5,0.525,0.5
-Per reverse position nucleotide content - C position 21,Pass,,0.5,0.585,0.5
-Per reverse position nucleotide content - C position 22,Pass,,0.5,0.51,0.5
-Per reverse position nucleotide content - C position 23,Pass,,0.52,0.6399999999999999,0.52
-Per reverse position nucleotide content - C,Pass,,0.52,0.71,0.52
-Per reverse position nucleotide content - G position 1,Pass,,0.5,0.5700000000000001,0.5
-Per reverse position nucleotide content - G position 2,Pass,,0.5,0.55,0.5
-Per reverse position nucleotide content - G position 3,Pass,,0.5,0.6100000000000001,0.5
-Per reverse position nucleotide content - G position 4,Pass,,0.51,0.7031645569620254,0.51
-Per reverse position nucleotide content - G position 5,Pass,,0.5,0.535,0.5
-Per reverse position nucleotide content - G position 6,Pass,,0.51,0.7179411764705883,0.51
-Per reverse position nucleotide content - G position 7,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - G position 8,Pass,,0.5,0.64,0.5
-Per reverse position nucleotide content - G position 9,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - G position 10,Pass,,0.5,0.5900000000000001,0.5
-Per reverse position nucleotide content - G position 11,Pass,,0.5,0.605,0.5
-Per reverse position nucleotide content - G position 12,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - G position 13,Pass,,0.5,0.51,0.5
-Per reverse position nucleotide content - G position 14,Pass,,0.5,0.5700000000000001,0.5
-Per reverse position nucleotide content - G position 15,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - G position 16,Pass,,0.5,0.545,0.5
-Per reverse position nucleotide content - G position 17,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - G position 18,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - G position 19,Pass,,0.5,0.62,0.5
-Per reverse position nucleotide content - G position 20,Pass,,0.5000000000000001,0.53,0.5
-Per reverse position nucleotide content - G position 21,Pass,,0.5,0.56,0.5
-Per reverse position nucleotide content - G position 22,Pass,,0.5,0.55,0.5
-Per reverse position nucleotide content - G position 23,Pass,,0.5,0.5,0.5
-Per reverse position nucleotide content - G,Pass,,0.51,0.7179411764705883,0.51
-Per reverse position nucleotide content - T position 1,Pass,,0.5,0.5700000000000001,0.5
-Per reverse position nucleotide content - T position 2,Pass,,0.5,0.58,0.5
-Per reverse position nucleotide content - T position 3,Pass,,0.5,0.6100000000000001,0.5
-Per reverse position nucleotide content - T position 4,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - T position 5,Pass,,0.5,0.625,0.5
-Per reverse position nucleotide content - T position 6,Pass,,0.5000000000000001,0.53,0.5
-Per reverse position nucleotide content - T position 7,Pass,,0.5,0.58,0.5
-Per reverse position nucleotide content - T position 8,Pass,,0.5,0.6749999999999999,0.5
-Per reverse position nucleotide content - T position 9,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - T position 10,Pass,,0.5,0.58,0.5
-Per reverse position nucleotide content - T position 11,Pass,,0.5000000000000001,0.53,0.5
-Per reverse position nucleotide content - T position 12,Pass,,0.5,0.56,0.5
-Per reverse position nucleotide content - T position 13,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - T position 14,Pass,,0.5,0.605,0.5
-Per reverse position nucleotide content - T position 15,Pass,,0.5,0.5900000000000001,0.5
-Per reverse position nucleotide content - T position 16,Pass,,0.5,0.655,0.5
-Per reverse position nucleotide content - T position 17,Pass,,0.5,0.555,0.5
-Per reverse position nucleotide content - T position 18,Pass,,0.5,0.565,0.5
-Per reverse position nucleotide content - T position 19,Pass,,0.5,0.515,0.5
-Per reverse position nucleotide content - T position 20,Pass,,0.5,0.535,0.5
-Per reverse position nucleotide content - T position 21,Pass,,0.5,0.55,0.5
-Per reverse position nucleotide content - T position 22,Pass,,0.5,0.5900000000000001,0.5
-Per reverse position nucleotide content - T position 23,Pass,,0.5000000000000001,0.52,0.5
-Per reverse position nucleotide content - T,Pass,,0.5000000000000001,0.6749999999999999,0.5
+Check,Flag,AU-ROC,AU-PR,Accuracy
+Unique bases,Pass,,,
+Sequence Duplications within Labels,Fail,,,
+Duplicate Sequences between Labels,Fail,,,
+Sequence lengths,Pass,0.5,0.505,0.5
+Per sequence GC content,Pass,0.5044,0.5075352685050799,0.52
+Per sequence nucleotide content,Pass,0.5092,0.5183958227512225,0.52
+Per sequence dinucleotide content,Pass,0.5102,0.6749999999999999,0.52
+Per position nucleotide content,Pass,0.52,0.71,0.52
+Per reverse position nucleotide content,Pass,0.52,0.7179411764705883,0.52
+Per sequence nucleotide content - A,Pass,0.5022,0.5183958227512225,0.52
+Per sequence nucleotide content - C,Pass,0.5092,0.5136360475224574,0.52
+Per sequence nucleotide content - G,Pass,0.5034,0.505936522645662,0.51
+Per sequence nucleotide content - T,Pass,0.5,0.505,0.5
+Per sequence dinucleotide content - AA,Pass,0.5076,0.6524294892899544,0.52
+Per sequence dinucleotide content - AC,Pass,0.5,0.525,0.5
+Per sequence dinucleotide content - AG,Pass,0.5042,0.5504011719630382,0.51
+Per sequence dinucleotide content - AT,Pass,0.5064000000000001,0.5074834842182531,0.51
+Per sequence dinucleotide content - CA,Pass,0.508,0.5321382783882784,0.52
+Per sequence dinucleotide content - CC,Pass,0.5,0.505,0.5
+Per sequence dinucleotide content - CG,Pass,0.5,0.6749999999999999,0.5
+Per sequence dinucleotide content - CT,Pass,0.5,0.505,0.5
+Per sequence dinucleotide content - GA,Pass,0.5,0.505,0.5
+Per sequence dinucleotide content - GC,Pass,0.5,0.505,0.5
+Per sequence dinucleotide content - GG,Pass,0.5044,0.5863395950875945,0.51
+Per sequence dinucleotide content - GT,Pass,0.5018,0.5104545454545455,0.51
+Per sequence dinucleotide content - TA,Pass,0.5045999999999999,0.5507799515801871,0.51
+Per sequence dinucleotide content - TC,Pass,0.5,0.505,0.5
+Per sequence dinucleotide content - TG,Pass,0.5102,0.5135009051651158,0.51
+Per sequence dinucleotide content - TT,Pass,0.5,0.505,0.5
+Per position nucleotide content - A position 1,Pass,0.52,0.6823529411764705,0.52
+Per position nucleotide content - A position 2,Pass,0.5,0.5900000000000001,0.5
+Per position nucleotide content - A position 3,Pass,0.5,0.62,0.5
+Per position nucleotide content - A position 4,Pass,0.5,0.6000000000000001,0.5
+Per position nucleotide content - A position 5,Pass,0.5,0.505,0.5
+Per position nucleotide content - A position 6,Pass,0.5,0.545,0.5
+Per position nucleotide content - A position 7,Pass,0.5,0.635,0.5
+Per position nucleotide content - A position 8,Pass,0.5,0.525,0.5
+Per position nucleotide content - A position 9,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - A position 10,Pass,0.5,0.56,0.5
+Per position nucleotide content - A position 11,Pass,0.5,0.545,0.5
+Per position nucleotide content - A position 12,Pass,0.5,0.555,0.5
+Per position nucleotide content - A position 13,Pass,0.5,0.56,0.5
+Per position nucleotide content - A position 14,Pass,0.5,0.555,0.5
+Per position nucleotide content - A position 15,Pass,0.5,0.525,0.5
+Per position nucleotide content - A position 16,Pass,0.5,0.545,0.5
+Per position nucleotide content - A position 17,Pass,0.51,0.5792592592592594,0.51
+Per position nucleotide content - A position 18,Pass,0.5,0.545,0.5
+Per position nucleotide content - A position 19,Pass,0.51,0.5836206896551723,0.51
+Per position nucleotide content - A position 20,Pass,0.5,0.6749999999999999,0.5
+Per position nucleotide content - A position 21,Pass,0.5,0.55,0.5
+Per position nucleotide content - A position 22,Pass,0.5,0.545,0.5
+Per position nucleotide content - A position 23,Pass,0.5,0.545,0.5
+Per position nucleotide content - A,Pass,0.52,0.6823529411764705,0.52
+Per position nucleotide content - C position 1,Pass,0.52,0.5757142857142856,0.52
+Per position nucleotide content - C position 2,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - C position 3,Pass,0.5,0.5900000000000001,0.5
+Per position nucleotide content - C position 4,Pass,0.5,0.55,0.5
+Per position nucleotide content - C position 5,Pass,0.5,0.585,0.5
+Per position nucleotide content - C position 6,Pass,0.5,0.56,0.5
+Per position nucleotide content - C position 7,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - C position 8,Pass,0.5,0.605,0.5
+Per position nucleotide content - C position 9,Pass,0.5,0.535,0.5
+Per position nucleotide content - C position 10,Pass,0.5,0.555,0.5
+Per position nucleotide content - C position 11,Pass,0.5,0.505,0.5
+Per position nucleotide content - C position 12,Pass,0.5,0.55,0.5
+Per position nucleotide content - C position 13,Pass,0.5,0.565,0.5
+Per position nucleotide content - C position 14,Pass,0.5,0.525,0.5
+Per position nucleotide content - C position 15,Pass,0.5,0.525,0.5
+Per position nucleotide content - C position 16,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - C position 17,Pass,0.5,0.585,0.5
+Per position nucleotide content - C position 18,Pass,0.5,0.5700000000000001,0.5
+Per position nucleotide content - C position 19,Pass,0.5000000000000001,0.53,0.5
+Per position nucleotide content - C position 20,Pass,0.5000000000000001,0.53,0.5
+Per position nucleotide content - C position 21,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - C position 22,Pass,0.5,0.525,0.5
+Per position nucleotide content - C position 23,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - C,Pass,0.52,0.605,0.52
+Per position nucleotide content - G position 1,Pass,0.5,0.5,0.5
+Per position nucleotide content - G position 2,Pass,0.5,0.615,0.5
+Per position nucleotide content - G position 3,Pass,0.5,0.515,0.5
+Per position nucleotide content - G position 4,Pass,0.5,0.58,0.5
+Per position nucleotide content - G position 5,Pass,0.5,0.64,0.5
+Per position nucleotide content - G position 6,Pass,0.5,0.525,0.5
+Per position nucleotide content - G position 7,Pass,0.5,0.585,0.5
+Per position nucleotide content - G position 8,Pass,0.5,0.555,0.5
+Per position nucleotide content - G position 9,Pass,0.5,0.5,0.5
+Per position nucleotide content - G position 10,Pass,0.5,0.6000000000000001,0.5
+Per position nucleotide content - G position 11,Pass,0.5,0.6749999999999999,0.5
+Per position nucleotide content - G position 12,Pass,0.5,0.6100000000000001,0.5
+Per position nucleotide content - G position 13,Pass,0.5,0.545,0.5
+Per position nucleotide content - G position 14,Pass,0.5,0.56,0.5
+Per position nucleotide content - G position 15,Pass,0.5,0.6599999999999999,0.5
+Per position nucleotide content - G position 16,Pass,0.5,0.5900000000000001,0.5
+Per position nucleotide content - G position 17,Pass,0.51,0.663968253968254,0.51
+Per position nucleotide content - G position 18,Pass,0.5,0.515,0.5
+Per position nucleotide content - G position 19,Pass,0.51,0.6786231884057972,0.51
+Per position nucleotide content - G position 20,Pass,0.5,0.58,0.5
+Per position nucleotide content - G position 21,Pass,0.5,0.555,0.5
+Per position nucleotide content - G position 22,Pass,0.5,0.55,0.5
+Per position nucleotide content - G position 23,Pass,0.5,0.545,0.5
+Per position nucleotide content - G,Pass,0.51,0.6786231884057972,0.51
+Per position nucleotide content - T position 1,Pass,0.5,0.635,0.5
+Per position nucleotide content - T position 2,Pass,0.5,0.525,0.5
+Per position nucleotide content - T position 3,Pass,0.5,0.525,0.5
+Per position nucleotide content - T position 4,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - T position 5,Pass,0.5000000000000001,0.52,0.5
+Per position nucleotide content - T position 6,Pass,0.5,0.62,0.5
+Per position nucleotide content - T position 7,Pass,0.5,0.51,0.5
+Per position nucleotide content - T position 8,Pass,0.5,0.565,0.5
+Per position nucleotide content - T position 9,Pass,0.5,0.695,0.5
+Per position nucleotide content - T position 10,Pass,0.5,0.535,0.5
+Per position nucleotide content - T position 11,Pass,0.5,0.625,0.5
+Per position nucleotide content - T position 12,Pass,0.5,0.535,0.5
+Per position nucleotide content - T position 13,Pass,0.5,0.58,0.5
+Per position nucleotide content - T position 14,Pass,0.5,0.6100000000000001,0.5
+Per position nucleotide content - T position 15,Pass,0.5,0.71,0.5
+Per position nucleotide content - T position 16,Pass,0.5,0.655,0.5
+Per position nucleotide content - T position 17,Pass,0.5,0.505,0.5
+Per position nucleotide content - T position 18,Pass,0.5,0.62,0.5
+Per position nucleotide content - T position 19,Pass,0.5,0.5700000000000001,0.5
+Per position nucleotide content - T position 20,Pass,0.5,0.565,0.5
+Per position nucleotide content - T position 21,Pass,0.5,0.62,0.5
+Per position nucleotide content - T position 22,Pass,0.5,0.5900000000000001,0.5
+Per position nucleotide content - T position 23,Pass,0.5,0.5,0.5
+Per position nucleotide content - T,Pass,0.5000000000000001,0.71,0.5
+Per reverse position nucleotide content - A position 1,Pass,0.5,0.58,0.5
+Per reverse position nucleotide content - A position 2,Pass,0.5,0.585,0.5
+Per reverse position nucleotide content - A position 3,Pass,0.5,0.51,0.5
+Per reverse position nucleotide content - A position 4,Pass,0.51,0.6064102564102565,0.51
+Per reverse position nucleotide content - A position 5,Pass,0.5,0.525,0.5
+Per reverse position nucleotide content - A position 6,Pass,0.51,0.6158139534883722,0.51
+Per reverse position nucleotide content - A position 7,Pass,0.5,0.545,0.5
+Per reverse position nucleotide content - A position 8,Pass,0.5,0.515,0.5
+Per reverse position nucleotide content - A position 9,Pass,0.5,0.545,0.5
+Per reverse position nucleotide content - A position 10,Pass,0.5,0.56,0.5
+Per reverse position nucleotide content - A position 11,Pass,0.5,0.525,0.5
+Per reverse position nucleotide content - A position 12,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - A position 13,Pass,0.5,0.5900000000000001,0.5
+Per reverse position nucleotide content - A position 14,Pass,0.5,0.525,0.5
+Per reverse position nucleotide content - A position 15,Pass,0.5,0.55,0.5
+Per reverse position nucleotide content - A position 16,Pass,0.5,0.565,0.5
+Per reverse position nucleotide content - A position 17,Pass,0.5,0.585,0.5
+Per reverse position nucleotide content - A position 18,Pass,0.5,0.71,0.5
+Per reverse position nucleotide content - A position 19,Pass,0.5,0.51,0.5
+Per reverse position nucleotide content - A position 20,Pass,0.5,0.6599999999999999,0.5
+Per reverse position nucleotide content - A position 21,Pass,0.5,0.55,0.5
+Per reverse position nucleotide content - A position 22,Pass,0.5,0.56,0.5
+Per reverse position nucleotide content - A position 23,Pass,0.52,0.6823529411764705,0.52
+Per reverse position nucleotide content - A,Pass,0.52,0.71,0.52
+Per reverse position nucleotide content - C position 1,Pass,0.5000000000000001,0.53,0.5
+Per reverse position nucleotide content - C position 2,Pass,0.5,0.535,0.5
+Per reverse position nucleotide content - C position 3,Pass,0.5000000000000001,0.52,0.5
+Per reverse position nucleotide content - C position 4,Pass,0.5,0.545,0.5
+Per reverse position nucleotide content - C position 5,Pass,0.5,0.565,0.5
+Per reverse position nucleotide content - C position 6,Pass,0.5,0.6749999999999999,0.5
+Per reverse position nucleotide content - C position 7,Pass,0.5000000000000001,0.53,0.5
+Per reverse position nucleotide content - C position 8,Pass,0.5000000000000001,0.52,0.5
+Per reverse position nucleotide content - C position 9,Pass,0.5,0.515,0.5
+Per reverse position nucleotide content - C position 10,Pass,0.5000000000000001,0.52,0.5
+Per reverse position nucleotide content - C position 11,Pass,0.5,0.5900000000000001,0.5
+Per reverse position nucleotide content - C position 12,Pass,0.5,0.71,0.5
+Per reverse position nucleotide content - C position 13,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - C position 14,Pass,0.5,0.55,0.5
+Per reverse position nucleotide content - C position 15,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - C position 16,Pass,0.5,0.545,0.5
+Per reverse position nucleotide content - C position 17,Pass,0.5,0.515,0.5
+Per reverse position nucleotide content - C position 18,Pass,0.5,0.5900000000000001,0.5
+Per reverse position nucleotide content - C position 19,Pass,0.5,0.605,0.5
+Per reverse position nucleotide content - C position 20,Pass,0.5,0.525,0.5
+Per reverse position nucleotide content - C position 21,Pass,0.5,0.585,0.5
+Per reverse position nucleotide content - C position 22,Pass,0.5,0.51,0.5
+Per reverse position nucleotide content - C position 23,Pass,0.52,0.6399999999999999,0.52
+Per reverse position nucleotide content - C,Pass,0.52,0.71,0.52
+Per reverse position nucleotide content - G position 1,Pass,0.5,0.5700000000000001,0.5
+Per reverse position nucleotide content - G position 2,Pass,0.5,0.55,0.5
+Per reverse position nucleotide content - G position 3,Pass,0.5,0.6100000000000001,0.5
+Per reverse position nucleotide content - G position 4,Pass,0.51,0.7031645569620254,0.51
+Per reverse position nucleotide content - G position 5,Pass,0.5,0.535,0.5
+Per reverse position nucleotide content - G position 6,Pass,0.51,0.7179411764705883,0.51
+Per reverse position nucleotide content - G position 7,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - G position 8,Pass,0.5,0.64,0.5
+Per reverse position nucleotide content - G position 9,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - G position 10,Pass,0.5,0.5900000000000001,0.5
+Per reverse position nucleotide content - G position 11,Pass,0.5,0.605,0.5
+Per reverse position nucleotide content - G position 12,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - G position 13,Pass,0.5,0.51,0.5
+Per reverse position nucleotide content - G position 14,Pass,0.5,0.5700000000000001,0.5
+Per reverse position nucleotide content - G position 15,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - G position 16,Pass,0.5,0.545,0.5
+Per reverse position nucleotide content - G position 17,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - G position 18,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - G position 19,Pass,0.5,0.62,0.5
+Per reverse position nucleotide content - G position 20,Pass,0.5000000000000001,0.53,0.5
+Per reverse position nucleotide content - G position 21,Pass,0.5,0.56,0.5
+Per reverse position nucleotide content - G position 22,Pass,0.5,0.55,0.5
+Per reverse position nucleotide content - G position 23,Pass,0.5,0.5,0.5
+Per reverse position nucleotide content - G,Pass,0.51,0.7179411764705883,0.51
+Per reverse position nucleotide content - T position 1,Pass,0.5,0.5700000000000001,0.5
+Per reverse position nucleotide content - T position 2,Pass,0.5,0.58,0.5
+Per reverse position nucleotide content - T position 3,Pass,0.5,0.6100000000000001,0.5
+Per reverse position nucleotide content - T position 4,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - T position 5,Pass,0.5,0.625,0.5
+Per reverse position nucleotide content - T position 6,Pass,0.5000000000000001,0.53,0.5
+Per reverse position nucleotide content - T position 7,Pass,0.5,0.58,0.5
+Per reverse position nucleotide content - T position 8,Pass,0.5,0.6749999999999999,0.5
+Per reverse position nucleotide content - T position 9,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - T position 10,Pass,0.5,0.58,0.5
+Per reverse position nucleotide content - T position 11,Pass,0.5000000000000001,0.53,0.5
+Per reverse position nucleotide content - T position 12,Pass,0.5,0.56,0.5
+Per reverse position nucleotide content - T position 13,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - T position 14,Pass,0.5,0.605,0.5
+Per reverse position nucleotide content - T position 15,Pass,0.5,0.5900000000000001,0.5
+Per reverse position nucleotide content - T position 16,Pass,0.5,0.655,0.5
+Per reverse position nucleotide content - T position 17,Pass,0.5,0.555,0.5
+Per reverse position nucleotide content - T position 18,Pass,0.5,0.565,0.5
+Per reverse position nucleotide content - T position 19,Pass,0.5,0.515,0.5
+Per reverse position nucleotide content - T position 20,Pass,0.5,0.535,0.5
+Per reverse position nucleotide content - T position 21,Pass,0.5,0.55,0.5
+Per reverse position nucleotide content - T position 22,Pass,0.5,0.5900000000000001,0.5
+Per reverse position nucleotide content - T position 23,Pass,0.5000000000000001,0.52,0.5
+Per reverse position nucleotide content - T,Pass,0.5000000000000001,0.6749999999999999,0.5

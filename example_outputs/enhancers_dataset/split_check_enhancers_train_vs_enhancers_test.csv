@@ -1,2 +1,2 @@
-Statistic,Flag,Percentage of leaked queries,Percentage of leaked targets
+Check,Flag,Percentage of leaked queries,Percentage of leaked targets
 Data Leakage,Warning,1.96%,0.66%

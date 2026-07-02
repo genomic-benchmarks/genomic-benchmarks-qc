@@ -189,6 +189,9 @@ def generate_simple_report(results, output_path):
 
     if isinstance(results, dict):
         results = pd.DataFrame.from_dict(results, orient='index')
+    # 'Percent Remaining' is computed only for plotting, exclude it from the CSV report
+    results = results.drop(columns=['Percent Remaining'], errors='ignore')
+    results.index.name = 'Check'
     results.to_csv(output_path)
 
 def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', failed_by_feature=None, percent_remaining=None):
