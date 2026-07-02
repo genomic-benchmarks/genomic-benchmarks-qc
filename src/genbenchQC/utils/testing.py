@@ -382,7 +382,7 @@ def flag_significant_differences(stats1, stats2):
     all_results = {}
 
     all_results['Unique bases'] = {'Flag': _flag_unique_bases(stats1, stats2)}
-    all_results['Sequence Duplications within Labels'] = {'Flag': _flag_duplicate_sequences(stats1, stats2)}
+    all_results['Sequence Duplications within Labels'] = _flag_duplicate_sequences(stats1, stats2)
     all_results['Duplicate Sequences between Labels'] = {
         'Flag': _flag_duplication_between_datasets(stats1.sequences, stats2.sequences)
     }
@@ -415,8 +415,6 @@ def _extract_failed_features(all_results: dict) -> dict:
     Returns:
         Nested dict structured as:
         {
-            'Sequence lengths': {'Pass'},
-            'Per sequence GC content': {'Warning'},
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
             'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
@@ -424,8 +422,6 @@ def _extract_failed_features(all_results: dict) -> dict:
         }
     """
     failed_by_feature = {
-        'Sequence lengths': {},
-        'Per sequence GC content': {},
         'Per sequence nucleotide content': {},
         'Per sequence dinucleotide content': {},
         'Per position nucleotide content': {},
@@ -435,15 +431,7 @@ def _extract_failed_features(all_results: dict) -> dict:
     for key, value in all_results.items():
         flag = value.get('Flag', 'Unknown') if isinstance(value, dict) else 'Unknown'
 
-        if key == 'Sequence lengths':
-            if flag in ('Fail', 'Warning'):
-                failed_by_feature['Sequence lengths'] = flag
-
-        elif key == 'Per sequence GC content':
-            if flag in ('Fail', 'Warning'):
-                failed_by_feature['Per sequence GC content'] = flag
-
-        elif key.startswith('Per sequence nucleotide content - '):
+        if key.startswith('Per sequence nucleotide content - '):
             nucleotide = key.replace('Per sequence nucleotide content - ', '')
             if flag in ('Fail', 'Warning'):
                 failed_by_feature['Per sequence nucleotide content'][nucleotide] = flag
@@ -512,13 +500,30 @@ def _flag_unique_bases(stats1, stats2) -> str:
     return 'Pass' if set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases']) else 'Fail'
 
 
-def _flag_duplicate_sequences(stats1, stats2) -> str:
-    """Check for duplicates within each dataset."""
-    if stats1.stats['Number of sequences'] != stats1.stats['Number of sequences left after deduplication']:
-        return 'Warning'
-    if stats2.stats['Number of sequences'] != stats2.stats['Number of sequences left after deduplication']:
-        return 'Warning'
-    return 'Pass'
+def _flag_duplicate_sequences(stats1, stats2) -> dict:
+    """Check for duplicates within each dataset.
+
+    Computes combined deduplication ratio across both datasets.
+    Returns:
+        Dict with 'Flag' and 'percent_remaining' keys.
+        Flag is 'Fail' if < 98% sequences remain, 'Warning' if >= 98% but < 100%, 'Pass' otherwise.
+    """
+    total_sequences = 0
+    unique_sequences = 0
+    for stats in [stats1, stats2]:
+        total_sequences += stats.stats['Number of sequences']
+        unique_sequences += stats.stats['Number of sequences left after deduplication']
+
+    percent_remaining = unique_sequences / total_sequences if total_sequences > 0 else 1.0
+
+    if percent_remaining < 0.98:
+        flag = 'Fail'
+    elif percent_remaining < 1.0:
+        flag = 'Warning'
+    else:
+        flag = 'Pass'
+
+    return {'Flag': flag, 'Percent Remaining': percent_remaining}
 
 
 def _flag_duplication_between_datasets(sequences1: list[str], sequences2: list[str]) -> str:

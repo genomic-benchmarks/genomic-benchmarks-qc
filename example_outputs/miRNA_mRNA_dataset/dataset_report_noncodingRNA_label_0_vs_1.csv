@@ -1,6 +1,6 @@
-,Flag,AU-ROC,AU-PR,Accuracy
+Check,Flag,AU-ROC,AU-PR,Accuracy
 Unique bases,Pass,,,
-Sequence Duplications within Labels,Warning,,,
+Sequence Duplications within Labels,Fail,,,
 Duplicate Sequences between Labels,Fail,,,
 Sequence lengths,Pass,0.5,0.505,0.5
 Per sequence GC content,Pass,0.5044,0.5075352685050799,0.52

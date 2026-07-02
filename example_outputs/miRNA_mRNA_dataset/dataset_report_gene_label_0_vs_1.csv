@@ -1,4 +1,4 @@
-,Flag,AU-ROC,AU-PR,Accuracy
+Check,Flag,AU-ROC,AU-PR,Accuracy
 Unique bases,Pass,,,
 Sequence Duplications within Labels,Pass,,,
 Duplicate Sequences between Labels,Fail,,,

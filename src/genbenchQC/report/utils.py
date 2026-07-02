@@ -1,5 +1,6 @@
 from datetime import datetime
 import base64
+import html
 from pathlib import Path
 
 FAIL_COLOR = '#c62828'   # .status-fail background-color
@@ -74,6 +75,23 @@ def encode_image_to_base64(image_path):
         raise FileNotFoundError(f"Image file not found: {image_path}")
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
+
+def image_or_message(image_path, alt, style, message):
+    """Return an <img> element for a plot, or a text message when there is none.
+
+    Args:
+        image_path: Path to the plot image, or None when no plot was generated.
+        alt: Alt text / label for the image.
+        style: Inline CSS style for the <img> element.
+        message: Text to show instead of the image when image_path is None.
+
+    Returns:
+        HTML snippet as a string.
+    """
+    if image_path is None:
+        return f'<p class="no-plot-message">{html.escape(message)}</p>'
+    return (f'<img src="data:image/png;base64, {encode_image_to_base64(image_path)}" '
+            f'alt="{alt}" style="{style}">')
 
 # Shared CSS used by all report HTML templates. Keep this as plain CSS (no <style> tags).
 COMMON_CSS_TEMPLATE = """
