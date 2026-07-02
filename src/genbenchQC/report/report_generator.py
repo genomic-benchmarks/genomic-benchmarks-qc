@@ -200,9 +200,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         end_position: Maximum position for per-position plots.
         plot_type: Plot type ('boxen' or 'violin').
         failed_by_feature: Dict with failure info for shading (optional).
-            When a feature has failures, the corresponding _with_flags plot
-            is generated and returned; otherwise only the _no_flags plot is
-            generated and returned.
         percent_remaining: Optional float with the percentage of sequences remaining after deduplication.
 
     Returns:
@@ -221,29 +218,15 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
     failed_pos_reverse = failed_by_feature.get('Per reverse position nucleotide content', {}) if failed_by_feature else None
 
-    # Handle disjoint bases case - no common bases between datasets
+    # Handle disjoint bases case - no common bases between datasets.
+    # No plots are produced; the HTML report renders an explanatory message
+    # in place of each affected plot (see get_dataset_html_template).
     if not bases_overlap:
-        
-        # Create placeholder plots for nucleotide/dinucleotide/per-position content
-        placeholder_nuc = output_path / 'per_sequence_nucleotide_content_with_flags.png'
-        classes_plots.create_placeholder_plot(placeholder_nuc,
-                                              'No common bases between datasets\nCannot compare nucleotide content')
-        plots_paths['Per sequence nucleotide content'] = placeholder_nuc
 
-        placeholder_dinuc = output_path / 'per_sequence_dinucleotide_content_with_flags.png'
-        classes_plots.create_placeholder_plot(placeholder_dinuc,
-                                              'No common bases between datasets\nCannot compare dinucleotide content')
-        plots_paths['Per sequence dinucleotide content'] = placeholder_dinuc
-
-        placeholder_pos_fwd = output_path / 'per_position_nucleotide_content_with_flags.png'
-        classes_plots.create_placeholder_plot(placeholder_pos_fwd,
-                                              'No common bases between datasets\nCannot compare per-position content')
-        plots_paths['Per position nucleotide content'] = placeholder_pos_fwd
-
-        placeholder_pos_rev = output_path / 'per_position_reversed_nucleotide_content_with_flags.png'
-        classes_plots.create_placeholder_plot(placeholder_pos_rev,
-                                              'No common bases between datasets\nCannot compare per-position content')
-        plots_paths['Per position reversed nucleotide content'] = placeholder_pos_rev
+        plots_paths['Per sequence nucleotide content'] = None
+        plots_paths['Per sequence dinucleotide content'] = None
+        plots_paths['Per position nucleotide content'] = None
+        plots_paths['Per position reversed nucleotide content'] = None
 
     else:
 
@@ -256,7 +239,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
             plot_type=plot_type,
             failed_nucleotides=None
         )
-        no_flags_path = output_path / 'per_sequence_nucleotide_content_no_flags.png'
+        no_flags_path = output_path / 'per_sequence_nucleotide_content.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
         if failed_nucleotides:
@@ -283,7 +266,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
             plot_type=plot_type,
             failed_dinucleotides=None
         )
-        no_flags_path = output_path / 'per_sequence_dinucleotide_content_no_flags.png'
+        no_flags_path = output_path / 'per_sequence_dinucleotide_content.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
         if failed_dinucleotides:
@@ -312,7 +295,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
             x_label='Position in sequence',
             failed_positions=None
         )
-        no_flags_path = output_path / 'per_position_nucleotide_content_no_flags.png'
+        no_flags_path = output_path / 'per_position_nucleotide_content.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
         if failed_pos_forward:
@@ -343,7 +326,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
             x_label='Position in reversed sequence',
             failed_positions=None
         )
-        no_flags_path = output_path / 'per_position_reversed_nucleotide_content_no_flags.png'
+        no_flags_path = output_path / 'per_position_reversed_nucleotide_content.png'
         fig.savefig(no_flags_path, bbox_inches='tight')
         plt.close(fig)
         if failed_pos_reverse:

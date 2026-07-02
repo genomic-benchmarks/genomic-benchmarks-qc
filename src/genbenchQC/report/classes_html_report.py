@@ -1,5 +1,5 @@
 from datetime import datetime
-from genbenchQC.report.utils import put_data, encode_image_to_base64, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genbenchQC.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 import importlib.metadata
 
 
@@ -255,7 +255,7 @@ HTML_TEMPLATE = """
                 <div id="nucleotide-explanation" class="explanation-text">
                     <strong>Per Sequence Nucleotide Content</strong> displays the distribution of individual nucleotide frequencies (A, C, G, T, N) across sequences. Each subplot shows how often that nucleotide appears in sequences from each label. Differences between labels may indicate composition bias or biological differences in your dataset.
                 </div>
-                <img src="data:image/png;base64, {{per-sequence-nucleotide-content_base64}}" alt="Per Sequence Nucleotide Content" style="max-width: 100%; height: auto;">
+                {{per-sequence-nucleotide-content}}
             </section>
 
             <section id="per-sequence-dinucleotide-content">
@@ -269,7 +269,7 @@ HTML_TEMPLATE = """
                 <div id="dinucleotide-explanation" class="explanation-text">
                     <strong>Per Sequence Dinucleotide Content</strong> shows the frequency of two-base combinations (e.g., AA, AC, AG, AT) across sequences. Dinucleotide frequencies can reveal sequence patterns and motifs. Each row shows all dinucleotides starting with a specific base. Significant differences between labels may indicate compositional bias.
                 </div>
-                <img src="data:image/png;base64, {{per-sequence-dinucleotide-content_base64}}" alt="Per Sequence Dinucleotide Content" style="max-width: 100%; height: auto;">
+                {{per-sequence-dinucleotide-content}}
             </section>
 
             <section id="per-position-nucleotide-content">
@@ -283,7 +283,7 @@ HTML_TEMPLATE = """
                 <div id="per-position-explanation" class="explanation-text">
                     <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of sequences extend to each position.
                 </div>
-                <img src="data:image/png;base64, {{per-position-nucleotide-content_base64}}" alt="Per Position Nucleotide Content" style="max-width: 108%; height: auto;">
+                {{per-position-nucleotide-content}}
             </section>
 
             <section id="per-position-reversed-nucleotide-content">
@@ -297,7 +297,7 @@ HTML_TEMPLATE = """
                 <div id="per-position-rev-explanation" class="explanation-text">
                     <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction). This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data.
                 </div>
-                <img src="data:image/png;base64, {{per-position-reversed-nucleotide-content_base64}}" alt="Per Position Reversed Nucleotide Content" style="max-width: 108%; height: auto;">
+                {{per-position-reversed-nucleotide-content}}
             </section>
         </div>
     </div>
@@ -414,14 +414,27 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
                              encode_image_to_base64(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
                              encode_image_to_base64(plots_path['Per sequence GC content']))
-    html_template = put_data(html_template, "{{per-sequence-nucleotide-content_base64}}", 
-                             encode_image_to_base64(plots_path['Per sequence nucleotide content']))
-    html_template = put_data(html_template, "{{per-sequence-dinucleotide-content_base64}}", 
-                             encode_image_to_base64(plots_path['Per sequence dinucleotide content']))
-    html_template = put_data(html_template, "{{per-position-nucleotide-content_base64}}", 
-                             encode_image_to_base64(plots_path['Per position nucleotide content']))
-    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content_base64}}", encode_image_to_base64(
-                             plots_path['Per position reversed nucleotide content']))
+    # Sections that require a shared set of bases between the two labels. When
+    # the datasets have no bases in common the plot path is None, so we render
+    # an explanatory message instead of an image.
+    disjoint_bases_message = ('No bases in common between the two labels, so this comparison '
+                              'cannot be plotted.')
+    html_template = put_data(html_template, "{{per-sequence-nucleotide-content}}",
+                             image_or_message(plots_path['Per sequence nucleotide content'],
+                                              'Per Sequence Nucleotide Content', 'max-width: 100%; height: auto;',
+                                              disjoint_bases_message))
+    html_template = put_data(html_template, "{{per-sequence-dinucleotide-content}}",
+                             image_or_message(plots_path['Per sequence dinucleotide content'],
+                                              'Per Sequence Dinucleotide Content', 'max-width: 100%; height: auto;',
+                                              disjoint_bases_message))
+    html_template = put_data(html_template, "{{per-position-nucleotide-content}}",
+                             image_or_message(plots_path['Per position nucleotide content'],
+                                              'Per Position Nucleotide Content', 'max-width: 108%; height: auto;',
+                                              disjoint_bases_message))
+    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}",
+                             image_or_message(plots_path['Per position reversed nucleotide content'],
+                                              'Per Position Reversed Nucleotide Content', 'max-width: 108%; height: auto;',
+                                              disjoint_bases_message))
 
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper

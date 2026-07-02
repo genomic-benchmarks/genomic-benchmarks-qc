@@ -540,23 +540,6 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_la
     )
     return ax
 
-def create_placeholder_plot(output_path, message):
-    """Create a placeholder plot when data unavailable (e.g., empty bases overlap).
-
-    Args:
-        output_path: Path to save the placeholder image.
-        message: Message to display in the plot.
-    """
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4), dpi=300)
-    ax.text(0.5, 0.5, message, ha='center', va='center', fontsize=12, color='#666')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis('off')
-    fig.savefig(output_path, bbox_inches='tight', dpi=300)
-    plt.close(fig)
-    return fig
-
-
 class HuePalette:
 
     _palette = None
