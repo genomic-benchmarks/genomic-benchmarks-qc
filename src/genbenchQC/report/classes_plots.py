@@ -25,6 +25,35 @@ def plot_gc_content(stats1, stats2, plot_type='boxen'):
         plot_type=plot_type
     )
 
+def reserve_flag_margin(ax, n_positions):
+    """Reserve the bottom margin used by flag underlines so geometry is stable.
+
+    The colored underlines from add_failed_outline are drawn with clip_on=False,
+    which enlarges the tight bounding box used by savefig(bbox_inches='tight').
+    Without this reservation, flagged and unflagged plots crop to different
+    bounding boxes -> boxen boxes render at different widths/spacing. Drawing
+    invisible stubs at every position makes the tight bbox identical whether or
+    not any position is actually flagged.
+
+    @param ax: Matplotlib axis object.
+    @param n_positions: Number of x categories to reserve space for.
+    """
+    xaxis_transform = ax.get_xaxis_transform()
+    xticks = list(ax.get_xticks())
+    for pos in range(min(n_positions, len(xticks))):
+        x_center = xticks[pos]
+        ax.plot(
+            [x_center - 0.35, x_center + 0.35],
+            [0, 0],
+            color='none',
+            linewidth=6,
+            alpha=0,
+            transform=xaxis_transform,
+            clip_on=False,
+            solid_capstyle='round',
+            zorder=10,
+        )
+
 def add_failed_outline(ax, failed_positions, x_left_custom=None, x_right_custom=None):
     """Add colored underlines to failed positions.
 
@@ -102,11 +131,6 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
             palette=HuePalette(),
             cut=0
         )
-        ax.set_ylim(-0.1, 1.1)
-
-        # Add colored outlines to failed nucleotides if provided
-        if failed_nucleotides:
-            add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
 
     elif plot_type == 'boxen':
         sns.boxenplot(
@@ -120,12 +144,17 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
             palette=HuePalette(),
             width=0.8
         )
-        ax.set_ylim(-0.1, 1.1)
-        # Add colored outlines to failed nucleotides if provided
-        if failed_nucleotides:
-            add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
+
     else:
         raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
+    
+    ax.set_ylim(-0.1, 1.1)
+
+    # Reserve the underline margin so flagged/unflagged plots share geometry
+    reserve_flag_margin(ax, len(nucleotides))
+    # Add colored outlines to failed nucleotides if provided
+    if failed_nucleotides:
+        add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
 
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
@@ -171,10 +200,6 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
                 palette=HuePalette(),
                 cut=0
             )
-            axs[index].set_ylim(-0.1, 1.1)
-            # Add colored outlines to failed dinucleotides if provided
-            if failed_dinucleotides:
-                add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
 
         elif plot_type == 'boxen':
             sns.boxenplot(
@@ -188,12 +213,15 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
                 palette=HuePalette(),
                 width=0.8
             )
-            axs[index].set_ylim(-0.1, 1.1)
-            # Add colored outlines to failed dinucleotides if provided
-            if failed_dinucleotides:
-                add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
         else:
             logging.error(f"Unknown plot type: {plot_type}")
+
+        axs[index].set_ylim(-0.1, 1.1)
+        # Reserve the underline margin so flagged/unflagged plots share geometry
+        reserve_flag_margin(axs[index], len(dinucleotides))
+        # Add colored outlines to failed dinucleotides if provided
+        if failed_dinucleotides:
+            add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
 
         axs[index].set_xlabel('')
         axs[index].legend().set_visible(False)
