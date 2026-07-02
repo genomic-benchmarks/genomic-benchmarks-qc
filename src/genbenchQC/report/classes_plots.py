@@ -5,26 +5,24 @@ import pandas as pd
 import logging
 from genbenchQC.report.utils import FAIL_COLOR, WARN_COLOR
 
-def plot_lengths(stats1, stats2, plot_type='boxen', flag=None):
+def plot_lengths(stats1, stats2, plot_type='boxen'):
     """
     Plot the sequence lengths of two sequences.
     """
     return plot_one_stat(
-        stats1, stats2, 
-        'Sequence lengths', 
-        plot_type=plot_type,
-        flag=flag
+        stats1, stats2,
+        'Sequence lengths',
+        plot_type=plot_type
     )
 
-def plot_gc_content(stats1, stats2, plot_type='boxen', flag=None):
+def plot_gc_content(stats1, stats2, plot_type='boxen'):
     """
     Plot the GC content of two sequences.
     """
     return plot_one_stat(
-        stats1, stats2, 
+        stats1, stats2,
         'Per sequence GC content',
-        plot_type=plot_type,
-        flag=flag
+        plot_type=plot_type
     )
 
 def add_failed_outline(ax, failed_positions, x_left_custom=None, x_right_custom=None):
@@ -208,7 +206,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
 
     return fig
 
-def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', flag=None):
+def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
     """
     Plot a single statistic from two stats objects.
     """
@@ -240,9 +238,6 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', f
         )
         if min_y != max_y:
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
-        # Add colored outlines to failed stats if provided
-        if flag:
-            add_failed_outline(ax, {0: flag})
     elif plot_type == 'boxen':
         sns.boxenplot(
             y=stats_name, 
@@ -255,9 +250,6 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', f
         )
         if min_y != max_y:
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
-        # Add colored outlines to failed stats if provided
-        if flag:
-            add_failed_outline(ax, {0: flag})
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
@@ -419,7 +411,7 @@ def _compute_duplication_bins(stats1, stats2):
     return bins_list
 
 
-def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None, flag=None):
+def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None):
 
     fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
@@ -482,13 +474,6 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
         legend_handles=legend_handles,
         legend_labels=legend_labels,
     )
-
-    # Add colored underline below the plot to indicate failure or warning if flag is provided
-    if flag:
-        # Draw just below the x-axis using x-data coordinates and axis-fraction y.
-        xlim = ax.get_xlim()
-        xpad = (xlim[1] - xlim[0]) * 0.02
-        ax = add_failed_outline(ax, {0: flag}, x_left_custom=xlim[0] + xpad, x_right_custom=xlim[1] - xpad)
 
     return fig
 

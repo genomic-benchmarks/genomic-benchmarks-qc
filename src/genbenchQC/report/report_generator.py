@@ -216,9 +216,6 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
 
     # Get failed nucleotides and dinucleotides for boxen plot outlines
-    failed_lengths = failed_by_feature.get('Sequence lengths', {}) if failed_by_feature else None
-    failed_gc = failed_by_feature.get('Per sequence GC content', {}) if failed_by_feature else None
-    failed_duplications_within = failed_by_feature.get('Sequence Duplications within Labels', {}) if failed_by_feature else None
     failed_nucleotides = failed_by_feature.get('Per sequence nucleotide content', {}) if failed_by_feature else None
     failed_dinucleotides = failed_by_feature.get('Per sequence dinucleotide content', {}) if failed_by_feature else None
     failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
@@ -366,67 +363,38 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         else:
             plots_paths['Per position reversed nucleotide content'] = no_flags_path
 
-    # Plot length distribution - create both versions
-    # No-flags version
+    # Plot length distribution
     fig = classes_plots.plot_lengths(
         stats1,
         stats2,
-        plot_type=plot_type,
-        flag=None
+        plot_type=plot_type
     )
-    no_flags_path = output_path / 'sequence_lengths_no_flags.png'
-    fig.savefig(no_flags_path, bbox_inches='tight')
+    lengths_path = output_path / 'sequence_lengths.png'
+    fig.savefig(lengths_path, bbox_inches='tight')
     plt.close(fig)
-    if failed_lengths:
-        fig = classes_plots.plot_lengths(
-            stats1,
-            stats2,
-            plot_type=plot_type,
-            flag=failed_lengths
-        )
-        with_flags_path = output_path / 'sequence_lengths_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
-        plt.close(fig)
-        plots_paths['Sequence lengths'] = with_flags_path
-    else:
-        plots_paths['Sequence lengths'] = no_flags_path
+    plots_paths['Sequence lengths'] = lengths_path
 
-    # Plot per sequence GC content - create both versions
-    # No-flags version
+    # Plot per sequence GC content
     fig = classes_plots.plot_gc_content(
         stats1,
         stats2,
-        plot_type=plot_type,
-        flag=None
+        plot_type=plot_type
     )
-    no_flags_path = output_path / 'per_sequence_gc_content_no_flags.png'
-    fig.savefig(no_flags_path, bbox_inches='tight')
+    gc_path = output_path / 'per_sequence_gc_content.png'
+    fig.savefig(gc_path, bbox_inches='tight')
     plt.close(fig)
-    if failed_gc:
-        fig = classes_plots.plot_gc_content(
-            stats1,
-            stats2,
-            plot_type=plot_type,
-            flag=failed_gc
-        )
-        with_flags_path = output_path / 'per_sequence_gc_content_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
-        plt.close(fig)
-        plots_paths['Per sequence GC content'] = with_flags_path
-    else:
-        plots_paths['Per sequence GC content'] = no_flags_path
+    plots_paths['Per sequence GC content'] = gc_path
 
-    # Plot sequence duplications within classes - only if failed
-    if failed_duplications_within:
+    # Plot sequence duplications within classes - only if some sequences were removed by deduplication
+    if percent_remaining is not None and percent_remaining < 1.0:
         fig = classes_plots.plot_sequence_duplications_within_classes(
             stats1,
             stats2,
-            percent_remaining_after_dedup=percent_remaining,
-            flag=failed_duplications_within
+            percent_remaining_after_dedup=percent_remaining
         )
-        with_flags_path = output_path / 'sequence_duplications_within_labels_with_flags.png'
-        fig.savefig(with_flags_path, bbox_inches='tight')
+        dup_path = output_path / 'sequence_duplications_within_labels.png'
+        fig.savefig(dup_path, bbox_inches='tight')
         plt.close(fig)
-        plots_paths['Sequence Duplications within Labels'] = with_flags_path
+        plots_paths['Sequence Duplications within Labels'] = dup_path
 
     return plots_paths
