@@ -82,9 +82,11 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
     legend_labels.append("Threshold")
 
     ax.set_xlim(0, 100)
-    # Set x-tick labels as bin intervals (0-10, 10-20, ..., 90-100)
+    # Set x-tick labels as half-open bin intervals; last bin is closed on both ends
     ax.set_xticks(np.arange(5, 101, 10))
-    ax.set_xticklabels([f"{i}-{i+10}" for i in range(0, 100, 10)])
+    ax.set_xticklabels(
+        [f"[{i}, {i+10})" for i in range(0, 90, 10)] + ["[90, 100]"]
+    )
     ax.set_yscale("log")
     ax.set_xlabel("Sequence similarity (%)", fontsize=14)
     ax.set_ylabel("Count (log scale)", fontsize=14)

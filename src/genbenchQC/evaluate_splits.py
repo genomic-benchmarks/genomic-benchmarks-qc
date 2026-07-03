@@ -71,7 +71,6 @@ def _build_simple_report_frame(threshold_stats):
         }
     }
     df = pd.DataFrame.from_dict(result, orient='index')
-    df.index.name = "Statistic"
     return df
 
 

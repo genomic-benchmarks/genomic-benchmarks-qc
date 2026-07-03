@@ -5,27 +5,54 @@ import pandas as pd
 import logging
 from genbenchQC.report.utils import FAIL_COLOR, WARN_COLOR
 
-def plot_lengths(stats1, stats2, plot_type='boxen', flag=None):
+def plot_lengths(stats1, stats2, plot_type='boxen'):
     """
     Plot the sequence lengths of two sequences.
     """
     return plot_one_stat(
-        stats1, stats2, 
-        'Sequence lengths', 
-        plot_type=plot_type,
-        flag=flag
+        stats1, stats2,
+        'Sequence lengths',
+        plot_type=plot_type
     )
 
-def plot_gc_content(stats1, stats2, plot_type='boxen', flag=None):
+def plot_gc_content(stats1, stats2, plot_type='boxen'):
     """
     Plot the GC content of two sequences.
     """
     return plot_one_stat(
-        stats1, stats2, 
+        stats1, stats2,
         'Per sequence GC content',
-        plot_type=plot_type,
-        flag=flag
+        plot_type=plot_type
     )
+
+def reserve_flag_margin(ax, n_positions):
+    """Reserve the bottom margin used by flag underlines so geometry is stable.
+
+    The colored underlines from add_failed_outline are drawn with clip_on=False,
+    which enlarges the tight bounding box used by savefig(bbox_inches='tight').
+    Without this reservation, flagged and unflagged plots crop to different
+    bounding boxes -> boxen boxes render at different widths/spacing. Drawing
+    invisible stubs at every position makes the tight bbox identical whether or
+    not any position is actually flagged.
+
+    @param ax: Matplotlib axis object.
+    @param n_positions: Number of x categories to reserve space for.
+    """
+    xaxis_transform = ax.get_xaxis_transform()
+    xticks = list(ax.get_xticks())
+    for pos in range(min(n_positions, len(xticks))):
+        x_center = xticks[pos]
+        ax.plot(
+            [x_center - 0.35, x_center + 0.35],
+            [0, 0],
+            color='none',
+            linewidth=6,
+            alpha=0,
+            transform=xaxis_transform,
+            clip_on=False,
+            solid_capstyle='round',
+            zorder=10,
+        )
 
 def add_failed_outline(ax, failed_positions, x_left_custom=None, x_right_custom=None):
     """Add colored underlines to failed positions.
@@ -104,11 +131,6 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
             palette=HuePalette(),
             cut=0
         )
-        ax.set_ylim(-0.1, 1.1)
-
-        # Add colored outlines to failed nucleotides if provided
-        if failed_nucleotides:
-            add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
 
     elif plot_type == 'boxen':
         sns.boxenplot(
@@ -122,12 +144,17 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
             palette=HuePalette(),
             width=0.8
         )
-        ax.set_ylim(-0.1, 1.1)
-        # Add colored outlines to failed nucleotides if provided
-        if failed_nucleotides:
-            add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
+
     else:
         raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
+    
+    ax.set_ylim(-0.1, 1.1)
+
+    # Reserve the underline margin so flagged/unflagged plots share geometry
+    reserve_flag_margin(ax, len(nucleotides))
+    # Add colored outlines to failed nucleotides if provided
+    if failed_nucleotides:
+        add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
 
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
@@ -173,10 +200,6 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
                 palette=HuePalette(),
                 cut=0
             )
-            axs[index].set_ylim(-0.1, 1.1)
-            # Add colored outlines to failed dinucleotides if provided
-            if failed_dinucleotides:
-                add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
 
         elif plot_type == 'boxen':
             sns.boxenplot(
@@ -190,12 +213,15 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
                 palette=HuePalette(),
                 width=0.8
             )
-            axs[index].set_ylim(-0.1, 1.1)
-            # Add colored outlines to failed dinucleotides if provided
-            if failed_dinucleotides:
-                add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
         else:
             logging.error(f"Unknown plot type: {plot_type}")
+
+        axs[index].set_ylim(-0.1, 1.1)
+        # Reserve the underline margin so flagged/unflagged plots share geometry
+        reserve_flag_margin(axs[index], len(dinucleotides))
+        # Add colored outlines to failed dinucleotides if provided
+        if failed_dinucleotides:
+            add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
 
         axs[index].set_xlabel('')
         axs[index].legend().set_visible(False)
@@ -208,7 +234,7 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
 
     return fig
 
-def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', flag=None):
+def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
     """
     Plot a single statistic from two stats objects.
     """
@@ -240,9 +266,6 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', f
         )
         if min_y != max_y:
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
-        # Add colored outlines to failed stats if provided
-        if flag:
-            add_failed_outline(ax, {0: flag})
     elif plot_type == 'boxen':
         sns.boxenplot(
             y=stats_name, 
@@ -255,9 +278,6 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title='', f
         )
         if min_y != max_y:
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
-        # Add colored outlines to failed stats if provided
-        if flag:
-            add_failed_outline(ax, {0: flag})
     else:
         logging.error(f"Unknown plot type: {plot_type}")
 
@@ -419,7 +439,7 @@ def _compute_duplication_bins(stats1, stats2):
     return bins_list
 
 
-def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None, flag=None):
+def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None):
 
     fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
@@ -483,13 +503,6 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
         legend_labels=legend_labels,
     )
 
-    # Add colored underline below the plot to indicate failure or warning if flag is provided
-    if flag:
-        # Draw just below the x-axis using x-data coordinates and axis-fraction y.
-        xlim = ax.get_xlim()
-        xpad = (xlim[1] - xlim[0]) * 0.02
-        ax = add_failed_outline(ax, {0: flag}, x_left_custom=xlim[0] + xpad, x_right_custom=xlim[1] - xpad)
-
     return fig
 
 def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value'):
@@ -526,23 +539,6 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_la
         ncol=3,
     )
     return ax
-
-def create_placeholder_plot(output_path, message):
-    """Create a placeholder plot when data unavailable (e.g., empty bases overlap).
-
-    Args:
-        output_path: Path to save the placeholder image.
-        message: Message to display in the plot.
-    """
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4), dpi=300)
-    ax.text(0.5, 0.5, message, ha='center', va='center', fontsize=12, color='#666')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis('off')
-    fig.savefig(output_path, bbox_inches='tight', dpi=300)
-    plt.close(fig)
-    return fig
-
 
 class HuePalette:
 
