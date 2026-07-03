@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Install MMseqs2
+        run: |
+          wget -q https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz
+          tar xzf mmseqs-linux-avx2.tar.gz
+          echo "$PWD/mmseqs/bin" >> "$GITHUB_PATH"
+
+      - name: evaluate-classes (FASTA, one file per class)
+        run: |
+          genbenchQC evaluate-classes \
+            --input example_datasets/G4_positives.fasta \
+            --input example_datasets/G4_negatives.fasta \
+            --out-folder ci_out/G4
+          test -f "ci_out/G4/evaluate-classes_label_G4_positives_vs_G4_negatives.csv"
+          test -f "ci_out/G4/evaluate-classes_label_G4_positives_vs_G4_negatives.html"
+
+      - name: evaluate-classes (multiple CSV files, label column)
+        run: |
+          genbenchQC evaluate-classes \
+            --input example_datasets/enhancers_train.csv \
+            --input example_datasets/enhancers_test.csv \
+            --out-folder ci_out/enhancers
+          test -f "ci_out/enhancers/evaluate-classes_col_sequence_label_0_vs_1.csv"
+
+      - name: evaluate-classes (TSV, multiple sequence columns)
+        run: |
+          genbenchQC evaluate-classes \
+            --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
+            --sequence-column gene \
+            --sequence-column noncodingRNA \
+            --label-column label \
+            --out-folder ci_out/miRNA
+          test -f "ci_out/miRNA/evaluate-classes_col_gene_noncodingRNA_label_0_vs_1.csv"
+
+      - name: evaluate-splits (data leakage, uses MMseqs2)
+        run: |
+          genbenchQC evaluate-splits \
+            --train-input example_datasets/enhancers_train.csv \
+            --test-input example_datasets/enhancers_test.csv \
+            --sequence-column sequence \
+            --out-folder ci_out/splits
+          test -f "ci_out/splits/evaluate-splits_split_enhancers_train_vs_enhancers_test.csv"

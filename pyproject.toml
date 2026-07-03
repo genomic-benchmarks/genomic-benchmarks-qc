@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genbenchQC"
+version = "1.1.0"
+description = "Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Katarina Gresova", email = "gresova11@gmail.com" },
+]
+keywords = [
+    "genomic benchmarks",
+    "deep learning",
+    "machine learning",
+    "computational biology",
+    "bioinformatics",
+    "genomics",
+    "quality control",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "numpy>=2.3.2",
+    "pandas>=2.3.3",
+    "matplotlib>=3.10.4",
+    "seaborn>=0.13.2",
+    "biopython>=1.86",
+    "scikit-learn>=1.7.2",
+    "typer>=0.20",
+]
+
+[project.optional-dependencies]
+develop = ["pytest>=8.4"]
+
+[project.urls]
+Homepage = "https://github.com/katarinagresova/GenBenchQC"
+Repository = "https://github.com/katarinagresova/GenBenchQC"
+Issues = "https://github.com/katarinagresova/GenBenchQC/issues"
+
+[project.scripts]
+genbenchQC = "genbenchQC.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
