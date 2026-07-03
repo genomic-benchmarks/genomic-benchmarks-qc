@@ -24,6 +24,8 @@ genbenchQC evaluate-classes \
   --out-folder example_outputs/G4_dataset
 ```
 
+Each FASTA file represents one class, and its filename stem (the name without extensions) is used as the class/label name — e.g. `G4_positives.fasta` becomes the label `G4_positives`.
+
 **Multiple CSV/TSV files:**
 ```bash
 genbenchQC evaluate-classes \
@@ -32,7 +34,9 @@ genbenchQC evaluate-classes \
   --out-folder example_outputs/enhancers_dataset
 ```
 
-Files are pooled; classes inferred from label column.
+When multiple CSV/TSV files are given, their rows are combined into a single
+dataset, and the classes to compare are taken from the values in the label
+column (`label` by default; override with `--label-column`).
 
 **CSV/TSV with label column and multiple sequence columns:**
 ```bash
@@ -66,9 +70,10 @@ genbenchQC evaluate-splits \
 
 | Format | Description |
 |--------|-------------|
-| `fasta` | One or more FASTA files. Multiple files = multiple classes. |
-| `csv` / `tsv` | One or more CSV/TSV files. Multiple will be pooled and avaluated as one. |
-| `csv.gz` / `tsv.gz` | Compressed CSV/TSV. |
+| `.fa/.fasta` | One or more FASTA files. Multiple files = multiple classes. |
+| `.csv` / `.tsv` | One or more CSV/TSV files. Multiple will be pooled and avaluated as one. |
+
+All of the input formats are supported in .gz version as well.
 
 **Multiple sequence columns:** `evaluate-classes` analyzes each column separately, then concatenates all sequences for combined analysis. `evaluate-splits` only analyzes concatenated sequences.
 
@@ -76,13 +81,19 @@ genbenchQC evaluate-splits \
 
 ### evaluate-classes outputs
 
+Report files are named after the compared classes, using the stem
+`evaluate-classes[_col_<column>]_label_<classA>_vs_<classB>` (the `_col_<column>`
+part is only added for CSV/TSV inputs with a sequence column). For example:
+`evaluate-classes_label_G4_positives_vs_G4_negatives` or
+`evaluate-classes_col_sequence_label_0_vs_1`.
+
 | File | Description |
 |------|-------------|
-| `*_report.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies). |
-| `dataset_report*.csv` | Simple comparison report with Pass/Warning/Fail flags. |
-| `dataset_report*.html` | Interactive HTML report with visualizations. |
-| `dataset_report*_plots/` | Individual plot images (PNG). |
-| `*_duplicates.txt` | Sequences appearing in multiple classes. |
+| `evaluate-classes_*.csv` | Simple comparison report with Pass/Warning/Fail flags. |
+| `evaluate-classes_*.html` | Interactive HTML report with visualizations. |
+| `evaluate-classes_*_plots/` | Individual plot images (PNG). |
+| `evaluate-classes_*_duplicates.txt` | Sequences appearing in multiple classes. |
+| `evaluate-classes_*_report.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies); written only when `json` is in `--report-types`. |
 
 **Flag thresholds (AU-ROC):**
 - **Pass**: ≤ 0.6 (classes not distinguishable by feature)
@@ -100,12 +111,15 @@ genbenchQC evaluate-splits \
 
 ### evaluate-splits outputs
 
+Files use the stem `evaluate-splits_split_<train>_vs_<test>`, e.g.
+`evaluate-splits_split_enhancers_train_vs_enhancers_test`.
+
 | File | Description |
 |------|-------------|
-| `split_check_*.csv` | Simple leakage summary. |
-| `split_check_*.html` | Interactive HTML report with alignments. |
-| `split_check_*_mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
-| `split_check_*_plots/` | Similarity distribution plots. |
+| `evalaute-splits_*.csv` | Simple leakage summary. |
+| `evalaute-splits_*.html` | Interactive HTML report with alignments. |
+| `evalaute-splits_*_mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
+| `evalaute-splits_*_plots/` | Similarity distribution plots. |
 
 **Leakage detection:** Flags when test sequences exceed similarity threshold vs training sequences.
 
