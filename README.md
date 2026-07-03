@@ -40,7 +40,7 @@ genbenchQC evaluate-classes \
   --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
   --sequence-column gene \
   --sequence-column noncodingRNA \
-  --label-column label
+  --label-column label \
   --out-folder example_outputs/miRNA_mRNA_dataset
 ```
 
