@@ -4,6 +4,19 @@ from Bio.SeqRecord import SeqRecord
 import pandas as pd
 import logging
 import json
+import gzip
+from contextlib import contextmanager
+
+
+@contextmanager
+def _open_text(file_path):
+    """Open a file for reading text, transparently handling gzip compression."""
+    if str(file_path).endswith('.gz'):
+        with gzip.open(file_path, 'rt') as handle:
+            yield handle
+    else:
+        with open(file_path, 'rt') as handle:
+            yield handle
 
 
 class SequenceStatsAccumulator:
@@ -39,14 +52,16 @@ class SequenceStatsAccumulator:
 def stream_fasta_sequences(fasta_file):
     """Yield uppercase sequences one-by-one from a FASTA file."""
     logging.debug(f"Streaming FASTA file: {fasta_file}")
-    for record in SeqIO.parse(fasta_file, 'fasta'):
-        yield str(record.seq).upper()
+    with _open_text(fasta_file) as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
+            yield str(record.seq).upper()
 
 
 def read_fasta(fasta_file):
     """Read all sequences from a FASTA file into a list."""
     logging.debug(f"Reading FASTA file: {fasta_file}")
-    return [str(record.seq).upper() for record in SeqIO.parse(fasta_file, 'fasta')]
+    with _open_text(fasta_file) as handle:
+        return [str(record.seq).upper() for record in SeqIO.parse(handle, 'fasta')]
 
 
 def read_selected_fasta_sequences(fasta_file, ids_to_keep):
@@ -182,7 +197,7 @@ def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000
 def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10000):
     """Yield sequences from multiple input files based on declared format."""
     for file in files:
-        if input_format == 'fasta':
+        if input_format.startswith('fa'):
             yield from stream_fasta_sequences(file)
         elif input_format.startswith('csv') or input_format.startswith('tsv'):
             yield from stream_table_sequences(file, input_format, sequence_column, chunksize=chunksize)

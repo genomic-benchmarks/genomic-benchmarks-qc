@@ -59,7 +59,7 @@ def _stage_sequences_to_fasta(fasta_path, files, input_format, sequence_column, 
 def _build_split_report_stem(train_files, test_files):
     train_stem = Path(train_files[0]).name.replace("".join(Path(train_files[0]).suffixes), "")
     test_stem = Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), "")
-    return f"split_check_{train_stem}_vs_{test_stem}"
+    return f"evaluate-splits_split_{train_stem}_vs_{test_stem}"
 
 
 def _build_simple_report_frame(threshold_stats):
@@ -99,7 +99,7 @@ def _write_mmseqs_report_bundle(
     test_filenames = ",".join([Path(f).name for f in test_files])
 
     # Define output paths for all report components
-    html_report_path = out_folder / f"{report_stem}_report.html"
+    html_report_path = out_folder / f"{report_stem}.html"
     plots_dir = out_folder / f"{report_stem}_plots"
     mmseqs_dir = out_folder / f"{report_stem}_mmseqs"
     seq_index_mapping = mmseqs_dir / 'seq_index_mapping'

@@ -9,6 +9,12 @@ from genbenchQC.utils.testing import flag_significant_differences
 from genbenchQC.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
 from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
 
+def _strip_extensions(file_path):
+    """Return the filename with all extensions removed (e.g. 'a.fasta.gz' -> 'a')."""
+    name = Path(file_path).name
+    return name.replace("".join(Path(name).suffixes), "")
+
+
 def run_analysis(input_statistics, out_folder, report_types, plot_type):
    
     if report_types is None:
@@ -22,7 +28,7 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
 
         if "json" in report_types:
 
-            filename = Path(s.filename).stem
+            filename = _strip_extensions(s.filename)
             if s.seq_column is not None:
                 filename += f'_{s.seq_column}'
             if s.label is not None:
@@ -36,15 +42,15 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
 
     # run pair comparison analysis with all combinations
     for stat1, stat2 in combinations(input_statistics, 2):
-        filename = "dataset_report"
+        filename = "evaluate-classes"
         if stat1.seq_column is not None:
-            filename += f'_{stat1.seq_column}'
+            filename += f'_col_{stat1.seq_column}'
             logging.info(f"Comparing classes for sequence column: {stat1.seq_column}")
         if stat1.label is not None and stat2.label is not None:
             filename += f'_label_{stat1.label}_vs_{stat2.label}'
             logging.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
         else:
-            filename += f'_{Path(stat1.filename).stem}_{Path(stat2.filename).stem}'
+            filename += f'_{_strip_extensions(stat1.filename)}_{_strip_extensions(stat2.filename)}'
             logging.info(
                 f"Comparing classes: {stat1.filename} vs {stat2.filename}")
 
@@ -122,13 +128,13 @@ def run(input,
         Path(out_folder).mkdir(parents=True, exist_ok=True)
 
     # we have multiple fasta files with one label each
-    if format == 'fasta':
+    if format.startswith('fa'):
         seq_stats = []
         for input_file in input:
             sequences = read_fasta(input_file)
             logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
             seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                             label=Path(input_file).stem, end_position=end_position)]
+                                             label=_strip_extensions(input_file), end_position=end_position)]
         run_analysis(
             input_statistics=seq_stats,
             out_folder=out_folder,
@@ -138,104 +144,71 @@ def run(input,
 
     # we have CSV/TSV
     else:
-        # we have one file with multiple labels or regression target
-        if len(input) == 1:
-            df = read_csv_file(input[0], format, sequence_column, label_column)
+        # read all files into one dataframe (single file wrapped in list)
+        if len(input) > 1:
+            logging.info(f"Merging {len(input)} input files: {', '.join(input)}")
+        dfs = [read_csv_file(f, format, sequence_column, label_column) for f in input]
+        df = pd.concat(dfs, ignore_index=True)
+        logging.debug(f"Read {len(df)} rows from {len(dfs)} file(s)")
 
-            # if regression is True, we split the label column into two classes
-            if regression:
-                # convert the label column to numeric if it is not already
-                if not pd.api.types.is_numeric_dtype(df[label_column]):
-                    logging.debug(f"Converting label column '{label_column}' to numeric type for regression.")
-                    df[label_column] = pd.to_numeric(df[label_column], errors='coerce')
-                # drop rows with NaN values in label column
-                nan_count = df[label_column].isna().sum()
-                if nan_count > 0:
-                    logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
-                    df = df.dropna(subset=[label_column])
+        # handle regression: convert label column to binary high/low
+        if regression:
+            if not pd.api.types.is_numeric_dtype(df[label_column]):
+                logging.debug(f"Converting label column '{label_column}' to numeric type for regression.")
+                df[label_column] = pd.to_numeric(df[label_column], errors='coerce')
+            nan_count = df[label_column].isna().sum()
+            if nan_count > 0:
+                logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
+                df = df.dropna(subset=[label_column])
 
-                if len(df) == 0:
-                    logging.error(f"No valid numeric values found in '{label_column}' for regression. Skipping analysis.")
-                    return
-                elif len(df) < 2:
-                    logging.warning(f"Only {len(df)} sample(s) remaining after dropping non-numeric values. Results may not be meaningful.")
+            if len(df) == 0:
+                logging.error(f"No valid numeric values found in '{label_column}' for regression. Skipping analysis.")
+                return
+            elif len(df) < 2:
+                logging.warning(f"Only {len(df)} sample(s) remaining after dropping non-numeric values. Results may not be meaningful.")
 
-                # infer the threshold as the median of the label column
-                threshold = df[label_column].median()
-                logging.debug(f"Inferred threshold for regression: {threshold}")
-                df[label_column] = df[label_column].apply(lambda x: 'high' if x >= threshold else 'low')
-                labels = ['high', 'low']
-
-            # get the list of labels to consider
-            elif len(label_list) == 1 and label_list[0] == 'infer':
-                labels = sorted(df[label_column].unique().tolist())
-                logging.debug(f"Inferred labels: {labels}")
-            else:
-                labels = [str(label) for label in label_list]
-
-            # loop over sequences with specific label and run statistics
-            for seq_col in sequence_column:
-                seq_stats = []
-                for label in labels:
-                    sequences = read_sequences_from_df(df, seq_col, label_column, label)
-                    logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{seq_col}'.")
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, label=label,
-                                                     filepath=input[0], seq_column=seq_col, end_position=end_position)]
-                run_analysis(
-                    input_statistics=seq_stats,
-                    out_folder=out_folder,
-                    report_types=report_types,
-                    plot_type=plot_type,
-                )
-
-            # handle multiple sequence columns by concatenating sequences and running statistics on them
-            if len(sequence_column) > 1:
-                seq_stats = []
-                for label in labels:
-                    sequences = read_sequences_from_df(df, sequence_column, label_column, label)
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input[0]).name, filepath=input[0],
-                                                     label=label, seq_column='_'.join(sequence_column))]
-                
-                run_analysis(
-                    input_statistics=seq_stats,
-                    out_folder=out_folder,
-                    report_types=report_types,
-                    plot_type=plot_type,
-                )
-
-        # we have multiple files with one label each
+            threshold = df[label_column].median()
+            logging.debug(f"Inferred threshold for regression: {threshold}")
+            df[label_column] = df[label_column].apply(lambda x: 'high' if x >= threshold else 'low')
+            labels = ['high', 'low']
+        elif len(label_list) == 1 and label_list[0] == 'infer':
+            labels = sorted(df[label_column].unique().tolist())
+            logging.debug(f"Inferred labels: {labels}")
         else:
-            # run statistics across input files
-            for seq_col in sequence_column:
-                seq_stats = []
-                for input_file in input:
-                    df = read_csv_file(input_file, format, seq_col)
-                    sequences = read_sequences_from_df(df, seq_col)
-                    logging.debug(f"Read {len(sequences)} sequences from file {input_file} in column '{seq_col}'.")
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                                     label=Path(input_file).stem, seq_column=seq_col,
-                                                     end_position=end_position)]
-                run_analysis(
-                    input_statistics=seq_stats,
-                    out_folder=out_folder,
-                    report_types=report_types,
-                    plot_type=plot_type,
-                )
+            labels = [str(label) for label in label_list]
 
-            # handle multiple sequence columns
-            if len(sequence_column) > 1:
-                seq_stats = []
-                for input_file in input:
-                    df = read_csv_file(input_file, format, sequence_column)
-                    sequences = read_sequences_from_df(df, sequence_column)
-                    seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                                     label=Path(input_file).stem, seq_column='_'.join(sequence_column), 
-                                                     end_position=end_position)]
-                run_analysis(
-                    input_statistics=seq_stats,
-                    out_folder=out_folder,
-                    report_types=report_types,
-                    plot_type=plot_type,
-                )
+        # single source filename for reports
+        filename = Path(input[0]).name if len(input) == 1 else "merged"
+        filepath = input[0] if len(input) == 1 else ", ".join(input)
+
+        # loop over individual sequence columns
+        for seq_col in sequence_column:
+            seq_stats = []
+            for label in labels:
+                sequences = read_sequences_from_df(df, seq_col, label_column, label)
+                logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{seq_col}'.")
+                seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
+                                                 seq_column=seq_col, end_position=end_position)]
+            run_analysis(
+                input_statistics=seq_stats,
+                out_folder=out_folder,
+                report_types=report_types,
+                plot_type=plot_type,
+            )
+
+        # if multiple sequence columns, also evaluate merged sequences
+        if len(sequence_column) > 1:
+            seq_stats = []
+            for label in labels:
+                sequences = read_sequences_from_df(df, sequence_column, label_column, label)
+                seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
+                                                 seq_column='_'.join(sequence_column),
+                                                 end_position=end_position)]
+            run_analysis(
+                input_statistics=seq_stats,
+                out_folder=out_folder,
+                report_types=report_types,
+                plot_type=plot_type,
+            )
 
     logging.info("Classes evaluation successfully completed.")

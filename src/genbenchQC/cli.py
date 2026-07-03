@@ -9,10 +9,44 @@ from genbenchQC.evaluate_splits import run as run_evaluate_splits
 app = typer.Typer(no_args_is_help=True)
 
 # Valid choices for validation
-VALID_FORMATS = ['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
+VALID_FORMATS = ['fasta', 'fasta.gz', 'fa', 'fa.gz', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+
+
+def _infer_format(file_path: str) -> str:
+    """Infer format from file extension."""
+    name = file_path.lower()
+    if name.endswith('.gz'):
+        base = name[:-len('.gz')]
+        ext = base.rsplit('.', 1)[-1] if '.' in base else ''
+        return f"{ext}.gz"
+    return name.rsplit('.', 1)[-1] if '.' in name else ''
+
+
+def _normalize_format(fmt: str) -> str:
+    """Reduce a format to its base family, ignoring gzip and fa/fasta variants.
+
+    Gzip is detected per-file downstream from the actual filename, and 'fa' is
+    just an alias for 'fasta', so files differing only in those respects are
+    considered the same format and may be mixed.
+    """
+    base = fmt[:-len('.gz')] if fmt.endswith('.gz') else fmt
+    return 'fasta' if base == 'fa' else base
+
+
+def _infer_format_from_inputs(files: List[str]) -> str:
+    """Infer format across all input files, ensuring they agree."""
+    formats = {_normalize_format(_infer_format(f)) for f in files}
+    if len(formats) > 1:
+        detected = ', '.join(f"{f} ({_infer_format(f)})" for f in files)
+        typer.echo(
+            f"Error: All input files must have the same format, but got: {detected}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    return formats.pop()
 
 
 def _run_command(command, *args, **kwargs):
@@ -27,7 +61,6 @@ def _run_command(command, *args, **kwargs):
 @app.command()
 def evaluate_classes(
     input: List[str] = typer.Option(..., help="Input file(s)."),
-    format: str = typer.Option(..., help="Input format: fasta, csv, csv.gz, tsv, tsv.gz"),
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     label_column: str = typer.Option('label', help="Label column name for single-file CSV inputs."),
     label_list: List[str] = typer.Option(['infer'], help='List of labels to consider or "infer" to detect labels automatically.'),
@@ -42,17 +75,19 @@ def evaluate_classes(
     """
     Evaluate sequence characteristics across different classes/labels in the dataset.
     """
-    # Validate format
-    if format not in VALID_FORMATS:
-        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
-        raise typer.Exit(code=1)
-    
     # Validate input files exist
     for file_path in input:
         if not Path(file_path).is_file():
             typer.echo(f"Error: Input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
-    
+
+    # Infer format from all input files
+    format = _infer_format_from_inputs(input)
+    # Validate format
+    if format not in VALID_FORMATS:
+        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
+        raise typer.Exit(code=1)
+
     # Validate fasta format requires at least 2 files
     if format == 'fasta' and len(input) < 2:
         typer.echo("Error: When format is 'fasta', at least 2 input files are required (one per class).", err=True)
@@ -99,7 +134,6 @@ def evaluate_classes(
 def evaluate_splits(
     train_input: List[str] = typer.Option(..., help="Path to the dataset file(s) with training data."),
     test_input: List[str] = typer.Option(..., help="Path to the dataset file(s) with testing data."),
-    format: str = typer.Option(..., help="Format of the input files: fasta, csv, csv.gz, tsv, tsv.gz"),
     sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
@@ -113,11 +147,6 @@ def evaluate_splits(
     """
     Evaluate data leakage in dataset train-test split.
     """
-    # Validate format
-    if format not in VALID_FORMATS:
-        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
-        raise typer.Exit(code=1)
-    
     # Validate train input files exist
     for file_path in train_input:
         if not Path(file_path).is_file():
@@ -129,6 +158,13 @@ def evaluate_splits(
         if not Path(file_path).is_file():
             typer.echo(f"Error: Test input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
+        
+    # Infer format from all input files
+    format = _infer_format_from_inputs(train_input + test_input)
+    # Validate format
+    if format not in VALID_FORMATS:
+        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
+        raise typer.Exit(code=1)
     
     # Validate report_types
     for rt in report_types:
