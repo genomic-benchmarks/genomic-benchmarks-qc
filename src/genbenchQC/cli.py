@@ -25,6 +25,30 @@ def _infer_format(file_path: str) -> str:
     return name.rsplit('.', 1)[-1] if '.' in name else ''
 
 
+def _normalize_format(fmt: str) -> str:
+    """Reduce a format to its base family, ignoring gzip and fa/fasta variants.
+
+    Gzip is detected per-file downstream from the actual filename, and 'fa' is
+    just an alias for 'fasta', so files differing only in those respects are
+    considered the same format and may be mixed.
+    """
+    base = fmt[:-len('.gz')] if fmt.endswith('.gz') else fmt
+    return 'fasta' if base == 'fa' else base
+
+
+def _infer_format_from_inputs(files: List[str]) -> str:
+    """Infer format across all input files, ensuring they agree."""
+    formats = {_normalize_format(_infer_format(f)) for f in files}
+    if len(formats) > 1:
+        detected = ', '.join(f"{f} ({_infer_format(f)})" for f in files)
+        typer.echo(
+            f"Error: All input files must have the same format, but got: {detected}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    return formats.pop()
+
+
 def _run_command(command, *args, **kwargs):
     try:
         command(*args, **kwargs)
@@ -57,8 +81,8 @@ def evaluate_classes(
             typer.echo(f"Error: Input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
 
-    # Infer format from first input file
-    format = _infer_format(input[0])
+    # Infer format from all input files
+    format = _infer_format_from_inputs(input)
     # Validate format
     if format not in VALID_FORMATS:
         typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
@@ -135,8 +159,8 @@ def evaluate_splits(
             typer.echo(f"Error: Test input file does not exist: {file_path}", err=True)
             raise typer.Exit(code=1)
         
-    # Infer format from first input file
-    format = _infer_format(train_input[0])
+    # Infer format from all input files
+    format = _infer_format_from_inputs(train_input + test_input)
     # Validate format
     if format not in VALID_FORMATS:
         typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
