@@ -1,4 +1,4 @@
-![](https://github.com/katarinagresova/GenBenchQC/blob/main/assets/logo_with_text_transparent.png?raw=True)
+<img src="https://github.com/katarinagresova/GenBenchQC/blob/main/assets/genomic-benchmarks-qc-text.png?raw=True" alt="genomic-benchmarks-qc logo" width="500" />
 
 Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
 
