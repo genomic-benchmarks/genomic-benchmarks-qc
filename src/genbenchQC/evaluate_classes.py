@@ -36,9 +36,9 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
 
     # run pair comparison analysis with all combinations
     for stat1, stat2 in combinations(input_statistics, 2):
-        filename = "dataset_report"
+        filename = "evaluate-classes"
         if stat1.seq_column is not None:
-            filename += f'_{stat1.seq_column}'
+            filename += f'_col_{stat1.seq_column}'
             logging.info(f"Comparing classes for sequence column: {stat1.seq_column}")
         if stat1.label is not None and stat2.label is not None:
             filename += f'_label_{stat1.label}_vs_{stat2.label}'
