@@ -3,8 +3,8 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "genbenchQC"
-version = "1.1.0"
+name = "genomic-benchmarks-qc"
+version = "0.9.0"
 description = "Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -44,12 +44,12 @@ dependencies = [
 develop = ["pytest>=8.4"]
 
 [project.urls]
-Homepage = "https://github.com/katarinagresova/GenBenchQC"
-Repository = "https://github.com/katarinagresova/GenBenchQC"
-Issues = "https://github.com/katarinagresova/GenBenchQC/issues"
+Homepage = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+Repository = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+Issues = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues"
 
 [project.scripts]
-genbenchQC = "genbenchQC.cli:main"
+gb-qc = "genomic_benchmarks_qc.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

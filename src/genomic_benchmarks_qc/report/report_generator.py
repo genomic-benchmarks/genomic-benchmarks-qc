@@ -4,11 +4,11 @@ import os
 from pathlib import Path
 import logging
 
-from genbenchQC.report.classes_html_report import get_dataset_html_template
-from genbenchQC.report.split_html_report import get_splits_html_template
-from genbenchQC.utils.input_utils import write_stats_json
-from genbenchQC.report import classes_plots
-from genbenchQC.report import splits_plots
+from genomic_benchmarks_qc.report.classes_html_report import get_dataset_html_template
+from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
+from genomic_benchmarks_qc.utils.input_utils import write_stats_json
+from genomic_benchmarks_qc.report import classes_plots
+from genomic_benchmarks_qc.report import splits_plots
 
 def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max):
     """

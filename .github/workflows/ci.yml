@@ -39,7 +39,7 @@ jobs:
 
       - name: evaluate-classes (FASTA, one file per class)
         run: |
-          genbenchQC evaluate-classes \
+          gb-qc evaluate-classes \
             --input example_datasets/G4_positives.fasta \
             --input example_datasets/G4_negatives.fasta \
             --out-folder ci_out/G4
@@ -48,7 +48,7 @@ jobs:
 
       - name: evaluate-classes (multiple CSV files, label column)
         run: |
-          genbenchQC evaluate-classes \
+          gb-qc evaluate-classes \
             --input example_datasets/enhancers_train.csv \
             --input example_datasets/enhancers_test.csv \
             --out-folder ci_out/enhancers
@@ -56,7 +56,7 @@ jobs:
 
       - name: evaluate-classes (TSV, multiple sequence columns)
         run: |
-          genbenchQC evaluate-classes \
+          gb-qc evaluate-classes \
             --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
             --sequence-column gene \
             --sequence-column noncodingRNA \
@@ -66,7 +66,7 @@ jobs:
 
       - name: evaluate-splits (data leakage, uses MMseqs2)
         run: |
-          genbenchQC evaluate-splits \
+          gb-qc evaluate-splits \
             --train-input example_datasets/enhancers_train.csv \
             --test-input example_datasets/enhancers_test.csv \
             --sequence-column sequence \

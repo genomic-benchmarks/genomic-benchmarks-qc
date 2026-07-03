@@ -1,7 +1,7 @@
 # Outputs of running example dataset evaluation
 
 ```bash
-genbenchQC evaluate-classes \
+gb-qc evaluate-classes \
   --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
   --out-folder example_outputs/miRNA_mRNA_dataset \
   --sequence-column gene \
@@ -11,7 +11,7 @@ genbenchQC evaluate-classes \
 or
 
 ```python
-from genbenchQC import evaluate_classes
+from genomic_benchmarks_qc import evaluate_classes
 
 evaluate_classes.run(
   input=['example_datasets/miRNA_mRNA_pairs_dataset.tsv'], 
@@ -20,7 +20,7 @@ evaluate_classes.run(
 )
 ```
 
-Running the above commands for `genbenchQC evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following types of reports:
+Running the above commands for `gb-qc evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following types of reports:
 
 - `evaluate-classes_*.csv` - simple report with the results (pass/warning/fail) of the evaluation between two classes of the dataset.
 - `evaluate-classes_*.html` - visual report with the results of the evaluation between two classes of the dataset. It contains basic information about the dataset and plots visualizing individual features of the dataset.
@@ -33,6 +33,6 @@ When two sequence columns are provided (`gene` and `noncodingRNA` in this case),
 
 You can preview generated HTML reports on GitHub using [htmlpreview](https://github.com/htmlpreview/htmlpreview.github.com) tool by prepending URL of any HTML file with `https://htmlpreview.github.io/?`:
 
-- `gene` column report: <https://htmlpreview.github.io/?https://github.com/katarinagresova/GenBenchQC/blob/main/example_outputs/miRNA_mRNA_dataset/evaluate-classes_col_gene_label_0_vs_1.html>
-- `noncodingRNA` column report: <https://htmlpreview.github.io/?https://github.com/katarinagresova/GenBenchQC/blob/main/example_outputs/miRNA_mRNA_dataset/evaluate-classes_col_noncodingRNA_label_0_vs_1.html>
-- `gene` and `noncodingRNA` concatenated column report: <https://htmlpreview.github.io/?https://github.com/katarinagresova/GenBenchQC/blob/main/example_outputs/miRNA_mRNA_dataset/evaluate-classes_col_gene_noncodingRNA_label_0_vs_1.html>
+- `gene` column report: <https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/miRNA_mRNA_dataset/evaluate-classes_col_gene_label_0_vs_1.html>
+- `noncodingRNA` column report: <https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/miRNA_mRNA_dataset/evaluate-classes_col_noncodingRNA_label_0_vs_1.html>
+- `gene` and `noncodingRNA` concatenated column report: <https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/miRNA_mRNA_dataset/evaluate-classes_col_gene_noncodingRNA_label_0_vs_1.html>

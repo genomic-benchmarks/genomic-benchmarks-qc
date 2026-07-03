@@ -309,7 +309,7 @@ COMMON_CSS = COMMON_CSS_TEMPLATE.replace("{{FAIL_COLOR}}", FAIL_COLOR).replace("
 # Standard report header HTML fragment (uses placeholders)
 REPORT_HEADER_HTML = """
 <div class="report-header" style="text-align: left; margin-bottom: 30px;">
-    <img src="{{logo_base64}}" alt="GenBenchQC Logo" style="max-width: 350px; height: auto; margin: 10px 0 10px;">
+    <img src="{{logo_base64}}" alt="Genomic Benchmarks QC Logo" style="max-width: 350px; height: auto; margin: 10px 0 10px;">
     <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">{{tool_description}}</div>
     <div style="font-size: 0.9em; color: #666;">Report generated on {{generated_on}} based on data: {{input_paths}}</div>
 </div>

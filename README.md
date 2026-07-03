@@ -1,11 +1,11 @@
-<img src="https://github.com/katarinagresova/GenBenchQC/blob/main/assets/genomic-benchmarks-qc-text.png?raw=True" alt="genomic-benchmarks-qc logo" width="500" />
+<img src="https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/assets/genomic-benchmarks-qc-text.png?raw=True" alt="genomic-benchmarks-qc logo" width="500" />
 
 Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
 
 ## Installation
 
 ```bash
-pip install genbenchQC
+pip install genomic-benchmarks-qc
 ```
 
 For `evaluate-splits`, install [mmseqs2](https://github.com/soedinglab/MMseqs2). While conda installation works, precompiled binaries or compiling from source is recommended for better performance and to avoid alignment issues. See the [mmseqs2 installation guide](https://github.com/soedinglab/MMseqs2/wiki#installation) for details.
@@ -18,7 +18,7 @@ Compare sequence characteristics across different classes/labels to detect bias.
 
 **FASTA files (one per class):**
 ```bash
-genbenchQC evaluate-classes \
+gb-qc evaluate-classes \
   --input example_datasets/G4_positives.fasta \
   --input example_datasets/G4_negatives.fasta \
   --out-folder example_outputs/G4_dataset
@@ -28,7 +28,7 @@ Each FASTA file represents one class, and its filename stem (the name without ex
 
 **Multiple CSV/TSV files:**
 ```bash
-genbenchQC evaluate-classes \
+gb-qc evaluate-classes \
   --input example_datasets/enhancers_train.csv \
   --input example_datasets/enhancers_test.csv \
   --out-folder example_outputs/enhancers_dataset
@@ -40,7 +40,7 @@ column (`label` by default; override with `--label-column`).
 
 **CSV/TSV with label column and multiple sequence columns:**
 ```bash
-genbenchQC evaluate-classes \
+gb-qc evaluate-classes \
   --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
   --sequence-column gene \
   --sequence-column noncodingRNA \
@@ -59,7 +59,7 @@ Note: when you want to provide multiple values for some option, such as `--input
 Detect train-test data leakage via sequence similarity.
 
 ```bash
-genbenchQC evaluate-splits \
+gb-qc evaluate-splits \
   --train-input example_datasets/enhancers_train.csv \
   --test-input example_datasets/enhancers_test.csv \
   --sequence-column sequence \
@@ -155,7 +155,7 @@ Files use the stem `evaluate-splits_split_<train>_vs_<test>`, e.g.
 
 ## Contributions & Support
 
-Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/katarinagresova/GenBenchQC/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. See the [contributing notes](CONTRIBUTING.md) for more information about how the process works.
+Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. See the [contributing notes](CONTRIBUTING.md) for more information about how the process works.
 
 ## License
 

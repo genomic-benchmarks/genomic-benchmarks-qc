@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from genbenchQC.report.classes_plots import HuePalette, prepare_legend
-from genbenchQC.report.utils import FAIL_COLOR
+from genomic_benchmarks_qc.report.classes_plots import HuePalette, prepare_legend
+from genomic_benchmarks_qc.report.utils import FAIL_COLOR
 
 def plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats):
 

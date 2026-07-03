@@ -8,7 +8,7 @@ You can contribute in many ways:
 
 ### Report Bugs
 
-Report bugs at <https://github.com/katarinagresova/GenBenchQC/issues>.
+Report bugs at <https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues>.
 
 If you are reporting a bug, please include:
 
@@ -26,7 +26,7 @@ Look through the GitHub issues for features. Anything tagged with “enhancement
 
 ### Submit Feedback
 
-The best way to send feedback is to file an issue at <https://github.com/katarinagresova/GenBenchQC/issues>.
+The best way to send feedback is to file an issue at <https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues>.
 
 If you are proposing a feature:
 
@@ -47,19 +47,19 @@ If you are proposing a feature:
 
 ## Get Started!
 
-Ready to contribute? Here’s how to set up GenBenchQC for local development.
+Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local development.
 
-1.  Fork the GenBenchQC repo on GitHub.
+1.  Fork the Genomic Benchmarks QC repo on GitHub.
 2.  Clone your fork locally:
 
-        $ git clone git@github.com:your_name_here/GenBenchQC.git
+        $ git clone git@github.com:your_name_here/genomic-benchmarks-qc.git
 
 3.  Install your local copy into a conda environment. Assuming you have conda installed, this is how you set up your fork for local development.
 
 
-        $ cd GenBenchQC/
+        $ cd genomic-benchmarks-qc/
         $ conda env create -f dev-requirements.yml
-        $ source activate genbenchQC-dev
+        $ source activate gb-qc-dev
         $ pip install -e '.[develop]'
 
 4.  Create a branch for local development:
@@ -88,4 +88,4 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1.  The pull request should include tests.
 2.  If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring.
-3.  The pull request should work for Python >=3.8<=3.11
+3.  The pull request should work for Python >=3.12

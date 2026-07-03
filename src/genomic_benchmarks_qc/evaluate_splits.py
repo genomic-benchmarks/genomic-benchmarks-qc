@@ -4,10 +4,10 @@ from typing import Optional
 import shutil
 import pandas as pd
 
-from genbenchQC.report.report_generator import generate_splits_html_report, generate_simple_report
-from genbenchQC.utils.mmseqs_summary import summarize_mmseqs_output, build_mmseqs_export_frame
-from genbenchQC.utils import mmseqs_runtime
-from genbenchQC.utils.input_utils import (
+from genomic_benchmarks_qc.report.report_generator import generate_splits_html_report, generate_simple_report
+from genomic_benchmarks_qc.utils.mmseqs_summary import summarize_mmseqs_output, build_mmseqs_export_frame
+from genomic_benchmarks_qc.utils import mmseqs_runtime
+from genomic_benchmarks_qc.utils.input_utils import (
     setup_logger,
     stream_files_to_sequences,
     append_fasta_record,
@@ -15,7 +15,7 @@ from genbenchQC.utils.input_utils import (
     read_selected_fasta_sequences,
     filter_fasta_by_ids,
 )
-from genbenchQC.utils.split_stats import (
+from genomic_benchmarks_qc.utils.split_stats import (
     get_basic_stats_from_aggregates,
     get_threshold_stats,
     flag_split_data_leakage,

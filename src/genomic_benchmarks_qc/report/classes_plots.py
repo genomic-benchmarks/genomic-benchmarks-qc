@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import pandas as pd
 import logging
-from genbenchQC.report.utils import FAIL_COLOR, WARN_COLOR
+from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
     """

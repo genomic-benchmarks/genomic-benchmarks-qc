@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from genbenchQC.utils.mmseqs_summary import MMSEQS_REQUIRED_COLS
+from genomic_benchmarks_qc.utils.mmseqs_summary import MMSEQS_REQUIRED_COLS
 
 
 SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")

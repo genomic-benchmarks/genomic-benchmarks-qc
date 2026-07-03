@@ -1,4 +1,4 @@
-name: genbenchQC-dev
+name: gb-qc-dev
 channels:
   - conda-forge
   - bioconda

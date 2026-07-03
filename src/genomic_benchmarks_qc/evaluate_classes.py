@@ -4,10 +4,10 @@ from itertools import combinations
 from typing import Optional
 import pandas as pd
 
-from genbenchQC.utils.seq_stats import SequenceStatistics
-from genbenchQC.utils.testing import flag_significant_differences
-from genbenchQC.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
-from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
+from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
+from genomic_benchmarks_qc.utils.testing import flag_significant_differences
+from genomic_benchmarks_qc.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
+from genomic_benchmarks_qc.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
 
 def _strip_extensions(file_path):
     """Return the filename with all extensions removed (e.g. 'a.fasta.gz' -> 'a')."""

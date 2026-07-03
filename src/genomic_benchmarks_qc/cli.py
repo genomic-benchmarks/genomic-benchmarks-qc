@@ -3,8 +3,8 @@ from typing import List, Optional
 
 import typer
 
-from genbenchQC.evaluate_classes import run as run_evaluate_classes
-from genbenchQC.evaluate_splits import run as run_evaluate_splits
+from genomic_benchmarks_qc.evaluate_classes import run as run_evaluate_classes
+from genomic_benchmarks_qc.evaluate_splits import run as run_evaluate_splits
 
 app = typer.Typer(no_args_is_help=True)
 

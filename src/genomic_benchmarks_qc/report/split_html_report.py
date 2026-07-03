@@ -1,8 +1,8 @@
 from datetime import datetime
 import html
-from genbenchQC.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
-from genbenchQC.report.alignment_rendering import build_alignment_string
-from genbenchQC.utils.split_stats import flag_split_data_leakage
+from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
+from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
 import importlib.metadata
 
 HTML_TEMPLATE = """
@@ -39,7 +39,7 @@ HTML_TEMPLATE = """
     <div class="container">
         <div class="sidebar">
             <div class="logo" style="text-align: center; margin-bottom: 20px;">
-                <img src="{{logo_base64}}" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
+                <img src="{{logo_base64}}" alt="Genomic Benchmarks QC Logo" style="max-width: 150px; height: auto;">
                 <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
             </div>
             <h2>Summary</h2>
@@ -99,7 +99,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div id="data-leakage-explanation" class="explanation-text">
                     <p>
-                        GenBenchQC evaluate-splits uses 
+                        Genomic Benchmarks QC evaluate-splits uses 
                         <a href="https://github.com/soedinglab/MMseqs2" target="_blank">MMseqs2</a> 
                         to perform an ultra fast and sensitive test sequence search against a train set database and compute alignment-based 
                         metrics for detecting data leakage across train–test splits.
@@ -256,7 +256,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
+    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genomic-benchmarks-qc"))
 
     html_template = put_data(html_template, "{{train_filename}}", str(basic_stats['train_filename']))
     html_template = put_data(html_template, "{{test_filename}}", str(basic_stats['test_filename']))

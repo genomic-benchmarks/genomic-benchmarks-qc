@@ -1,5 +1,5 @@
 """
-Testing utilities for GenBenchQC.
+Testing utilities for Genomic Benchmarks QC.
 
 This module provides functions to compute quality metrics (AU-ROC, AU-PR, Accuracy)
 and generate flags for comparing two datasets.

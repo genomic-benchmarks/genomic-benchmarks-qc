@@ -1,5 +1,5 @@
 from datetime import datetime
-from genbenchQC.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 import importlib.metadata
 
 
@@ -71,7 +71,7 @@ HTML_TEMPLATE = """
     <div class="container">
         <div class="sidebar">
             <div class="logo" style="text-align: center; margin-bottom: 20px;">
-                <img src="{{logo_base64}}" alt="GenBenchQC Logo" style="max-width: 150px; height: auto;">
+                <img src="{{logo_base64}}" alt="Genomic Benchmarks QC Logo" style="max-width: 150px; height: auto;">
                 <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
             </div>
             <h2>Summary</h2>
@@ -375,7 +375,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genbenchQC"))
+    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genomic-benchmarks-qc"))
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
