@@ -167,3 +167,4 @@ sandbox/
 data/
 reports/
 mmseqs/
+.DS_Store

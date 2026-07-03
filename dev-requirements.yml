@@ -3,14 +3,14 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python=3.10
-  - numpy>=1.23
-  - pandas>=1.5
-  - biopython>=1.80
-  - seaborn>=0.12
-  - matplotlib>=3.6
-  - scikit-learn>=1.2
-  - statsmodels>=0.13
+  - python=3.14
+  - numpy>=2.3.2
+  - pandas>=2.3.3
+  - biopython>=1.86
+  - seaborn>=0.13.2
+  - matplotlib>=3.10.4
+  - scikit-learn>=1.7.2
+  - pytest>=8.4
   - pip
   - pip:
     - typer>=0.20
