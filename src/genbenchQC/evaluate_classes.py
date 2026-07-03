@@ -9,6 +9,12 @@ from genbenchQC.utils.testing import flag_significant_differences
 from genbenchQC.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
 from genbenchQC.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
 
+def _strip_extensions(file_path):
+    """Return the filename with all extensions removed (e.g. 'a.fasta.gz' -> 'a')."""
+    name = Path(file_path).name
+    return name.replace("".join(Path(name).suffixes), "")
+
+
 def run_analysis(input_statistics, out_folder, report_types, plot_type):
    
     if report_types is None:
@@ -22,7 +28,7 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
 
         if "json" in report_types:
 
-            filename = Path(s.filename).stem
+            filename = _strip_extensions(s.filename)
             if s.seq_column is not None:
                 filename += f'_{s.seq_column}'
             if s.label is not None:
@@ -44,7 +50,7 @@ def run_analysis(input_statistics, out_folder, report_types, plot_type):
             filename += f'_label_{stat1.label}_vs_{stat2.label}'
             logging.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
         else:
-            filename += f'_{Path(stat1.filename).stem}_{Path(stat2.filename).stem}'
+            filename += f'_{_strip_extensions(stat1.filename)}_{_strip_extensions(stat2.filename)}'
             logging.info(
                 f"Comparing classes: {stat1.filename} vs {stat2.filename}")
 
@@ -122,13 +128,13 @@ def run(input,
         Path(out_folder).mkdir(parents=True, exist_ok=True)
 
     # we have multiple fasta files with one label each
-    if format == 'fasta':
+    if format.startswith('fa'):
         seq_stats = []
         for input_file in input:
             sequences = read_fasta(input_file)
             logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
             seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                             label=Path(input_file).stem, end_position=end_position)]
+                                             label=_strip_extensions(input_file), end_position=end_position)]
         run_analysis(
             input_statistics=seq_stats,
             out_folder=out_folder,

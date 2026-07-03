@@ -9,7 +9,7 @@ from genbenchQC.evaluate_splits import run as run_evaluate_splits
 app = typer.Typer(no_args_is_help=True)
 
 # Valid choices for validation
-VALID_FORMATS = ['fasta', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
+VALID_FORMATS = ['fasta', 'fasta.gz', 'fa', 'fa.gz', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
@@ -17,18 +17,12 @@ VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 def _infer_format(file_path: str) -> str:
     """Infer format from file extension."""
-    path = Path(file_path)
-    suffixes = ''.join(path.suffixes)  # e.g., '.csv.gz'
-    if suffixes.endswith('.gz'):
-        base_suffix = path.suffix  # e.g., '.csv'
-        fmt = base_suffix.lstrip('.')
-        if fmt in ['csv', 'tsv']:
-            return f'{fmt}.gz'
-    else:
-        fmt = path.suffix.lstrip('.')
-        if fmt in VALID_FORMATS:
-            return fmt
-    raise ValueError(f"Cannot infer format from '{file_path}'. Supported: {', '.join(VALID_FORMATS)}")
+    name = file_path.lower()
+    if name.endswith('.gz'):
+        base = name[:-len('.gz')]
+        ext = base.rsplit('.', 1)[-1] if '.' in base else ''
+        return f"{ext}.gz"
+    return name.rsplit('.', 1)[-1] if '.' in name else ''
 
 
 def _run_command(command, *args, **kwargs):
