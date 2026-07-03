@@ -171,7 +171,7 @@ def run(input,
 
         # single source filename for reports
         filename = Path(input[0]).name if len(input) == 1 else "merged"
-        filepath = input[0] if len(input) == 1 else input
+        filepath = input[0] if len(input) == 1 else ", ".join(input)
 
         # loop over individual sequence columns
         for seq_col in sequence_column:
