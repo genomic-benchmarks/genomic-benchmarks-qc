@@ -139,6 +139,8 @@ def run(input,
     # we have CSV/TSV
     else:
         # read all files into one dataframe (single file wrapped in list)
+        if len(input) > 1:
+            logging.info(f"Merging {len(input)} input files: {', '.join(input)}")
         dfs = [read_csv_file(f, format, sequence_column, label_column) for f in input]
         df = pd.concat(dfs, ignore_index=True)
         logging.debug(f"Read {len(df)} rows from {len(dfs)} file(s)")
