@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import List, Optional
 
@@ -13,6 +14,9 @@ VALID_FORMATS = ['fasta', 'fasta.gz', 'fa', 'fa.gz', 'csv', 'csv.gz', 'tsv', 'ts
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+
+# MMseqs2 byte sizes: 0, or a non-zero integer with an optional unit suffix.
+SPLIT_MEMORY_LIMIT_RE = re.compile(r'^(?:0|[1-9][0-9]*[BKMGT]?)$')
 
 
 def _infer_format(file_path: str) -> str:
@@ -186,6 +190,17 @@ def evaluate_splits(
     if threads is not None and threads <= 0:
         typer.echo(f"Error: threads must be a positive integer, got {threads}", err=True)
         raise typer.Exit(code=1)
+
+    # Validate split_memory_limit follows MMseqs2's byte-size grammar when provided
+    if split_memory_limit is not None:
+        split_memory_limit = split_memory_limit.strip().upper()
+        if not SPLIT_MEMORY_LIMIT_RE.match(split_memory_limit):
+            typer.echo(
+                f"Error: split_memory_limit must be 0 or a positive integer optionally "
+                f"followed by B, K, M, G or T (e.g., 10G, 1T), got {split_memory_limit}",
+                err=True,
+            )
+            raise typer.Exit(code=1)
 
     _run_command(
         run_evaluate_splits,
