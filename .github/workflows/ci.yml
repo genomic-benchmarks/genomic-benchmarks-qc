@@ -32,7 +32,35 @@ jobs:
           pip install '.[develop]'
 
       - name: Unit tests
-        run: pytest
+        run: pytest --cov --cov-report=term-missing --cov-report=xml --cov-report=json
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+
+          data = json.loads(pathlib.Path("coverage.json").read_text())
+          print(f"## Coverage: {data['totals']['percent_covered_display']}%\n")
+          print("| File | Stmts | Miss | Cover |")
+          print("| --- | ---: | ---: | ---: |")
+          for name, f in sorted(data["files"].items()):
+              s = f["summary"]
+              print(
+                  f"| {name} | {s['num_statements']} | {s['missing_lines']} "
+                  f"| {s['percent_covered_display']}% |"
+              )
+          PY
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            coverage.json
+          if-no-files-found: ignore
 
       - name: Install MMseqs2
         run: |

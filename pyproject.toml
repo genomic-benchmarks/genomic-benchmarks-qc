@@ -41,7 +41,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-develop = ["pytest>=8.4"]
+develop = ["pytest>=8.4", "pytest-cov>=7.0"]
 
 [project.urls]
 Homepage = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
@@ -58,3 +58,17 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra"
+
+[tool.coverage.run]
+source_pkgs = ["genomic_benchmarks_qc"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 60
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

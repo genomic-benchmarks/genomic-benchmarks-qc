@@ -77,6 +77,21 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
         $ pytest tests/test_cli_helpers.py
         $ pytest -k SplitMemoryLimit
 
+    To check unit test coverage, add `--cov`:
+
+        $ pytest --cov
+
+    The coverage settings live under `[tool.coverage.*]` in `pyproject.toml`. Branch coverage is
+    on, and the run fails if total coverage drops below 60% (currently ~65%), which is also
+    enforced in CI. Uncovered line numbers are
+    printed per file; for a browsable line-by-line report use:
+
+        $ pytest --cov --cov-report=html
+        $ open htmlcov/index.html
+
+    Coverage is opt-in so that running a single test file does not trip the threshold. New code
+    should come with tests, and the threshold should be raised as coverage improves.
+
 6.  Commit your changes and push your branch to GitHub:
 
         $ git add .
