@@ -70,9 +70,12 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
 
 5.  When you’re done making changes, check that your changes pass the tests:
 
-        $ py.test tests/ -n 4
+        $ pytest
 
-Where `-n 4` will use 4 cores in parallel to run tests.
+    Test paths and the `src/` import path are configured in `pyproject.toml`, so plain `pytest` works from the repository root. To run a single file or test:
+
+        $ pytest tests/test_cli_helpers.py
+        $ pytest -k SplitMemoryLimit
 
 6.  Commit your changes and push your branch to GitHub:
 
