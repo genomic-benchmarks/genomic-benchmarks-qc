@@ -71,7 +71,7 @@ gb-qc evaluate-splits \
 | Format | Description |
 |--------|-------------|
 | `.fa/.fasta` | One or more FASTA files. Multiple files = multiple classes. |
-| `.csv` / `.tsv` | One or more CSV/TSV files. Multiple will be pooled and avaluated as one. |
+| `.csv` / `.tsv` | One or more CSV/TSV files. Multiple will be pooled and evaluated as one. |
 
 All of the input formats are supported in .gz version as well.
 
@@ -116,8 +116,8 @@ Files use the stem `evaluate-splits_split_<train>_vs_<test>`, e.g.
 
 | File | Description |
 |------|-------------|
-| `evalaute-splits_*.csv` | Simple leakage summary. |
-| `evalaute-splits_*.html` | Interactive HTML report with alignments. |
+| `evaluate-splits_*.csv` | Simple leakage summary. |
+| `evaluate-splits_*.html` | Interactive HTML report with alignments. |
 | `evalaute-splits_*_mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
 | `evalaute-splits_*_plots/` | Similarity distribution plots. |
 
