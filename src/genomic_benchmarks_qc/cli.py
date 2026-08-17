@@ -16,7 +16,7 @@ VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 # MMseqs2 byte sizes: 0, or a non-zero integer with an optional unit suffix.
-SPLIT_MEMORY_LIMIT_RE = re.compile(r'^(?:0|[1-9][0-9]*[BKMGT]?)$')
+SPLIT_MEMORY_LIMIT_RE = re.compile(r'\A(?:0|[1-9][0-9]*[BKMGT]?)\Z')
 
 
 def _infer_format(file_path: str) -> str:
