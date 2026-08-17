@@ -142,16 +142,24 @@ class TestFormatHandling:
         assert "Invalid format 'txt'" in result.stderr
         assert not classes_run.called
 
-    def test_file_without_extension_is_rejected(self, runner, make_file, classes_run, monkeypatch, tmp_path):
-        make_file("dataset")
-        # Use a relative path so no parent directory contributes an extension.
-        monkeypatch.chdir(tmp_path)
+    @pytest.mark.parametrize("name", ["dataset", "results.v2/dataset"])
+    def test_file_without_extension_is_rejected(self, runner, make_file, classes_run, name):
+        # A dot in a parent directory does not stand in for a missing extension.
+        dataset = make_file(name)
 
-        result = invoke(runner, "--input", "dataset")
+        result = invoke(runner, "--input", dataset)
 
         assert result.exit_code == 1
         assert "Invalid format ''" in result.stderr
         assert not classes_run.called
+
+    def test_extension_is_read_from_the_file_not_the_directory(self, runner, make_file, classes_run):
+        csv = make_file("results.v2/train.csv")
+
+        result = invoke(runner, "--input", csv)
+
+        assert result.exit_code == 0
+        assert classes_run.kwargs['format'] == 'csv'
 
 
 class TestFastaMinimumFiles:

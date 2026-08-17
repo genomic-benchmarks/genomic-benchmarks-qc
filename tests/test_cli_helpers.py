@@ -31,13 +31,20 @@ class TestInferFormat:
             ("train.v2.csv", "csv"),
             ("folder/data.csv", "csv"),
             ("/abs/path/to/data.csv", "csv"),
+            # Only the file name is considered, never the directories above it.
+            ("results.v2/data.csv", "csv"),
+            ("/abs/results.v2/data.fa.gz", "fa.gz"),
         ],
     )
     def test_infers_extension(self, file_path, expected):
         assert _infer_format(file_path) == expected
 
-    def test_file_without_extension_has_empty_format(self):
-        assert _infer_format("dataset") == ""
+    @pytest.mark.parametrize(
+        "file_path",
+        ["dataset", "folder/dataset", "results.v2/dataset", "/abs/results.v2/dataset"],
+    )
+    def test_file_without_extension_has_empty_format(self, file_path):
+        assert _infer_format(file_path) == ""
 
     def test_bare_gz_has_no_base_extension(self):
         assert _infer_format("dataset.gz") == ".gz"

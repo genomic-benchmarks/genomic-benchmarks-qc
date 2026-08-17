@@ -9,7 +9,11 @@ from genomic_benchmarks_qc.evaluate_splits import run as run_evaluate_splits
 
 app = typer.Typer(no_args_is_help=True)
 
-# Valid choices for validation
+# Valid choices for validation.
+# VALID_FORMATS serves two roles: it is the human-readable list of accepted file
+# extensions shown in error messages, and its normalized members ('csv', 'tsv',
+# 'fasta') are what inputs are actually validated against — see
+# _normalize_format, which collapses the gzip and 'fa' variants before the check.
 VALID_FORMATS = ['fasta', 'fasta.gz', 'fa', 'fa.gz', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
@@ -21,7 +25,9 @@ SPLIT_MEMORY_LIMIT_RE = re.compile(r'\A(?:0|[1-9][0-9]*[BKMGT]?)\Z')
 
 def _infer_format(file_path: str) -> str:
     """Infer format from file extension."""
-    name = file_path.lower()
+    # Only the file name matters: a dot in a parent directory must not be
+    # mistaken for an extension.
+    name = Path(file_path).name.lower()
     if name.endswith('.gz'):
         base = name[:-len('.gz')]
         ext = base.rsplit('.', 1)[-1] if '.' in base else ''
