@@ -7,7 +7,7 @@ and generate flags for comparing two datasets.
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
@@ -21,23 +21,37 @@ def _compute_best_threshold_accuracy(labels: np.ndarray, scores: np.ndarray) -> 
     Returns:
         Best achievable accuracy (or prevalence-based baseline if single score).
     """
-    unique_scores = np.unique(scores)
-    if unique_scores.size == 1:
+    labels = np.asarray(labels)
+    scores = np.asarray(scores, dtype=float)
+    n_samples = scores.size
+
+    # No score variation: no threshold separates anything, so the best accuracy
+    # is the prevalence baseline. An O(n) check, cheaper than the sort below.
+    if n_samples > 0 and (scores == scores[0]).all():
         return float(max(labels.mean(), 1 - labels.mean()))
 
-    # Midpoints between consecutive unique scores + infinities
-    thresholds = np.concatenate([
-        [-np.inf],
-        (unique_scores[:-1] + unique_scores[1:]) / 2,
-        [np.inf],
-    ])
+    # Candidate thresholds are the boundaries between groups of equal scores:
+    # a single sorted pass evaluates all of them in O(n log n).
+    order = np.argsort(scores, kind='mergesort')
+    sorted_scores = scores[order]
+    sorted_labels = labels[order].astype(np.int64)
 
-    best_accuracy = 0.0
-    for threshold in thresholds:
-        predicted = scores >= threshold
-        best_accuracy = max(best_accuracy, accuracy_score(labels, predicted))
+    # Positives among the lowest `cut` scores, for cut = 0 .. n_samples.
+    positives_below = np.concatenate([[0], np.cumsum(sorted_labels)])
+    total_positives = positives_below[-1]
+    cuts = np.arange(n_samples + 1)
 
-    return float(best_accuracy)
+    # Predicting positive for everything at or above the cut: true positives
+    # above the cut plus true negatives below it.
+    correct = (total_positives - positives_below) + (cuts - positives_below)
+
+    # Only cuts that do not split a group of tied scores are reachable, plus the
+    # two extremes (predict all positive / all negative).
+    reachable = np.ones(n_samples + 1, dtype=bool)
+    if n_samples > 1:
+        reachable[1:-1] = sorted_scores[:-1] < sorted_scores[1:]
+
+    return float(correct[reachable].max() / n_samples)
 
 def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> dict:
     """Compute AU-ROC, AU-PR, and Accuracy from two arrays of scores.
