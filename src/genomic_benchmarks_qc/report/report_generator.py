@@ -1,12 +1,20 @@
+"""Writing the reports: which files each report type produces, and their content.
+
+The entry points both commands call. Everything about *what* a report looks like
+lives further down - the templates in `classes_html_report`/`split_html_report`,
+the figures in `classes_plots`/`splits_plots` - and the names of the files are
+defined in `genomic_benchmarks_qc.utils.naming`.
+"""
+
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
 from pathlib import Path
 import logging
 
 from genomic_benchmarks_qc.report.classes_html_report import get_dataset_html_template
 from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
 from genomic_benchmarks_qc.utils.input_utils import write_stats_json
+from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 from genomic_benchmarks_qc.report import classes_plots
 from genomic_benchmarks_qc.report import splits_plots
 
@@ -25,6 +33,7 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
         file.write(template)
         
 def generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir):
+    """Save the split figures and return {plot title: path} for the template."""
 
     plots_paths_dict = {}
 
@@ -81,8 +90,8 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
 
     # find duplicate sequences between labels
     duplicate_seqs = list(set(stats1.sequences).intersection(stats2.sequences))
-    # remove extension from output path, add '_duplicates.txt'
-    duplicate_seqs_path = os.path.splitext(output_path)[0] + '_duplicates.txt'
+    # the report lives in a directory of its own, so this is a plain sibling
+    duplicate_seqs_path = Path(output_path).parent / DUPLICATES_FILE
 
     # Load the HTML template
     template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path)
@@ -97,10 +106,12 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
         logging.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
 
 def generate_json_report(stats_dict, output_path):
+    """Dump one class's computed statistics to JSON."""
     logging.info(f"Generating JSON report: {output_path}")
     write_stats_json(stats_dict, output_path)
 
 def generate_simple_report(results, output_path):
+    """Write the per-check flags as a small CSV, one row per check."""
 
     logging.info(f"Generating simple report: {output_path}")
 

@@ -1,3 +1,10 @@
+"""Running the MMseqs2 search as a subprocess.
+
+MMseqs2 is an external binary, so this module owns everything about talking to
+it: checking it can run here at all, building the `easy-search` command line,
+and forwarding its output into the logger instead of the terminal.
+"""
+
 import logging
 import os
 import platform
@@ -16,6 +23,7 @@ MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC = 1.0
 
 
 def _read_linux_cpu_flags():
+    """Return the CPU feature flags from /proc/cpuinfo, or None if unreadable."""
     try:
         with open("/proc/cpuinfo", "r", encoding="utf-8") as handle:
             for line in handle:
@@ -28,6 +36,13 @@ def _read_linux_cpu_flags():
 
 
 def check_mmseqs_preflight():
+    """Verify MMseqs2 can run on this machine, raising RuntimeError if not.
+
+    The published binaries are compiled per instruction set, and one built for a
+    newer CPU dies with SIGILL rather than a readable error, so the CPU flags
+    are checked up front. Only x86_64 Linux can be checked this way; elsewhere
+    the check is skipped with a warning.
+    """
     mmseqs_path = shutil.which("mmseqs")
     if mmseqs_path is None:
         raise RuntimeError(
@@ -77,6 +92,16 @@ def run_search(
     threads: Optional[int] = None,
     split_memory_limit: Optional[str] = None,
 ):
+    """Search the test sequences against the train sequences, returning the hit table.
+
+    Runs `mmseqs easy-search` with the test half as the query and the train half
+    as the database, restricted to nucleotide search on the forward strand, and
+    asks for `MMSEQS_REQUIRED_COLS` as a tab-separated table with a header
+    (`--format-mode 4`) so it can be read back in chunks.
+
+    Returns the path of that table. Raises RuntimeError if MMseqs2 is unusable
+    or exits non-zero.
+    """
     logging.info(
         "Running MMSeqs2, an ultrafast and sensitive search, for test sequences (query) against train sequences (db)."
     )
@@ -121,6 +146,12 @@ def run_search(
         )
 
         def _forward_stream(stream, stream_name):
+            """Log one of the subprocess streams line by line as it arrives.
+
+            MMseqs2 draws a progress bar by rewriting the same line with '\r',
+            which would otherwise flood the log, so those lines are logged at
+            most once per `MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC`.
+            """
             if stream is None:
                 return
             last_progress_log_ts = None

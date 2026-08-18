@@ -1,3 +1,11 @@
+"""The figures comparing two classes.
+
+Each `plot_*` builds and returns a matplotlib figure; saving them is the
+report generator's job. Features that were flagged are marked in the figure
+itself - underlines under failing positions, colored legend entries - so a plot
+carries the same verdict as the table it sits next to in the report.
+"""
+
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -440,6 +448,7 @@ def _compute_duplication_bins(stats1, stats2):
 
 
 def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_after_dedup=None):
+    """Plot how much of each class is made up of sequences duplicated N times."""
 
     fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
@@ -541,10 +550,16 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_la
     return ax
 
 class HuePalette:
+    """The two-color palette shared by every plot, so the classes look the same everywhere.
+
+    Instantiating returns the seaborn palette itself rather than an instance,
+    built once and reused: `HuePalette()[0]` is the first class, `[1]` the second.
+    """
 
     _palette = None
 
     def __new__(palette):
+        """Return the shared palette, building it on first use."""
         if palette._palette is None:
             palette._palette = sns.color_palette(['#003D99', '#66A3FF'])
 

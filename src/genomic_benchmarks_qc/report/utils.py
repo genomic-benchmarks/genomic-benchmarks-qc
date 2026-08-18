@@ -1,3 +1,5 @@
+"""Shared pieces of the HTML reports: templating, colors, embedded images."""
+
 from datetime import datetime
 import base64
 import html

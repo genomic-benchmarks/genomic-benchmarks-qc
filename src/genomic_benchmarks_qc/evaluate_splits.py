@@ -1,3 +1,13 @@
+"""Detect data leakage between the train and test halves of a dataset split.
+
+Stages both halves to FASTA, runs an MMseqs2 all-vs-all search of test against
+train, and reports how much of the test set has a near-identical counterpart in
+training - sequences a model can score correctly by memorisation alone.
+
+`run` is the entry point; the CLI is a thin wrapper around it. The report layout
+is defined in `genomic_benchmarks_qc.utils.naming`.
+"""
+
 import logging
 from pathlib import Path
 from typing import Optional
@@ -8,6 +18,8 @@ from genomic_benchmarks_qc.report.report_generator import generate_splits_html_r
 from genomic_benchmarks_qc.utils.mmseqs_summary import summarize_mmseqs_output, build_mmseqs_export_frame
 from genomic_benchmarks_qc.utils import mmseqs_runtime
 from genomic_benchmarks_qc.utils.input_utils import (
+    ensure_directory,
+    log_failures,
     setup_logger,
     stream_files_to_sequences,
     append_fasta_record,
@@ -15,13 +27,35 @@ from genomic_benchmarks_qc.utils.input_utils import (
     read_selected_fasta_sequences,
     filter_fasta_by_ids,
 )
+from genomic_benchmarks_qc.utils.naming import (
+    HTML_REPORT_FILE,
+    MMSEQS_DIR,
+    PLOTS_DIR,
+    SIMPLE_REPORT_FILE,
+    SPLIT_SUBDIR,
+    TMP_DIR,
+    column_dirname,
+    comparison_dirname,
+    strip_extensions,
+    unique_slugs,
+)
 from genomic_benchmarks_qc.utils.split_stats import (
     get_basic_stats_from_aggregates,
     get_threshold_stats,
     flag_split_data_leakage,
 )
 
+
 def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
+    """Attach the aligned query and target sequences to each MMseqs2 hit.
+
+    The search output identifies sequences by the internal 'seq_<n>_<half>' ids
+    assigned while staging, so the sequences themselves have to be read back
+    from the staged FASTA files before the HTML report can render alignments.
+
+    Raises RuntimeError if any hit id is missing from its FASTA file, which
+    would silently render a blank alignment.
+    """
     if results_filt.empty:
         return results_filt
 
@@ -46,6 +80,14 @@ def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
 
 
 def _stage_sequences_to_fasta(fasta_path, files, input_format, sequence_column, seq_suffix):
+    """Stream one half of the split into a single FASTA, returning its statistics.
+
+    MMseqs2 reads FASTA only, so CSV/TSV inputs are converted here; several
+    sequence columns are concatenated into one record, matching the 'merged'
+    analysis of the classes command. Records are numbered rather than named, and
+    `seq_suffix` marks which half they came from. Sequences are streamed and
+    counted incrementally so that inputs larger than memory can be handled.
+    """
     acc = SequenceStatsAccumulator()
 
     with fasta_path.open("w", encoding="utf-8") as fasta_handle:
@@ -56,13 +98,22 @@ def _stage_sequences_to_fasta(fasta_path, files, input_format, sequence_column, 
     return acc.finalize()
 
 
-def _build_split_report_stem(train_files, test_files):
-    train_stem = Path(train_files[0]).name.replace("".join(Path(train_files[0]).suffixes), "")
-    test_stem = Path(test_files[0]).name.replace("".join(Path(test_files[0]).suffixes), "")
-    return f"evaluate-splits_split_{train_stem}_vs_{test_stem}"
+def _build_comparison_dirname(train_files, test_files):
+    """Return the directory name for one train-vs-test comparison.
+
+    Train and test files are commonly named identically and told apart only by
+    their directory ('train/data.csv', 'test/data.csv'), which would give every
+    comparison of a dataset the same name. The parent directories disambiguate.
+    """
+    train_slug, test_slug = unique_slugs(
+        [strip_extensions(train_files[0]), strip_extensions(test_files[0])],
+        contexts=[Path(train_files[0]).parent.name, Path(test_files[0]).parent.name],
+    )
+    return comparison_dirname(train_slug, test_slug)
 
 
 def _build_simple_report_frame(threshold_stats):
+    """Build the one-row leakage verdict written as the simple CSV report."""
     result = {
         "Data Leakage": {
             "Flag": flag_split_data_leakage(threshold_stats['perc_queries_above_thr']),
@@ -75,8 +126,7 @@ def _build_simple_report_frame(threshold_stats):
 
 
 def _write_mmseqs_report_bundle(
-    out_folder,
-    report_stem,
+    comparison_dir,
     outfile,
     results_filt,
     train_files,
@@ -89,19 +139,21 @@ def _write_mmseqs_report_bundle(
     test_fasta_path,
 ):
     """Generate a comprehensive report bundle for split evaluation results.
-    
-    Produces:
-    - CSV with MMseqs2 hits exceeding similarity threshold
-    - Filtered FASTA files containing only sequences involved in hits
-    - HTML report with visualizations and alignment details
+
+    Produces, inside `comparison_dir`:
+    - mmseqs/<outfile>: TSV of the MMseqs2 hits above the similarity threshold
+    - mmseqs/seq_index_mapping/: FASTA files of only the sequences involved in
+      those hits, mapping the internal seq_* ids back to the input sequences
+    - plots/: similarity distribution plots
+    - report.html: the plots, the leakage summary and the top alignments
     """
     train_filenames = ",".join([Path(f).name for f in train_files])
     test_filenames = ",".join([Path(f).name for f in test_files])
 
     # Define output paths for all report components
-    html_report_path = out_folder / f"{report_stem}.html"
-    plots_dir = out_folder / f"{report_stem}_plots"
-    mmseqs_dir = out_folder / f"{report_stem}_mmseqs"
+    html_report_path = comparison_dir / HTML_REPORT_FILE
+    plots_dir = comparison_dir / PLOTS_DIR
+    mmseqs_dir = comparison_dir / MMSEQS_DIR
     seq_index_mapping = mmseqs_dir / 'seq_index_mapping'
 
     # Export MMseqs2 search results to TSV format
@@ -168,11 +220,19 @@ def run(
     This function reads sequences from the provided training and testing files, performs easy-search using MMseqs2, 
     and generates reports about potential data leakage between the training and testing datasets.
 
+    Reports are written into a 'split/<column>/<train>_vs_<test>/'
+    sub-directory of `out_folder`, matching the layout of the classes command.
+    FASTA inputs have no sequence column and use 'sequence'; several columns are
+    searched concatenated and land in 'merged'. Any grouping above that -
+    collection, dataset - is left to the caller, who expresses it through
+    `out_folder`.
+
     @param train_files: List of paths to training files.
     @param test_files: List of paths to testing files.
     @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder. Default: '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
+    @param out_folder: Path to the output folder; reports go into '<out_folder>/split/'. Default: '.'.
+    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format.
+                            Several columns are concatenated per row and searched together.
                             Default: ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
     @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 90.0.
@@ -192,83 +252,79 @@ def run(
     setup_logger(log_level, log_file)
     logging.info("Starting train-test split evaluation.")
 
-    out_folder = Path(out_folder)
-    if not out_folder.exists():
-        logging.info(f"Output folder {out_folder} does not exist. Creating it.")
-        out_folder.mkdir(parents=True, exist_ok=True)
+    # One directory per train-vs-test comparison. Keeping the temporary files
+    # inside it too means several comparisons of the same dataset can run
+    # concurrently against one output folder without overwriting each other.
+    comparison_dir = ensure_directory(
+        Path(out_folder)
+        / SPLIT_SUBDIR
+        / column_dirname(format, sequence_column)
+        / _build_comparison_dirname(train_files, test_files)
+    )
 
-    tmp_dir =  out_folder / "tmp"
+    tmp_dir = comparison_dir / TMP_DIR
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     train_fasta_path = tmp_dir / 'train_sequences.fasta'
     test_fasta_path = tmp_dir / 'test_sequences.fasta'
 
     try:
-        train_stats = _stage_sequences_to_fasta(train_fasta_path, train_files, format, sequence_column, 'train')
-        test_stats = _stage_sequences_to_fasta(test_fasta_path, test_files, format, sequence_column, 'test')
-        num_train_seqs = train_stats["count"]
-        num_test_seqs = test_stats["count"]
+        with log_failures("Train-test split evaluation"):
+            train_stats = _stage_sequences_to_fasta(train_fasta_path, train_files, format, sequence_column, 'train')
+            test_stats = _stage_sequences_to_fasta(test_fasta_path, test_files, format, sequence_column, 'test')
+            num_train_seqs = train_stats["count"]
+            num_test_seqs = test_stats["count"]
 
-        if num_train_seqs == 0 or num_test_seqs == 0:
-            raise ValueError(
-                "Both train and test inputs must contain at least one sequence before running split evaluation."
-            )
+            if num_train_seqs == 0 or num_test_seqs == 0:
+                raise ValueError(
+                    "Both train and test inputs must contain at least one sequence before running split evaluation."
+                )
 
-        logging.info(f"Read {num_train_seqs} sequences from training files.")
-        logging.info(f"Read {num_test_seqs} sequences from testing files.")
+            logging.info(f"Read {num_train_seqs} sequences from training files.")
+            logging.info(f"Read {num_test_seqs} sequences from testing files.")
         
-        # Run MMseqs2 search and keep raw TSV path for chunked post-processing.
-        outfile = "mmseqs2_search_result.tsv"
-        results_path = mmseqs_runtime.run_search(
-            test_fasta_path,
-            train_fasta_path,
-            tmp_dir / outfile,
-            tmp_dir,
-            threads=threads,
-            split_memory_limit=split_memory_limit,
-        )
-
-        summary = summarize_mmseqs_output(results_path, similarity_threshold)
-        results_filt = summary["results_filt"]
-
-        report_stem = _build_split_report_stem(train_files, test_files)
-
-        # Get threshold stats
-        threshold_stats = get_threshold_stats(
-            summary = summary,
-            similarity_threshold = similarity_threshold, 
-            num_train_seqs = num_train_seqs,
-            num_test_seqs = num_test_seqs
-        )
-
-        if 'simple' in report_types:
-            simple_report_path = out_folder / f"{report_stem}.csv"
-            df = _build_simple_report_frame(threshold_stats)
-            generate_simple_report(df, simple_report_path)
-        
-        if 'html' in report_types:
-            _write_mmseqs_report_bundle(
-                out_folder,
-                report_stem,
-                outfile,
-                results_filt,
-                train_files,
-                test_files,
-                train_stats,
-                test_stats,
-                threshold_stats,
-                summary,
-                train_fasta_path,
+            # Run MMseqs2 search and keep raw TSV path for chunked post-processing.
+            outfile = "mmseqs2_search_result.tsv"
+            results_path = mmseqs_runtime.run_search(
                 test_fasta_path,
+                train_fasta_path,
+                tmp_dir / outfile,
+                tmp_dir,
+                threads=threads,
+                split_memory_limit=split_memory_limit,
             )
+
+            summary = summarize_mmseqs_output(results_path, similarity_threshold)
+            results_filt = summary["results_filt"]
+
+            # Get threshold stats
+            threshold_stats = get_threshold_stats(
+                summary = summary,
+                similarity_threshold = similarity_threshold, 
+                num_train_seqs = num_train_seqs,
+                num_test_seqs = num_test_seqs
+            )
+
+            if 'simple' in report_types:
+                df = _build_simple_report_frame(threshold_stats)
+                generate_simple_report(df, comparison_dir / SIMPLE_REPORT_FILE)
+
+            if 'html' in report_types:
+                _write_mmseqs_report_bundle(
+                    comparison_dir,
+                    outfile,
+                    results_filt,
+                    train_files,
+                    test_files,
+                    train_stats,
+                    test_stats,
+                    threshold_stats,
+                    summary,
+                    train_fasta_path,
+                    test_fasta_path,
+                )
 
         logging.info("Train-test split evaluation successfully completed.")
-    except Exception as exc:
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            logging.exception("Train-test split evaluation failed.")
-        else:
-            logging.error(f"Train-test split evaluation failed: {exc}")
-        raise
     finally:
         if keep_tmp_files:
             logging.info(f"Keeping temporary files for debugging at: {tmp_dir}")

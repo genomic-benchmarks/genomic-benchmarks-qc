@@ -1,3 +1,5 @@
+"""The figures for the split report."""
+
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
@@ -9,6 +11,12 @@ from genomic_benchmarks_qc.report.classes_plots import HuePalette, prepare_legen
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR
 
 def plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats):
+    """Plot how similar each sequence's best match in the other half is.
+
+    One bar pair per similarity bin, with the leakage threshold marked. The
+    count axis is logarithmic because leakage is usually a small tail next to a
+    large bulk of unrelated sequences, which a linear axis would flatten away.
+    """
 
     unique_queries = pd.Series(query_similarity_max, dtype=float)
     unique_targets = pd.Series(target_similarity_max, dtype=float)
@@ -18,6 +26,12 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
     missing_data_target = threshold_stats["num_targets_without_hits"]
 
     def _build_hist_arrays(values: pd.Series, missing_data: int):
+        """Return (values, weights) with the sequences that had no hit at all.
+
+        Those sequences are absent from the search output, but leaving them out
+        would hide how much of the half is unrelated to the other one, so they
+        are added as a single weighted observation at 0% similarity.
+        """
         data = values.to_numpy(dtype=float)
         weights = np.ones_like(data, dtype=float)
         if missing_data > 0:

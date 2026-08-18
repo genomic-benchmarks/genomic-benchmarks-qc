@@ -1,7 +1,15 @@
+"""Rendering one MMseqs2 hit as a text alignment for the HTML report.
+
+The search reports an alignment of a region of the query against a region of
+the target; this lays the two full sequences out against each other with that
+region aligned, so a reader can see how much of each sequence the match covers.
+"""
+
 from itertools import zip_longest
 import html
 
 def _validate_alignment_coords(start, end, sequence_length, label):
+    """Check one sequence's 1-based alignment range lies inside the sequence."""
     if start < 1:
         raise ValueError(f"{label} start < 1 (1-based expected): {start}")
     if end < start:
@@ -13,6 +21,13 @@ def _validate_alignment_coords(start, end, sequence_length, label):
 
 
 def _validate_alignment_inputs(qstart, tstart, qend, tend, qseq, tseq, qaln, taln):
+    """Check the reported alignment really describes these two sequences.
+
+    The aligned strings, with their gaps removed, must be exactly the slices the
+    coordinates point at. If they are not, the hit and the sequence it was
+    matched back to have come apart somewhere, and rendering it would produce a
+    confident-looking but wrong alignment.
+    """
     _validate_alignment_coords(qstart, qend, len(qseq), "Query")
     _validate_alignment_coords(tstart, tend, len(tseq), "Target")
 
@@ -41,6 +56,7 @@ def _validate_alignment_inputs(qstart, tstart, qend, tend, qseq, tseq, qaln, tal
 
 
 def _get_midline(qaln, taln):
+    """Return the line between the two sequences: '|' match, '.' mismatch, ' ' gap."""
     return "".join(
         " " if (q == "-" or t == "-")
         else "|" if q == t
@@ -50,6 +66,12 @@ def _get_midline(qaln, taln):
 
 
 def _get_alignment(qstart, tstart, qseq, tseq, qaln, taln, tend, qend):
+    """Lay the two full sequences out with their aligned regions lined up.
+
+    Returns (target line, midline, query line), padded at the front so that the
+    aligned region starts at the same column in all three, and with the
+    unaligned flanks of each sequence kept around it.
+    """
     qstart0 = qstart - 1
     tstart0 = tstart - 1
 
@@ -72,10 +94,12 @@ def _get_alignment(qstart, tstart, qseq, tseq, qaln, taln, tend, qend):
 
 
 def _wrap_text(text, width):
+    """Split text into fixed-width chunks, without breaking on whitespace."""
     return [text[i:i + width] for i in range(0, len(text), width)]
 
 
 def _color_base(base):
+    """Wrap one base in the span that colors it, escaping anything unexpected."""
     safe_base = html.escape(base)
     return {
         "A": '<span class="base-A">A</span>',
@@ -87,11 +111,18 @@ def _color_base(base):
 
 
 def _format_sequence(seq, color):
+    """Escape a sequence for HTML, coloring each base unless color is off."""
     if not color:
         return html.escape(seq)
     return "".join(_color_base(base) for base in seq)
 
 def build_alignment_string(row, width=80, color=True, validate=True):
+    """Render one hit as wrapped blocks of target, midline and query.
+
+    `row` is one row of the MMseqs2 results with the two sequences attached.
+    Returns HTML unless `color` is off, in which case it is plain text. Raises
+    ValueError when `validate` is on and the hit does not match its sequences.
+    """
     qstart = int(row["qstart"])
     tstart = int(row["tstart"])
     qend   = int(row["qend"])

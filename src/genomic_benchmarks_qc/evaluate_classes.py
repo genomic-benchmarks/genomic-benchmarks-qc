@@ -1,3 +1,14 @@
+"""Compare sequence characteristics between the classes of one dataset.
+
+Reads the input as a set of classes - one FASTA file per class, or one CSV/TSV
+label column - computes per-class statistics, and reports on every pair of
+classes: a feature that separates two classes tells a model which class a
+sequence belongs to without it having to learn anything about the biology.
+
+`run` is the entry point; the CLI is a thin wrapper around it. The report layout
+is defined in `genomic_benchmarks_qc.utils.naming`.
+"""
+
 import logging
 from pathlib import Path
 from itertools import combinations
@@ -7,76 +18,248 @@ import pandas as pd
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 from genomic_benchmarks_qc.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
-from genomic_benchmarks_qc.utils.input_utils import read_fasta, read_sequences_from_df, read_csv_file, setup_logger
+from genomic_benchmarks_qc.utils.input_utils import (
+    ensure_directory,
+    log_failures,
+    read_fasta,
+    read_sequences_from_df,
+    read_csv_file,
+    setup_logger,
+)
+from genomic_benchmarks_qc.utils.naming import (
+    CLASS_SUBDIR,
+    DEFAULT_COLUMN_DIR,
+    HTML_REPORT_FILE,
+    PER_CLASS_DIR,
+    PLOTS_DIR,
+    SIMPLE_REPORT_FILE,
+    comparison_dirname,
+    per_column_dirnames,
+    strip_extensions,
+    unique_slugs,
+)
 
-def _strip_extensions(file_path):
-    """Return the filename with all extensions removed (e.g. 'a.fasta.gz' -> 'a')."""
-    name = Path(file_path).name
-    return name.replace("".join(Path(name).suffixes), "")
 
+def run_analysis(input_statistics, report_dir, report_types, plot_type):
+    """Analyse each class, then every pair of classes, writing reports under `report_dir`.
 
-def run_analysis(input_statistics, out_folder, report_types, plot_type):
-   
+    Layout produced, one directory per comparison so that every report type has
+    a fixed, predictable name inside it:
+
+        <report_dir>/
+            per-class/<class>.json
+            <classA>_vs_<classB>/
+                report.csv
+                report.html
+                duplicates.txt
+                plots/
+
+    Classes are compared in the order they arrive, which `run` has already
+    sorted by path name.
+    """
     if report_types is None:
         report_types = ['html', 'simple']
 
-    out_folder = Path(out_folder)
+    report_dir = Path(report_dir)
 
     # run individual analysis
     for s in input_statistics:
         stats, _ = s.compute()
 
         if "json" in report_types:
-
-            filename = _strip_extensions(s.filename)
-            if s.seq_column is not None:
-                filename += f'_{s.seq_column}'
-            if s.label is not None:
-                filename += f'_{s.label}'
-
-            json_report_path = out_folder / Path(filename + '_report.json')
-            generate_json_report(stats, json_report_path)
+            per_class_dir = report_dir / PER_CLASS_DIR
+            per_class_dir.mkdir(parents=True, exist_ok=True)
+            generate_json_report(stats, per_class_dir / f'{s.slug}.json')
 
     if len(input_statistics) < 2:
         return
 
     # run pair comparison analysis with all combinations
     for stat1, stat2 in combinations(input_statistics, 2):
-        filename = "evaluate-classes"
-        if stat1.seq_column is not None:
-            filename += f'_col_{stat1.seq_column}'
-            logging.info(f"Comparing classes for sequence column: {stat1.seq_column}")
-        if stat1.label is not None and stat2.label is not None:
-            filename += f'_label_{stat1.label}_vs_{stat2.label}'
-            logging.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
-        else:
-            filename += f'_{_strip_extensions(stat1.filename)}_{_strip_extensions(stat2.filename)}'
-            logging.info(
-                f"Comparing classes: {stat1.filename} vs {stat2.filename}")
+        comparison_dir = report_dir / comparison_dirname(stat1.slug, stat2.slug)
 
-        logging.debug(f"Running significant differences analysis for {filename}.")
+        if stat1.seq_column is not None:
+            logging.info(f"Comparing classes for sequence column: {stat1.seq_column}")
+        logging.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
+
+        logging.debug(f"Running significant differences analysis for {comparison_dir}.")
         results, failed_by_feature = flag_significant_differences(
             stat1, stat2
         )
 
+        # Only create the directory for report types that were actually asked for,
+        # so a json-only run does not leave empty comparison directories behind.
+        if 'simple' in report_types or 'html' in report_types:
+            comparison_dir.mkdir(parents=True, exist_ok=True)
+
         if 'simple' in report_types:
-            simple_report_path = out_folder / Path(f'{filename}.csv')
-            generate_simple_report(results, simple_report_path)
+            generate_simple_report(results, comparison_dir / SIMPLE_REPORT_FILE)
 
         if 'html' in report_types:
-            html_report_path = out_folder / Path(f'{filename}.html')
-            plots_path = out_folder / Path(f'{filename}_plots')
             # Convert results dict to DataFrame using all available result fields
             results_df = pd.DataFrame.from_dict(results, orient='index')
             generate_dataset_html_report(
                 stat1, stat2,
-                html_report_path,
-                plots_path=plots_path,
+                comparison_dir / HTML_REPORT_FILE,
+                plots_path=comparison_dir / PLOTS_DIR,
                 end_position=min(stat1.end_position, stat2.end_position),
                 plot_type=plot_type,
                 results=results_df,
                 failed_by_feature=failed_by_feature
             )
+
+
+def _regression_labels(df, label_column):
+    """Split a numeric target at its median into 'high' and 'low' classes.
+
+    Returns the dataframe with `label_column` replaced by the two class names,
+    and the class names themselves. Rows that are not numeric are dropped.
+
+    Raises ValueError if the target does not yield two classes, which is not a
+    recoverable condition: there is nothing to compare, and continuing would
+    fail later with an unrelated "no sequences found for label 'low'".
+    """
+    df[label_column] = pd.to_numeric(df[label_column], errors='coerce')
+
+    nan_count = df[label_column].isna().sum()
+    if nan_count > 0:
+        logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
+        # Copied, not just filtered: the classes are written back into the column
+        # below, and assigning into a slice of the original frame only warns.
+        df = df.dropna(subset=[label_column]).copy()
+
+    if len(df) == 0:
+        raise ValueError(
+            f"Regression target '{label_column}' contains no numeric values, so the dataset "
+            f"cannot be split into high and low classes."
+        )
+
+    threshold = df[label_column].median()
+    logging.debug(f"Inferred threshold for regression: {threshold}")
+    df[label_column] = df[label_column].apply(lambda x: 'high' if x >= threshold else 'low')
+    labels = ['high', 'low']
+
+    # Values are split at the median, so a target whose median equals its
+    # minimum - a constant or heavily zero-inflated column, or a single
+    # remaining row - puts every value in 'high' and leaves 'low' empty.
+    missing_classes = [label for label in labels if label not in set(df[label_column])]
+    if missing_classes:
+        raise ValueError(
+            f"Regression target '{label_column}' cannot be split into two classes: all "
+            f"{len(df)} value(s) fall on one side of the median ({threshold}), leaving "
+            f"'{missing_classes[0]}' empty. Check the target for constant or heavily "
+            f"zero-inflated values."
+        )
+
+    return df, labels
+
+
+def _resolve_labels(df, label_column, label_list, regression):
+    """Work out which classes to compare, returning (dataframe, labels).
+
+    The dataframe is returned because a regression target both rewrites and
+    filters it; for the other paths it comes back unchanged.
+    """
+    if regression:
+        return _regression_labels(df, label_column)
+
+    if len(label_list) == 1 and label_list[0] == 'infer':
+        labels = sorted(df[label_column].unique().tolist())
+        logging.debug(f"Inferred labels: {labels}")
+        return df, labels
+
+    # dict.fromkeys drops repeated labels; a repeated label would otherwise be
+    # compared against itself. The order given here does not survive - classes
+    # are sorted by path name by the caller.
+    return df, list(dict.fromkeys(str(label) for label in label_list))
+
+
+def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_position):
+    """Evaluate classes given as one FASTA file per class."""
+    # Each file is one class, named after its stem. Stems can repeat across
+    # directories, so the parent directory disambiguates the report paths.
+    labels = [strip_extensions(f) for f in input]
+    slugs = unique_slugs(labels, contexts=[Path(f).parent.name for f in input])
+
+    # Classes are ordered by their path name, so the comparison directories
+    # do not depend on the order the files happened to be given in, and match
+    # what a CSV input with the same class names would produce.
+    ordered_inputs = sorted(zip(input, labels, slugs), key=lambda item: item[2])
+
+    seq_stats = []
+    for input_file, label, slug in ordered_inputs:
+        sequences = read_fasta(input_file)
+        logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
+        seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
+                                         label=label, slug=slug, end_position=end_position)]
+
+    run_analysis(
+        input_statistics=seq_stats,
+        report_dir=Path(out_folder) / CLASS_SUBDIR / DEFAULT_COLUMN_DIR,
+        report_types=report_types,
+        plot_type=plot_type
+    )
+
+
+def _evaluate_table_classes(input, format, out_folder, sequence_column, label_column, label_list,
+                            regression, report_types, plot_type, end_position):
+    """Evaluate classes given as a label column of one or more CSV/TSV files."""
+    # read all files into one dataframe (single file wrapped in list)
+    if len(input) > 1:
+        logging.info(f"Merging {len(input)} input files: {', '.join(input)}")
+    dfs = [read_csv_file(f, format, sequence_column, label_column) for f in input]
+    df = pd.concat(dfs, ignore_index=True)
+    logging.debug(f"Read {len(df)} rows from {len(dfs)} file(s)")
+
+    df, labels = _resolve_labels(df, label_column, label_list, regression)
+
+    # single source filename for reports
+    # Shown in the report, not used as a path - hence a literal rather than the
+    # directory name that happens to read the same.
+    filename = Path(input[0]).name if len(input) == 1 else 'merged'
+    filepath = input[0] if len(input) == 1 else ", ".join(input)
+
+    # Labels come straight from the data, so they may contain characters
+    # that are unusable in a path ('/', spaces) or that differ only in case.
+    label_slugs = dict(zip(labels, unique_slugs(labels)))
+
+    # Same ordering rule as for FASTA inputs, applied whether the labels were
+    # inferred, derived from a regression target or listed explicitly.
+    labels = sorted(labels, key=label_slugs.__getitem__)
+
+    # One directory per sequence column, plus a trailing one for the merged
+    # analysis when there is more than one column.
+    column_dirs, merged_dir = per_column_dirnames(sequence_column)
+    class_dir = Path(out_folder) / CLASS_SUBDIR
+
+    def statistics_for(seq_col, reported_column):
+        seq_stats = []
+        for label in labels:
+            sequences = read_sequences_from_df(df, seq_col, label_column, label)
+            logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{reported_column}'.")
+            seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
+                                             slug=label_slugs[label], seq_column=reported_column,
+                                             end_position=end_position)]
+        return seq_stats
+
+    # loop over individual sequence columns
+    for seq_col, column_dir in zip(sequence_column, column_dirs):
+        run_analysis(
+            input_statistics=statistics_for(seq_col, seq_col),
+            report_dir=class_dir / column_dir,
+            report_types=report_types,
+            plot_type=plot_type,
+        )
+
+    # if multiple sequence columns, also evaluate merged sequences
+    if merged_dir is not None:
+        run_analysis(
+            input_statistics=statistics_for(sequence_column, '_'.join(sequence_column)),
+            report_dir=class_dir / merged_dir,
+            report_types=report_types,
+            plot_type=plot_type,
+        )
+
 
 def run(input, 
         format, 
@@ -95,15 +278,23 @@ def run(input,
 
     This function reads sequences from the provided input files, performs analysis, and generates reports about the sequences.
 
+    Reports are written to '<out_folder>/class/<column>/<classA>_vs_<classB>/',
+    one directory per compared pair of classes. FASTA inputs have no sequence
+    column and use 'sequence', so the layout is the same for every input format.
+    Any grouping above that - collection, dataset, split - is left to the caller,
+    who expresses it through `out_folder`.
+
     @param input: List of paths to input files. Can be a list of files, each containing sequences from one class.
     @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder. Default: '.'.
+    @param out_folder: Path to the output folder; reports go into '<out_folder>/class/'. Default: '.'.
     @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
-                            Either one column or list of columns. Default: ['sequence']
+                            Either one column or list of columns. Each column is analyzed separately, and
+                            all of them together in an extra 'merged' report. Default: ['sequence']
     @param label_column: Name of the label column for datasets in CSV/TSV format. Default: 'label'.
     @param label_list: List of label classes to consider or "infer" to parse different labels automatically from label column.
-                      For datasets in CSV/TSV format.
-    @param regression: If True, label column is considered as a regression target and values are split into 2 classes.
+                      For datasets in CSV/TSV format. Default: ['infer'].
+    @param regression: If True, label column is considered as a regression target and values are split into 2 classes
+                       at the median. Raises ValueError if that does not produce two non-empty classes.
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
     @param end_position: End position of the sequences to consider in per position statistics. 
                          If not provided, 75th percentile of sequence lengths will be used. Default: None.
@@ -123,92 +314,15 @@ def run(input,
     setup_logger(log_level, log_file)
     logging.info("Starting classes evaluation.")
 
-    if not Path(out_folder).exists():
-        logging.info(f"Output folder {out_folder} does not exist. Creating it.")
-        Path(out_folder).mkdir(parents=True, exist_ok=True)
+    ensure_directory(out_folder)
 
-    # we have multiple fasta files with one label each
-    if format.startswith('fa'):
-        seq_stats = []
-        for input_file in input:
-            sequences = read_fasta(input_file)
-            logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
-            seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                             label=_strip_extensions(input_file), end_position=end_position)]
-        run_analysis(
-            input_statistics=seq_stats,
-            out_folder=out_folder,
-            report_types=report_types,
-            plot_type=plot_type
-        )
-
-    # we have CSV/TSV
-    else:
-        # read all files into one dataframe (single file wrapped in list)
-        if len(input) > 1:
-            logging.info(f"Merging {len(input)} input files: {', '.join(input)}")
-        dfs = [read_csv_file(f, format, sequence_column, label_column) for f in input]
-        df = pd.concat(dfs, ignore_index=True)
-        logging.debug(f"Read {len(df)} rows from {len(dfs)} file(s)")
-
-        # handle regression: convert label column to binary high/low
-        if regression:
-            if not pd.api.types.is_numeric_dtype(df[label_column]):
-                logging.debug(f"Converting label column '{label_column}' to numeric type for regression.")
-                df[label_column] = pd.to_numeric(df[label_column], errors='coerce')
-            nan_count = df[label_column].isna().sum()
-            if nan_count > 0:
-                logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
-                df = df.dropna(subset=[label_column])
-
-            if len(df) == 0:
-                logging.error(f"No valid numeric values found in '{label_column}' for regression. Skipping analysis.")
-                return
-            elif len(df) < 2:
-                logging.warning(f"Only {len(df)} sample(s) remaining after dropping non-numeric values. Results may not be meaningful.")
-
-            threshold = df[label_column].median()
-            logging.debug(f"Inferred threshold for regression: {threshold}")
-            df[label_column] = df[label_column].apply(lambda x: 'high' if x >= threshold else 'low')
-            labels = ['high', 'low']
-        elif len(label_list) == 1 and label_list[0] == 'infer':
-            labels = sorted(df[label_column].unique().tolist())
-            logging.debug(f"Inferred labels: {labels}")
+    with log_failures("Classes evaluation"):
+        # we have multiple fasta files with one label each
+        if format.startswith('fa'):
+            _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_position)
+        # we have CSV/TSV
         else:
-            labels = [str(label) for label in label_list]
-
-        # single source filename for reports
-        filename = Path(input[0]).name if len(input) == 1 else "merged"
-        filepath = input[0] if len(input) == 1 else ", ".join(input)
-
-        # loop over individual sequence columns
-        for seq_col in sequence_column:
-            seq_stats = []
-            for label in labels:
-                sequences = read_sequences_from_df(df, seq_col, label_column, label)
-                logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{seq_col}'.")
-                seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
-                                                 seq_column=seq_col, end_position=end_position)]
-            run_analysis(
-                input_statistics=seq_stats,
-                out_folder=out_folder,
-                report_types=report_types,
-                plot_type=plot_type,
-            )
-
-        # if multiple sequence columns, also evaluate merged sequences
-        if len(sequence_column) > 1:
-            seq_stats = []
-            for label in labels:
-                sequences = read_sequences_from_df(df, sequence_column, label_column, label)
-                seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
-                                                 seq_column='_'.join(sequence_column),
-                                                 end_position=end_position)]
-            run_analysis(
-                input_statistics=seq_stats,
-                out_folder=out_folder,
-                report_types=report_types,
-                plot_type=plot_type,
-            )
+            _evaluate_table_classes(input, format, out_folder, sequence_column, label_column,
+                                    label_list, regression, report_types, plot_type, end_position)
 
     logging.info("Classes evaluation successfully completed.")

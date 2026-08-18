@@ -1,3 +1,11 @@
+"""The `gb-qc` command line interface.
+
+Each command validates its options, reports the first problem as a message on
+stderr with a non-zero exit code, and then hands over to the matching
+`evaluate_*.run`. Nothing else lives here: the commands are thin wrappers, so
+that the same evaluations can be called directly from Python.
+"""
+
 import re
 from pathlib import Path
 from typing import List, Optional
@@ -21,6 +29,31 @@ VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 # MMseqs2 byte sizes: 0, or a non-zero integer with an optional unit suffix.
 SPLIT_MEMORY_LIMIT_RE = re.compile(r'\A(?:0|[1-9][0-9]*[BKMGT]?)\Z')
+
+
+def _fail(message: str):
+    """Report a validation problem on stderr and exit non-zero."""
+    typer.echo(f"Error: {message}", err=True)
+    raise typer.Exit(code=1)
+
+
+def _validate_input_files(files: List[str], description: str):
+    """Check every input path exists, naming the kind of input in the message."""
+    for file_path in files:
+        if not Path(file_path).is_file():
+            _fail(f"{description} does not exist: {file_path}")
+
+
+def _validate_choice(value, valid_values: List[str], description: str):
+    """Check one value is among the accepted ones."""
+    if value not in valid_values:
+        _fail(f"Invalid {description} '{value}'. Must be one of: {', '.join(valid_values)}")
+
+
+def _validate_choices(values, valid_values: List[str], description: str):
+    """Check every value of a repeatable option is among the accepted ones."""
+    for value in values:
+        _validate_choice(value, valid_values, description)
 
 
 def _infer_format(file_path: str) -> str:
@@ -51,15 +84,23 @@ def _infer_format_from_inputs(files: List[str]) -> str:
     formats = {_normalize_format(_infer_format(f)) for f in files}
     if len(formats) > 1:
         detected = ', '.join(f"{f} ({_infer_format(f)})" for f in files)
-        typer.echo(
-            f"Error: All input files must have the same format, but got: {detected}",
-            err=True,
-        )
-        raise typer.Exit(code=1)
+        _fail(f"All input files must have the same format, but got: {detected}")
     return formats.pop()
 
 
+def _resolve_format(files: List[str]) -> str:
+    """Infer the shared input format of all files and check it is supported."""
+    format = _infer_format_from_inputs(files)
+    _validate_choice(format, VALID_FORMATS, 'format')
+    return format
+
+
 def _run_command(command, *args, **kwargs):
+    """Call an evaluation and turn any failure into a non-zero exit code.
+
+    The evaluation has already logged the cause, so only the message is echoed
+    here; `--log-level DEBUG` puts the traceback in the log.
+    """
     try:
         command(*args, **kwargs)
     except typer.Exit:
@@ -85,45 +126,20 @@ def evaluate_classes(
     """
     Evaluate sequence characteristics across different classes/labels in the dataset.
     """
-    # Validate input files exist
-    for file_path in input:
-        if not Path(file_path).is_file():
-            typer.echo(f"Error: Input file does not exist: {file_path}", err=True)
-            raise typer.Exit(code=1)
+    _validate_input_files(input, 'Input file')
+    format = _resolve_format(input)
 
-    # Infer format from all input files
-    format = _infer_format_from_inputs(input)
-    # Validate format
-    if format not in VALID_FORMATS:
-        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
-        raise typer.Exit(code=1)
-
-    # Validate fasta format requires at least 2 files
+    # One FASTA file holds one class, so a single file has nothing to compare
     if format == 'fasta' and len(input) < 2:
-        typer.echo("Error: When format is 'fasta', at least 2 input files are required (one per class).", err=True)
-        raise typer.Exit(code=1)
-    
-    # Validate report_types
-    for rt in report_types:
-        if rt not in VALID_REPORT_TYPES:
-            typer.echo(f"Error: Invalid report type '{rt}'. Must be one of: {', '.join(VALID_REPORT_TYPES)}", err=True)
-            raise typer.Exit(code=1)
-    
-    # Validate plot_type
-    if plot_type not in VALID_PLOT_TYPES:
-        typer.echo(f"Error: Invalid plot type '{plot_type}'. Must be one of: {', '.join(VALID_PLOT_TYPES)}", err=True)
-        raise typer.Exit(code=1)
-    
-    # Validate log_level
-    if log_level not in VALID_LOG_LEVELS:
-        typer.echo(f"Error: Invalid log level '{log_level}'. Must be one of: {', '.join(VALID_LOG_LEVELS)}", err=True)
-        raise typer.Exit(code=1)
-    
-    # Validate end_position is positive
+        _fail("When format is 'fasta', at least 2 input files are required (one per class).")
+
+    _validate_choices(report_types, VALID_REPORT_TYPES, 'report type')
+    _validate_choice(plot_type, VALID_PLOT_TYPES, 'plot type')
+    _validate_choice(log_level, VALID_LOG_LEVELS, 'log level')
+
     if end_position is not None and end_position <= 0:
-        typer.echo(f"Error: end_position must be a positive integer, got {end_position}", err=True)
-        raise typer.Exit(code=1)
-    
+        _fail(f"end_position must be a positive integer, got {end_position}")
+
     _run_command(
         run_evaluate_classes,
         input=input,
@@ -157,56 +173,29 @@ def evaluate_splits(
     """
     Evaluate data leakage in dataset train-test split.
     """
-    # Validate train input files exist
-    for file_path in train_input:
-        if not Path(file_path).is_file():
-            typer.echo(f"Error: Training input file does not exist: {file_path}", err=True)
-            raise typer.Exit(code=1)
-    
-    # Validate test input files exist
-    for file_path in test_input:
-        if not Path(file_path).is_file():
-            typer.echo(f"Error: Test input file does not exist: {file_path}", err=True)
-            raise typer.Exit(code=1)
-        
-    # Infer format from all input files
-    format = _infer_format_from_inputs(train_input + test_input)
-    # Validate format
-    if format not in VALID_FORMATS:
-        typer.echo(f"Error: Invalid format '{format}'. Must be one of: {', '.join(VALID_FORMATS)}", err=True)
-        raise typer.Exit(code=1)
-    
-    # Validate report_types
-    for rt in report_types:
-        if rt not in VALID_REPORT_TYPES:
-            typer.echo(f"Error: Invalid report type '{rt}'. Must be one of: {', '.join(VALID_REPORT_TYPES)}", err=True)
-            raise typer.Exit(code=1)
-    
-    # Validate log_level
-    if log_level not in VALID_LOG_LEVELS:
-        typer.echo(f"Error: Invalid log level '{log_level}'. Must be one of: {', '.join(VALID_LOG_LEVELS)}", err=True)
-        raise typer.Exit(code=1)
-    
-    # Validate thresholds are in valid range [0, 100]
+    _validate_input_files(train_input, 'Training input file')
+    _validate_input_files(test_input, 'Test input file')
+
+    # Both halves are searched against each other, so they must share a format
+    format = _resolve_format(train_input + test_input)
+
+    _validate_choices(report_types, VALID_REPORT_TYPES, 'report type')
+    _validate_choice(log_level, VALID_LOG_LEVELS, 'log level')
+
     if not 0 <= similarity_threshold <= 100:
-        typer.echo(f"Error: similarity_threshold must be between 0 and 100, got {similarity_threshold}", err=True)
-        raise typer.Exit(code=1)
+        _fail(f"similarity_threshold must be between 0 and 100, got {similarity_threshold}")
 
-    # Validate threads are positive when provided
     if threads is not None and threads <= 0:
-        typer.echo(f"Error: threads must be a positive integer, got {threads}", err=True)
-        raise typer.Exit(code=1)
+        _fail(f"threads must be a positive integer, got {threads}")
 
-    # Validate split_memory_limit follows MMseqs2's byte-size grammar when provided
+    # MMseqs2's byte-size grammar: 0, or a positive integer with an optional unit
     if split_memory_limit is not None:
         split_memory_limit = split_memory_limit.strip().upper()
         if not SPLIT_MEMORY_LIMIT_RE.match(split_memory_limit):
-            typer.echo(
-                f"Error: split_memory_limit must be 0 or a positive integer optionally "
-                f"followed by B, K, M, G or T (e.g., 10G, 1T), got {split_memory_limit}",
-                err=True,
+            _fail(
+                f"split_memory_limit must be 0 or a positive integer optionally "
+                f"followed by B, K, M, G or T (e.g., 10G, 1T), got {split_memory_limit}"
             )
-            raise typer.Exit(code=1)
 
     _run_command(
         run_evaluate_splits,
@@ -225,6 +214,7 @@ def evaluate_splits(
     )
 
 def main():
+    """Console-script entry point installed as `gb-qc`."""
     app()
 
 if __name__ == "__main__":

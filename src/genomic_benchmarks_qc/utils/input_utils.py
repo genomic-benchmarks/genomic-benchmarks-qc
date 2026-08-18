@@ -1,3 +1,11 @@
+"""Reading sequence inputs, plus the logging and output-folder plumbing.
+
+Everything here is shared by both commands: FASTA and CSV/TSV readers - eager
+ones returning lists, streaming ones for inputs too large to hold in memory -
+and the small amount of process setup (logger configuration, failure logging,
+output directories) they both need.
+"""
+
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -6,6 +14,7 @@ import logging
 import json
 import gzip
 from contextlib import contextmanager
+from pathlib import Path
 
 
 @contextmanager
@@ -71,12 +80,13 @@ def read_selected_fasta_sequences(fasta_file, ids_to_keep):
         return {}
 
     out = {}
-    for record in SeqIO.parse(str(fasta_file), 'fasta'):
-        seq_id = record.id
-        if seq_id in ids_to_keep:
-            out[seq_id] = str(record.seq).upper()
-            if len(out) == len(ids_to_keep):
-                break
+    with _open_text(fasta_file) as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
+            seq_id = record.id
+            if seq_id in ids_to_keep:
+                out[seq_id] = str(record.seq).upper()
+                if len(out) == len(ids_to_keep):
+                    break
 
     return out
 
@@ -87,9 +97,10 @@ def stream_fasta_records_by_ids(fasta_path, ids_to_keep):
     if not ids_to_keep:
         return
 
-    for record in SeqIO.parse(str(fasta_path), 'fasta'):
-        if record.id in ids_to_keep:
-            yield record
+    with _open_text(fasta_path) as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
+            if record.id in ids_to_keep:
+                yield record
 
 
 def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
@@ -108,10 +119,21 @@ def append_fasta_record(file_handle, sequence, seq_id):
     )
 
 
+def _table_read_options(file_path, input_format):
+    """Return the (delimiter, compression) pandas needs for a tabular input."""
+    delimiter = '\t' if input_format in ('tsv', 'tsv.gz') else ','
+    compression = 'gzip' if str(file_path).endswith('.gz') else None
+    return delimiter, compression
+
+
 def read_csv_file(file_path, input_format, seq_columns, label_column=None):
-    """Read CSV/TSV data and normalize sequence columns to uppercase strings."""
-    delim = '\t' if input_format == 'tsv' or input_format == 'tsv.gz' else ','
-    compression = 'gzip' if file_path.endswith('.gz') else None
+    """Read CSV/TSV data and normalize sequence columns to uppercase strings.
+
+    Everything is read as text: sequences are strings, and a numeric label
+    column is converted by the caller that needs numbers, so that no column is
+    silently retyped on the way in.
+    """
+    delim, compression = _table_read_options(file_path, input_format)
 
     columns = seq_columns.copy()
     if label_column is not None:
@@ -170,8 +192,7 @@ def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
 
 def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000):
     """Yield sequences from CSV/TSV files in chunks to limit memory usage."""
-    delim = '\t' if input_format == 'tsv' or input_format == 'tsv.gz' else ','
-    compression = 'gzip' if file_path.endswith('.gz') else None
+    delim, compression = _table_read_options(file_path, input_format)
 
     reader = pd.read_csv(
         file_path,
@@ -230,6 +251,33 @@ def setup_logger(level=logging.INFO, file=None):
 
     # Suppress matplotlib debug messages
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
+
+
+def ensure_directory(path):
+    """Create a directory and its parents, reporting the ones that were missing."""
+    path = Path(path)
+    if not path.exists():
+        logging.info(f"Output folder {path} does not exist. Creating it.")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@contextmanager
+def log_failures(operation):
+    """Log a failing operation and re-raise, so the log file records the cause.
+
+    The exception still propagates to the caller - the CLI turns it into a
+    non-zero exit - but without this the reason would only ever reach stderr and
+    never `--log-file`. At DEBUG level the traceback is logged too.
+    """
+    try:
+        yield
+    except Exception as exc:
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            logging.exception(f"{operation} failed.")
+        else:
+            logging.error(f"{operation} failed: {exc}")
+        raise
 
 
 def write_stats_json(stats, stats_json_file):

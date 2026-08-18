@@ -1,3 +1,10 @@
+"""The HTML template for the class comparison report.
+
+Builds a single self-contained page: the plots are embedded as base64 data URIs
+and the styling is inlined, so a report can be moved, zipped or served from
+anywhere without losing anything.
+"""
+
 from datetime import datetime
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 import importlib.metadata

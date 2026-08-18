@@ -1,8 +1,17 @@
+"""Turning the raw search summary into the numbers the split report shows."""
+
+
 def _calculate_percentage(part, whole):
+    """Return part as a percentage of whole, treating an empty whole as 0%."""
     return (part / whole) * 100 if whole > 0 else 0.0
 
 
 def flag_split_data_leakage(perc_queries_above_thr, fail_threshold=2.0):
+    """Grade a split by the share of test sequences with a near-identical match.
+
+    Any leakage at all is worth knowing about, so a non-zero share is a Warning
+    and only `fail_threshold` percent or more is a Fail.
+    """
     if perc_queries_above_thr >= fail_threshold:
         return "Fail"
     if perc_queries_above_thr > 0:
@@ -11,6 +20,7 @@ def flag_split_data_leakage(perc_queries_above_thr, fail_threshold=2.0):
 
 
 def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, test_stats):
+    """Combine the two halves' sequence counts and lengths for the report header."""
     basic_stats = {
         "train_filename": str(filename_train),
         "test_filename": str(filename_test),
@@ -27,6 +37,12 @@ def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, 
 
 
 def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_seqs):
+    """Turn the search summary into the leakage counts and percentages.
+
+    Queries are test sequences and targets are train sequences, so the two
+    percentages answer different questions: how much of the test set is
+    compromised, and how much of the training set is responsible.
+    """
     if summary is None:
         raise ValueError("summary is required for threshold statistics computation")
 

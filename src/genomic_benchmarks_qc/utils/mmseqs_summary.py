@@ -1,3 +1,15 @@
+"""Summarising an MMseqs2 hit table without holding it in memory.
+
+An all-vs-all search of a large split produces far more hits than the report
+needs, so the table is read in chunks and reduced on the way past: the per-
+sequence maximum similarity, the sets of sequences with hits and above the
+threshold, and the top hits for the alignment view.
+
+Similarity is `min(qcov, tcov) * pident` - the coverage of the shorter of the
+two sequences scaled by how identical the aligned part is - so that a short
+exact match inside a long sequence does not count as a leak.
+"""
+
 import heapq
 import logging
 
@@ -26,10 +38,16 @@ MMSEQS_RESULT_COLUMNS = MMSEQS_REQUIRED_COLS + MMSEQS_DERIVED_COLS
 
 
 def _missing_required_columns(frame_columns):
+    """Return the required MMseqs2 columns absent from the given columns."""
     return [column for column in MMSEQS_REQUIRED_COLS if column not in frame_columns]
 
 
 def _validate_mmseqs_frame(frame, source_name):
+    """Check a chunk has every required column and drop rows with gaps in them.
+
+    Raises RuntimeError on missing columns, which means the search was run with
+    a different `--format-output` than this code expects.
+    """
     missing_cols = _missing_required_columns(frame.columns)
     if missing_cols:
         raise RuntimeError(
@@ -50,6 +68,7 @@ def _validate_mmseqs_frame(frame, source_name):
 
 
 def _score_mmseqs_chunk(chunk):
+    """Add the coverage and similarity columns this module scores hits by."""
     min_cov = chunk[["qcov", "tcov"]].min(axis=1)
     scored_chunk = chunk.copy()
     scored_chunk["min_cov"] = min_cov
@@ -58,6 +77,11 @@ def _score_mmseqs_chunk(chunk):
 
 
 def _update_similarity_max(current_max, grouped_max):
+    """Merge a chunk's per-sequence maxima into the running maxima, in place.
+
+    Hits for one sequence can be spread over several chunks, so the maximum has
+    to be carried across them rather than computed per chunk.
+    """
     for sequence_id, similarity_value in grouped_max.items():
         similarity_value = float(similarity_value)
         if similarity_value > current_max.get(sequence_id, float("-inf")):
@@ -65,6 +89,12 @@ def _update_similarity_max(current_max, grouped_max):
 
 
 def _push_top_rows(top_rows_heap, rows, row_order, top_n):
+    """Keep the `top_n` most similar hits seen so far in a min-heap.
+
+    The heap holds (similarity, arrival order, row), so the weakest hit is
+    always the one dropped and equally similar hits keep the order they were
+    read in. Returns the updated arrival counter.
+    """
     for _, row in rows.iterrows():
         row_dict = row.to_dict()
         heapq.heappush(
@@ -79,6 +109,7 @@ def _push_top_rows(top_rows_heap, rows, row_order, top_n):
 
 
 def _finalize_results_frame(top_rows_heap):
+    """Turn the heap of top hits into a frame sorted most-similar first."""
     top_rows = [
         row_dict
         for _, _, row_dict in sorted(top_rows_heap, key=lambda item: (-item[0], item[1]))
@@ -97,6 +128,11 @@ def _finalize_results_frame(top_rows_heap):
 
 
 def build_mmseqs_export_frame(results_filt):
+    """Return the hits as a frame with every export column, in a fixed order.
+
+    Missing columns are filled with NA so the exported TSV has the same shape
+    whether or not anything was found.
+    """
     if results_filt is None or results_filt.empty:
         return pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
 
@@ -110,6 +146,17 @@ def build_mmseqs_export_frame(results_filt):
 
 
 def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunksize=100000):
+    """Reduce an MMseqs2 hit table to the values the split report needs.
+
+    Reads the table in chunks of `chunksize` rows, so memory use is bounded by
+    the chunk size and the number of distinct sequences rather than by the
+    number of hits. An empty table is not an error - it means nothing matched.
+
+    Returns a dict with, for each of queries (test) and targets (train), the
+    per-sequence maximum similarity, the ids with any hit and the ids above
+    `similarity_threshold`; plus the total hit count and `results_filt`, the
+    `top_n` most similar hits for the alignment view.
+    """
     query_similarity_max = {}
     target_similarity_max = {}
     query_ids_with_hits = set()

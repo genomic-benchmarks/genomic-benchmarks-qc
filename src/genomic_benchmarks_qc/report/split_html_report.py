@@ -1,3 +1,9 @@
+"""The HTML template for the train-test split report.
+
+Self-contained in the same way as the class report: embedded plots, inlined
+styling, and the top alignments rendered inline as text.
+"""
+
 from datetime import datetime
 import html
 from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64

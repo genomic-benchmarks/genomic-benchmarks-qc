@@ -79,21 +79,66 @@ All of the input formats are supported in .gz version as well.
 
 ## Output Files
 
+Each command writes into its own sub-directory of `--out-folder` — `class/` for
+`evaluate-classes` and `split/` for `evaluate-splits` — then into one directory
+per sequence column, then into one directory per comparison:
+
+```
+<out-folder>/
+├── class/
+│   └── sequence/
+│       └── negatives_vs_positives/
+│           ├── report.csv
+│           └── report.html
+└── split/
+    └── sequence/
+        └── train_vs_test/
+            ├── report.csv
+            └── report.html
+```
+
+Every report ends up at the same kind of path whatever the input format was, and
+because each comparison gets a directory of its own, the files inside it always
+have the same names — `report.html` is the HTML report for whichever comparison
+the directory is named after. You can run both commands on the same dataset with
+the same `--out-folder` without them overwriting each other; if you are checking
+several datasets, give each one its own `--out-folder` to keep the results side
+by side.
+
+Directory names come from your class labels and input file names, lowercased and
+reduced to characters that are safe on any filesystem. If two of them would
+produce the same directory name, the tool makes them unique and warns you which
+name it used. Labels shown *inside* the reports and plots are always the
+originals.
+
+Classes are always ordered alphabetically by directory name, so the same dataset
+gives you the same report paths no matter which order you listed the input files
+or `--label-list` values in.
+
 ### evaluate-classes outputs
 
-Report files are named after the compared classes, using the stem
-`evaluate-classes[_col_<column>]_label_<classA>_vs_<classB>` (the `_col_<column>`
-part is only added for CSV/TSV inputs with a sequence column). For example:
-`evaluate-classes_label_G4_positives_vs_G4_negatives` or
-`evaluate-classes_col_sequence_label_0_vs_1`.
+```
+<out-folder>/class/
+└── <column>/                   # one directory per sequence column, named after
+    │                           # it. FASTA inputs have no columns and use
+    │                           # `sequence`; if you give several columns, an
+    │                           # extra `merged` report joins them all together
+    ├── <classA>_vs_<classB>/
+    │   ├── report.csv
+    │   ├── report.html
+    │   ├── duplicates.txt
+    │   └── plots/
+    └── per-class/
+        └── <class>.json
+```
 
 | File | Description |
 |------|-------------|
-| `evaluate-classes_*.csv` | Simple comparison report with Pass/Warning/Fail flags. |
-| `evaluate-classes_*.html` | Interactive HTML report with visualizations. |
-| `evaluate-classes_*_plots/` | Individual plot images (PNG). |
-| `evaluate-classes_*_duplicates.txt` | Sequences appearing in multiple classes. |
-| `evaluate-classes_*_report.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies); written only when `json` is in `--report-types`. |
+| `report.csv` | Simple comparison report with Pass/Warning/Fail flags. |
+| `report.html` | Interactive HTML report with visualizations. |
+| `plots/` | Individual plot images (PNG). |
+| `duplicates.txt` | Sequences appearing in both compared classes; written only when there are any. |
+| `per-class/<class>.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies); written only when `json` is in `--report-types`. |
 
 **Flag thresholds (AU-ROC):**
 - **Pass**: ≤ 0.6 (classes not distinguishable by feature)
@@ -111,15 +156,31 @@ part is only added for CSV/TSV inputs with a sequence column). For example:
 
 ### evaluate-splits outputs
 
-Files use the stem `evaluate-splits_split_<train>_vs_<test>`, e.g.
-`evaluate-splits_split_enhancers_train_vs_enhancers_test`.
+```
+<out-folder>/split/
+└── <column>/                   # the sequence column that was searched. FASTA
+    └── <train>_vs_<test>/      # inputs use `sequence`, and several columns
+        ├── report.csv          # searched together use `merged`
+        ├── report.html
+        ├── plots/
+        └── mmseqs/
+```
+
+If you give several `--sequence-column` values, they are joined per row and
+searched as one sequence rather than one column at a time, so the run produces a
+single `merged/` comparison rather than one per column.
 
 | File | Description |
 |------|-------------|
-| `evaluate-splits_*.csv` | Simple leakage summary. |
-| `evaluate-splits_*.html` | Interactive HTML report with alignments. |
-| `evalaute-splits_*_mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
-| `evalaute-splits_*_plots/` | Similarity distribution plots. |
+| `report.csv` | Simple leakage summary. |
+| `report.html` | Interactive HTML report with alignments. |
+| `mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
+| `plots/` | Similarity distribution plots. |
+
+Temporary MMseqs2 files are kept in a `tmp/` directory inside the comparison
+directory and removed at the end unless you pass `--keep-tmp-files`. Because
+they live inside the comparison directory, you can run several comparisons at the
+same time into one `--out-folder`.
 
 **Leakage detection:** Flags when test sequences exceed similarity threshold vs training sequences.
 
@@ -134,11 +195,18 @@ Files use the stem `evaluate-splits_split_<train>_vs_<test>`, e.g.
 | `--label-column` | `label` | Column with class labels |
 | `--label-list` | `infer` | Specific labels or `infer` |
 | `--regression` | False | Treat label as continuous, split high/low |
-| `--out-folder` | `.` | Output directory |
+| `--out-folder` | `.` | Output directory; reports go into `<out-folder>/class/` |
 | `--report-types` | `html simple` | `json`, `html`, `simple` |
 | `--plot-type` | `boxen` | `boxen` or `violin` |
 | `--end-position` | auto | Max position for per-position stats |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+
+**Regression targets:** `--regression` splits the label column at its median into
+`high` and `low` classes. Rows whose value is not numeric are dropped with a
+warning. If no numeric values are left, or if every value falls on one side of
+the median — which happens with a constant column, or one that is mostly
+zeros — there are no two classes to compare, so the tool tells you why and exits
+with an error instead of producing a meaningless report.
 
 ### evaluate-splits
 
@@ -147,7 +215,7 @@ Files use the stem `evaluate-splits_split_<train>_vs_<test>`, e.g.
 | `--train-input` | required | Training file(s) |
 | `--test-input` | required | Test file(s) |
 | `--sequence-column` | `sequence` | Column with sequences |
-| `--out-folder` | `.` | Output directory |
+| `--out-folder` | `.` | Output directory; reports go into `<out-folder>/split/` |
 | `--report-types` | `html simple` | Report formats |
 | `--similarity-threshold` | `90.0` | % similarity for leakage flag |
 | `--threads` | auto | MMseqs2 thread count |
