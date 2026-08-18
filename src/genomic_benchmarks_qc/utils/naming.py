@@ -65,7 +65,15 @@ HTML_REPORT_FILE = 'report.html'
 DUPLICATES_FILE = 'duplicates.txt'
 PLOTS_DIR = 'plots'
 MMSEQS_DIR = 'mmseqs'
-TMP_DIR = 'tmp'
+
+# Prefix of the scratch directory holding the MMseqs2 working files. It is a
+# prefix rather than a fixed name because the directory is created with
+# `tempfile.mkdtemp`, which appends a random suffix: the create is atomic, so
+# the run that gets the name is provably the only owner and may delete the
+# directory afterwards without risking someone else's data. A fixed name would
+# have to be adopted if it already existed, and removing it would then destroy
+# whatever was there - including the files a concurrent run is still using.
+TMP_PREFIX = 'gb-qc-mmseqs-'
 
 # Per-class statistics are not a comparison, so they sit beside them.
 PER_CLASS_DIR = 'per-class'

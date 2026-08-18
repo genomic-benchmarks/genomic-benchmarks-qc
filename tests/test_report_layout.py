@@ -14,6 +14,7 @@ import pytest
 from helpers import sequences as _sequences, write_csv as _write_csv, write_fasta as _write_fasta, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_classes, evaluate_splits
+from genomic_benchmarks_qc.utils.naming import TMP_PREFIX
 
 
 class TestClassesLayout:
@@ -216,7 +217,9 @@ class TestSplitsLayout:
         )
 
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
-        assert not (comparison / 'tmp').exists()
+        # Globbed, not a fixed name: the scratch directory carries a random
+        # suffix, so asserting on 'tmp' alone would pass even if one leaked.
+        assert list(comparison.glob(f'{TMP_PREFIX}*')) == []
 
     def test_temporary_files_are_kept_inside_the_comparison_directory(self, tmp_path, stub_mmseqs):
         """Per-comparison tmp keeps concurrent runs sharing an output folder apart."""
@@ -233,8 +236,9 @@ class TestSplitsLayout:
         )
 
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
-        assert (comparison / 'tmp').is_dir()
-        assert not (tmp_path / 'out' / 'tmp').exists()
+        kept = list(comparison.glob(f'{TMP_PREFIX}*'))
+        assert len(kept) == 1 and kept[0].is_dir()
+        assert list((tmp_path / 'out').glob(f'{TMP_PREFIX}*')) == []
 
     def test_the_searched_column_names_the_directory(self, tmp_path, stub_mmseqs):
         train = _write_csv(tmp_path / 'train.csv', ['0'], columns=('gene',))

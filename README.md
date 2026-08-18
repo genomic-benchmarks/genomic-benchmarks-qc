@@ -177,10 +177,13 @@ single `merged/` comparison rather than one per column.
 | `mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
 | `plots/` | Similarity distribution plots. |
 
-Temporary MMseqs2 files are kept in a `tmp/` directory inside the comparison
-directory and removed at the end unless you pass `--keep-tmp-files`. Because
-they live inside the comparison directory, you can run several comparisons at the
-same time into one `--out-folder`.
+Temporary MMseqs2 files are kept in a `gb-qc-mmseqs-*/` directory inside the
+comparison directory and removed at the end unless you pass `--keep-tmp-files`.
+The trailing suffix is random, so each run gets a directory of its own: several
+comparisons - or even repeated runs of the same one - can go into one
+`--out-folder` at the same time without disturbing each other's scratch files.
+With `--keep-tmp-files`, each run therefore leaves its own directory behind and
+none are cleaned up later; the path of each is written to the log.
 
 **Leakage detection:** Flags when test sequences exceed similarity threshold vs training sequences.
 

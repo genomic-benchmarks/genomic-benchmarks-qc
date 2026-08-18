@@ -9,6 +9,9 @@ is defined in `genomic_benchmarks_qc.utils.naming`.
 """
 
 import logging
+import os
+import stat
+import tempfile
 from pathlib import Path
 from typing import Optional
 import shutil
@@ -33,7 +36,7 @@ from genomic_benchmarks_qc.utils.naming import (
     PLOTS_DIR,
     SIMPLE_REPORT_FILE,
     SPLIT_SUBDIR,
-    TMP_DIR,
+    TMP_PREFIX,
     column_dirname,
     comparison_dirname,
     strip_extensions,
@@ -252,9 +255,11 @@ def run(
     setup_logger(log_level, log_file)
     logging.info("Starting train-test split evaluation.")
 
-    # One directory per train-vs-test comparison. Keeping the temporary files
-    # inside it too means several comparisons of the same dataset can run
-    # concurrently against one output folder without overwriting each other.
+    # One directory per train-vs-test comparison, so different comparisons of the
+    # same dataset can run concurrently into one output folder without
+    # overwriting each other. The scratch directory below lives inside it and is
+    # unique per run, so even two runs of the *same* comparison keep their
+    # working files apart - though they would still write the same reports.
     comparison_dir = ensure_directory(
         Path(out_folder)
         / SPLIT_SUBDIR
@@ -262,8 +267,22 @@ def run(
         / _build_comparison_dirname(train_files, test_files)
     )
 
-    tmp_dir = comparison_dir / TMP_DIR
-    tmp_dir.mkdir(parents=True, exist_ok=True)
+    # `mkdtemp` rather than a fixed name: it creates the directory atomically, so
+    # this run is provably its only owner and the cleanup below cannot delete
+    # files that belong to anything else. Re-using a fixed name would mean
+    # adopting whatever was already there and then removing it - which would
+    # take out the scratch files of a concurrent run of the same comparison, or
+    # the files a previous `--keep-tmp-files` run was asked to preserve.
+    tmp_dir = Path(tempfile.mkdtemp(dir=comparison_dir, prefix=TMP_PREFIX))
+
+    # `mkdtemp` hardcodes mode 0700, which would make kept scratch files
+    # unreadable to everyone but the owner even where the reports beside them
+    # are group-readable. Match the comparison directory instead, so a shared
+    # output tree stays shared.
+    try:
+        os.chmod(tmp_dir, stat.S_IMODE(os.stat(comparison_dir).st_mode))
+    except OSError as mode_error:
+        logging.debug(f"Could not match permissions of the temporary directory: {mode_error}")
 
     train_fasta_path = tmp_dir / 'train_sequences.fasta'
     test_fasta_path = tmp_dir / 'test_sequences.fasta'

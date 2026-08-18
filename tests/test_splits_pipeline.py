@@ -14,6 +14,7 @@ import pytest
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
+from genomic_benchmarks_qc.utils.naming import TMP_PREFIX
 
 
 @pytest.fixture
@@ -193,7 +194,8 @@ class TestFailureHandling:
                 out_folder=str(tmp_path / 'out'), report_types=['simple'],
             )
 
-        assert not (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'tmp').exists()
+        comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
+        assert list(comparison.glob(f'{TMP_PREFIX}*')) == []
 
     def test_a_failed_cleanup_warns_instead_of_failing_the_run(self, tmp_path, split_inputs, stub_mmseqs, monkeypatch, caplog):
         """A successful analysis must not be lost to an unremovable temp directory."""
