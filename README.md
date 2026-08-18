@@ -105,8 +105,9 @@ the same `--out-folder` without them overwriting each other; if you are checking
 several datasets, give each one its own `--out-folder` to keep the results side
 by side.
 
-Directory names come from your class labels and input file names, lowercased and
-reduced to characters that are safe on any filesystem. If two of them would
+Directory names come from your class labels, sequence-column names, and input file
+names. They are lowercased and reduced to characters that are safe on any filesystem.
+If two of them would
 produce the same directory name, the tool makes them unique and warns you which
 name it used. Labels shown *inside* the reports and plots are always the
 originals.
