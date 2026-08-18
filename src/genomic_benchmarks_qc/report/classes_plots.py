@@ -176,7 +176,10 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
 
-    fig, axs = plt.subplots(len(nucleotides), 1, figsize=(12, len(nucleotides) * 3 + 2), sharey=True, dpi=300)
+    fig, axs = plt.subplots(
+        len(nucleotides), 1, figsize=(12, len(nucleotides) * 3 + 2), sharey=True, dpi=300, squeeze=False
+    )
+    axs = axs[:, 0]
     for index, nt in enumerate(nucleotides):
         dinucleotides = [nt + nt2 for nt2 in nucleotides]
         row = df[df['Dinucleotide'].isin(dinucleotides)]
