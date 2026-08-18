@@ -454,7 +454,7 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
     label1 = str(bins_list[0][1].label)
     label2 = str(bins_list[1][1].label)
     plot_data = []
-    for bin_key, v1, v2 in zip(bin_keys, values1, values2):
+    for bin_key, v1, v2 in zip(bin_keys, values1, values2, strict=True):
         plot_data.append({"duplication_bin": str(bin_key), "label": label1, "value": v1})
         plot_data.append({"duplication_bin": str(bin_key), "label": label2, "value": v2})
 
@@ -475,13 +475,10 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
     )
 
     # Set y-limits with padding
-    all_values = [v for bins, _ in bins_list for v in bins.values() if v > 0]
+    all_values = [v for bins, _ in bins_list for v in bins.values()]
     if all_values:
-        min_y, max_y = min(all_values), max(all_values)
-        if min_y != max_y:
-            ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
-        else:
-            ax.set_ylim(-0.1, 1.1)
+        max_y = max(all_values)
+        ax.set_ylim(0, max_y * 1.1 if max_y > 0 else 1.0)
 
     if percent_remaining_after_dedup is not None:
         ax.set_title(f"Percent of sequences remaining after deduplication: {percent_remaining_after_dedup:.2%}")
