@@ -74,8 +74,8 @@ jobs:
             --input example_datasets/G4_positives.fasta \
             --input example_datasets/G4_negatives.fasta \
             --out-folder ci_out/G4
-          test -f "ci_out/G4/evaluate-classes_label_G4_positives_vs_G4_negatives.csv"
-          test -f "ci_out/G4/evaluate-classes_label_G4_positives_vs_G4_negatives.html"
+          test -f "ci_out/G4/class/sequence/g4_negatives_vs_g4_positives/report.csv"
+          test -f "ci_out/G4/class/sequence/g4_negatives_vs_g4_positives/report.html"
 
       - name: evaluate-classes (multiple CSV files, label column)
         run: |
@@ -83,7 +83,8 @@ jobs:
             --input example_datasets/enhancers_train.csv \
             --input example_datasets/enhancers_test.csv \
             --out-folder ci_out/enhancers
-          test -f "ci_out/enhancers/evaluate-classes_col_sequence_label_0_vs_1.csv"
+          test -f "ci_out/enhancers/class/sequence/0_vs_1/report.csv"
+          test -f "ci_out/enhancers/class/sequence/0_vs_1/report.html"
 
       - name: evaluate-classes (TSV, multiple sequence columns)
         run: |
@@ -93,7 +94,9 @@ jobs:
             --sequence-column noncodingRNA \
             --label-column label \
             --out-folder ci_out/miRNA
-          test -f "ci_out/miRNA/evaluate-classes_col_gene_noncodingRNA_label_0_vs_1.csv"
+          test -f "ci_out/miRNA/class/gene/0_vs_1/report.csv"
+          test -f "ci_out/miRNA/class/noncodingrna/0_vs_1/report.csv"
+          test -f "ci_out/miRNA/class/merged/0_vs_1/report.csv"
 
       - name: evaluate-splits (data leakage, uses MMseqs2)
         run: |
@@ -102,4 +105,5 @@ jobs:
             --test-input example_datasets/enhancers_test.csv \
             --sequence-column sequence \
             --out-folder ci_out/splits
-          test -f "ci_out/splits/evaluate-splits_split_enhancers_train_vs_enhancers_test.csv"
+          test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/report.csv"
+          test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/report.html"
