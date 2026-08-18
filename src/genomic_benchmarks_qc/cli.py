@@ -6,6 +6,7 @@ stderr with a non-zero exit code, and then hands over to the matching
 that the same evaluations can be called directly from Python.
 """
 
+import logging
 import re
 from pathlib import Path
 from typing import List, Optional
@@ -98,14 +99,20 @@ def _resolve_format(files: List[str]) -> str:
 def _run_command(command, *args, **kwargs):
     """Call an evaluation and turn any failure into a non-zero exit code.
 
-    The evaluation has already logged the cause, so only the message is echoed
-    here; `--log-level DEBUG` puts the traceback in the log.
+    Only the message is echoed here, but the traceback is not thrown away with
+    the exception: it goes to the log at DEBUG, so `--log-level DEBUG` records
+    the cause even for failures raised before `log_failures` takes over - a
+    scratch directory that cannot be created, say.
     """
     try:
         command(*args, **kwargs)
     except typer.Exit:
         raise
     except Exception as exc:
+        # Failures inside the evaluation proper are logged twice at DEBUG, once
+        # here and once by `log_failures`. Worth it: the alternative is guessing
+        # whether the evaluation got far enough to have logged anything at all.
+        logging.debug("Command failed.", exc_info=True)
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1)
 
