@@ -56,7 +56,9 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
         plots_path: Directory to save plot images.
         end_position: Maximum position for per-position plots.
         plot_type: Plot type ('boxen' or 'violin').
-        results: Optional DataFrame with pre-computed flags. Column 'Flag' used for summary statuses.
+        results: DataFrame with pre-computed flags, as produced by
+            `flag_significant_differences`. Column 'Flag' is used for the summary
+            statuses the template needs, so it is required, not optional.
         failed_by_feature: Dict with failure info for plot shading:
             {
                 'Sequence lengths': {'Pass'},
@@ -70,14 +72,11 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
-    if results is not None:
-        summary_statuses = results['Flag'].to_dict()
-    else:
-        summary_statuses = None
+    summary_statuses = results['Flag'].to_dict()
 
-    # Extract percent remaining from results if available
+    # Extract percent remaining, which only the duplication check computes
     percent_remaining = None
-    if results is not None and 'Sequence Duplications within Labels' in results.index:
+    if 'Sequence Duplications within Labels' in results.index:
         dup_info = results.loc['Sequence Duplications within Labels']
         if isinstance(dup_info, pd.Series) and 'Percent Remaining' in dup_info:
             percent_remaining = dup_info['Percent Remaining']

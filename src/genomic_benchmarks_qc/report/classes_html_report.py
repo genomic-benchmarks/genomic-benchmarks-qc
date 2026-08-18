@@ -355,7 +355,8 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         duplicate_seqs_file: path to file with duplicate sequences (optional).
         tool_description: short description of the tool to include in the header (optional).
 
-    Backwards compatible: if summary_statuses is None, placeholders are left empty.
+    `summary_statuses` must contain the 'Sequence Duplications within Labels' flag,
+    which selects between the duplication plot and the "no duplicates" message.
     """
     html_template = HTML_TEMPLATE
 
