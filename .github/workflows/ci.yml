@@ -65,8 +65,12 @@ jobs:
           if-no-files-found: ignore
 
       - name: Install MMseqs2
+        env:
+          MMSEQS_VERSION: 18-8cc5c
+          MMSEQS_SHA256: bd9b0234da5949ad528d5b5f9ea4cda9c1e23dce14b46c0791d4d919a76e61ce
         run: |
-          wget -q https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz
+          wget -q "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS_VERSION}/mmseqs-linux-avx2.tar.gz"
+          echo "${MMSEQS_SHA256}  mmseqs-linux-avx2.tar.gz" | sha256sum -c -
           tar xzf mmseqs-linux-avx2.tar.gz
           echo "$PWD/mmseqs/bin" >> "$GITHUB_PATH"
 
