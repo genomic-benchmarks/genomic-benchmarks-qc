@@ -143,6 +143,30 @@ class TestUniqueSlugs:
     def test_accepts_no_contexts(self):
         assert unique_slugs([]) == []
 
+    def test_disambiguated_names_stay_within_the_segment_limit(self):
+        # Long stems in long directories: the context and the value are each
+        # bounded on their own, so combining them used to yield twice the limit.
+        # Two such names then meet in a comparison directory, whose name has to
+        # fit in the 255 characters a path component allows.
+        values = ["p" * 200, "p" * 200]
+        contexts = ["c" * 200, "d" * 200]
+        slugs = unique_slugs(values, contexts=contexts)
+
+        assert len(set(slugs)) == 2
+        assert all(len(slug) <= MAX_SEGMENT_LENGTH for slug in slugs)
+        assert len(comparison_dirname(*slugs)) <= 255
+
+    def test_numeric_suffix_stays_within_the_segment_limit(self):
+        # The fallback path appends to an already full-length name, so the
+        # suffix has to displace characters rather than extend past the limit.
+        values = ["q" * 200, "q" * 200, "q" * 200]
+        contexts = ["shared" * 40] * 3
+        slugs = unique_slugs(values, contexts=contexts)
+
+        assert len(set(slugs)) == 3
+        assert all(len(slug) <= MAX_SEGMENT_LENGTH for slug in slugs)
+        assert all(not slug.endswith(("-", ".", "_")) for slug in slugs)
+
 
 class TestComparisonDirname:
     def test_joins_two_slugs(self):

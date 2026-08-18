@@ -118,6 +118,19 @@ def slugify(value, fallback=FALLBACK_SLUG):
     return text
 
 
+def _fit(text, reserved=0):
+    """Trim a slug to `MAX_SEGMENT_LENGTH`, leaving room for `reserved` more chars.
+
+    `slugify` bounds each piece on its own, so combining a context slug with a
+    value slug - or appending a numeric suffix - can produce twice the limit.
+    Two such names then meet in `comparison_dirname`, and the result exceeds the
+    255-character path component that common filesystems allow, so creating the
+    report directory fails. Trimming here keeps every slug within the budget the
+    limit was chosen for.
+    """
+    return text[:MAX_SEGMENT_LENGTH - reserved].strip('-._')
+
+
 def unique_slugs(values, contexts=None):
     """Slugify ``values``, disambiguating any slugs that end up identical.
 
@@ -152,12 +165,13 @@ def unique_slugs(values, contexts=None):
         if context is not None:
             context_slug = slugify(context, fallback='')
             if context_slug:
-                candidate = f'{context_slug}-{slug}'
+                candidate = _fit(f'{context_slug}-{slug}')
 
         base, suffix = candidate, 1
         while candidate in used:
             suffix += 1
-            candidate = f'{base}-{suffix}'
+            marker = f'-{suffix}'
+            candidate = f'{_fit(base, len(marker))}{marker}'
 
         if candidate != slug:
             logging.warning(
