@@ -3,6 +3,7 @@
 from datetime import datetime
 import base64
 import html
+import json
 from pathlib import Path
 
 FAIL_COLOR = '#c62828'   # .status-fail background-color
@@ -33,8 +34,14 @@ def put_data(html_template, placeholder, data):
 
 
 def escape_str(s):
-    """Return a JSON/JS quoted string for safe embedding in templates."""
-    return '"' + str(s).replace('"', '\\"') + '"'
+    """Return a JSON/JS quoted string for safe embedding in inline scripts."""
+    return (
+        json.dumps(str(s))
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("'", "\\u0027")
+    )
 
 
 def icon_html(summary_statuses, key):
