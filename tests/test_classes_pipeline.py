@@ -110,6 +110,25 @@ class TestSingleClass:
         assert _reports(tmp_path / 'out') == []
 
 
+class TestInputValidation:
+    def test_an_empty_fasta_class_is_rejected(self, tmp_path, caplog):
+        empty = tmp_path / 'empty.fa'
+        empty.write_text('')
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(ValueError, match='No sequences found in FASTA file'):
+                evaluate_classes.run(
+                    input=[write_fasta(tmp_path / 'pos.fa', 30, seed=1), str(empty)],
+                    format='fasta',
+                    out_folder=str(tmp_path / 'out'),
+                    report_types=['simple'],
+                )
+
+        assert 'empty.fa' in caplog.text
+        # Rejected while reading, so no partial reports are left behind.
+        assert _reports(tmp_path / 'out') == []
+
+
 class TestInputMerging:
     def test_multiple_input_files_are_pooled_into_one_dataset(self, tmp_path, caplog):
         first = write_csv(tmp_path / 'first.csv', ['a', 'b'], rows_per_label=15)

@@ -189,6 +189,13 @@ def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_posi
     seq_stats = []
     for input_file, label, slug in ordered_inputs:
         sequences = read_fasta(input_file)
+        # A class with no sequences has nothing to compare, and is almost always
+        # a wrong path or a truncated file rather than something to report on.
+        # Rejected here so the run fails on the input, not partway through the
+        # statistics - as the CSV path does for a label with no rows.
+        if not sequences:
+            logging.error(f"No sequences found in FASTA file '{input_file}'.")
+            raise ValueError(f"No sequences found in FASTA file '{input_file}'.")
         logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
         seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
                                          label=label, slug=slug, end_position=end_position)]
