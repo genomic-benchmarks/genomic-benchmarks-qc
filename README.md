@@ -204,6 +204,7 @@ none are cleaned up later; the path of each is written to the log.
 | `--plot-type` | `boxen` | `boxen` or `violin` |
 | `--end-position` | auto | Max position for per-position stats |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `--log-file` | none | Path to also write logs to; logs go to the console only when unset |
 
 **Regression targets:** `--regression` splits the label column at its median into
 `high` and `low` classes. Rows whose value is not numeric are dropped with a
@@ -223,7 +224,10 @@ with an error instead of producing a meaningless report.
 | `--report-types` | `html simple` | Report formats |
 | `--similarity-threshold` | `90.0` | % similarity for leakage flag |
 | `--threads` | auto | MMseqs2 thread count |
+| `--split-memory-limit` | unlimited | Upper RAM limit for MMseqs2 prefilter structures (e.g. `10G`, `1T`) |
 | `--keep-tmp-files` | False | Keep temp files for debugging |
+| `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `--log-file` | none | Path to also write logs to; logs go to the console only when unset |
 
 ## Contributions & Support
 
