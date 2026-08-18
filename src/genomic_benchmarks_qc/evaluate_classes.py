@@ -165,6 +165,10 @@ def _resolve_labels(df, label_column, label_list, regression):
 
     if len(label_list) == 1 and label_list[0] == 'infer':
         labels = sorted(df[label_column].unique().tolist())
+        if not labels:
+            raise ValueError(
+                f"No usable labels found in column '{label_column}'."
+            )
         logging.debug(f"Inferred labels: {labels}")
         return df, labels
 
