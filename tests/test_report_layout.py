@@ -7,6 +7,7 @@ inputs whose names used to collide into a shared report path.
 """
 
 import pathlib
+import stat
 
 import pandas as pd
 import pytest
@@ -239,6 +240,10 @@ class TestSplitsLayout:
         kept = list(comparison.glob(f'{TMP_PREFIX}*'))
         assert len(kept) == 1 and kept[0].is_dir()
         assert list((tmp_path / 'out').glob(f'{TMP_PREFIX}*')) == []
+
+        # mkdtemp would leave 0700 behind, hiding kept scratch files from the
+        # group that can read the reports next to them.
+        assert stat.S_IMODE(kept[0].stat().st_mode) == stat.S_IMODE(comparison.stat().st_mode)
 
     def test_the_searched_column_names_the_directory(self, tmp_path, stub_mmseqs):
         train = _write_csv(tmp_path / 'train.csv', ['0'], columns=('gene',))
