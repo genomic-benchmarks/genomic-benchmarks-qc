@@ -107,10 +107,11 @@ class SequenceStatistics:
 
         col_info = f" for {self.seq_column} comparison" if self.seq_column is not None else ""
 
+        lengths = self.stats['Sequence lengths'].values.flatten()
+
         if self.end_position is None:
 
             # get second end position - where one of the stats contains less then 75% values
-            lengths = self.stats['Sequence lengths'].values.flatten()
             lengths_75th = np.percentile(lengths, 75)
             # round to nearest integer
             self.end_position = int(np.round(lengths_75th))
@@ -121,7 +122,6 @@ class SequenceStatistics:
             )
         else:
             # Ensure end_position is not greater than the maximum sequence length
-            lengths = self.stats['Sequence lengths'].values.flatten()
             max_length = int(max(lengths))
             if self.end_position > max_length:
                 logging.warning(f"end_position {self.end_position} is greater than the maximum sequence length {max_length}. Setting end_position to {max_length}.")
