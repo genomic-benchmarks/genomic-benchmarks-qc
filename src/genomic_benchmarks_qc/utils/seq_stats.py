@@ -136,9 +136,12 @@ class SequenceStatistics:
         self.stats['Label'] = self.label if self.label is not None else 'N/A'
         self.stats['Sequence column'] = self.seq_column if self.seq_column is not None else 'N/A'
         self.stats['Number of sequences'] = len(self.sequences)
-        self.stats['Number of bases'] = sum(len(sequence) for sequence in self.sequences)
-        self.stats['Unique bases'] = sorted(list(set(''.join(self.sequences))))
         total_bases = sum(len(sequence) for sequence in self.sequences)
+        self.stats['Number of bases'] = total_bases
+        unique_bases = set()
+        for sequence in self.sequences:
+            unique_bases.update(sequence)
+        self.stats['Unique bases'] = sorted(unique_bases)
         self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / total_bases if total_bases > 0 else 0.0
         self.stats['Number of sequences left after deduplication'] = len(set(self.sequences))
         self.stats['Empty sequences'] = sum(1 for sequence in self.sequences if len(sequence) == 0)
@@ -146,7 +149,9 @@ class SequenceStatistics:
     def _compute_per_sequence_statistics(self):
         """Compute every per-sequence and per-position feature in one pass."""
 
-        nucleotides = self.stats['Unique bases'] if 'Unique bases' in self.stats else sorted(list(set(''.join(self.sequences))))
+        # `compute` always runs `_compute_basic_statistics` first, which is what
+        # puts 'Unique bases' in `stats`.
+        nucleotides = self.stats['Unique bases']
         dinucleotides = [n1 + n2 for n1 in nucleotides for n2 in nucleotides]
 
         nucleotides_per_sequence = {}
