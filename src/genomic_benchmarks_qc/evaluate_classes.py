@@ -161,6 +161,14 @@ def _resolve_labels(df, label_column, label_list, regression):
     filters it; for the other paths it comes back unchanged.
     """
     if regression:
+        # Regression derives its own classes, so anything given in --label-list
+        # is silently dropped; say so rather than reporting on classes the user
+        # did not ask for.
+        if not (len(label_list) == 1 and label_list[0] == 'infer'):
+            logging.warning(
+                f"Ignoring label_list {label_list}: regression splits '{label_column}' "
+                f"into 'high' and 'low' classes."
+            )
         return _regression_labels(df, label_column)
 
     if len(label_list) == 1 and label_list[0] == 'infer':
