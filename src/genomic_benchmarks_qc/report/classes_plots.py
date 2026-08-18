@@ -105,20 +105,8 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
     @param nucleotides: List of nucleotides to plot.
     @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
     @param failed_nucleotides: Dict mapping nucleotide -> flag status
-        (e.g., {'A': 'Warning', 'G': 'Fail'}). Currently not applied as
-        seaborn boxenplot requires special handling for outline coloring.
-    @return: Matplotlib figure object.
-    """
-    """
-    Plot the nucleotide content of two sets of sequences.
-
-    @param stats1: Statistics for the first set of sequences.
-    @param stats2: Statistics for the second set of sequences.
-    @param nucleotides: List of nucleotides to plot.
-    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-    @param failed_nucleotides: Dict mapping nucleotide -> flag status
-        (e.g., {'A': 'Warning', 'G': 'Fail'}). Used to add red outlines
-        to failed nucleotides in boxen plots.
+        (e.g., {'A': 'Warning', 'G': 'Fail'}). Used to add colored
+        underlines beneath the failed nucleotides.
     @return: Matplotlib figure object.
     """
 
