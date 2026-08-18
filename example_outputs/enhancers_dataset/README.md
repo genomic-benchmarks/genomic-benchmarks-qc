@@ -24,7 +24,7 @@ evaluate_classes.run(
 
 Running the above commands for `gb-qc evaluate-classes` tool will create `example_outputs/enhancers_dataset` folder with the following results:
 
-```
+```text
 class/
 └── sequence/
     └── 0_vs_1/
@@ -72,7 +72,7 @@ evaluate_splits.run(
 
 Running the above commands for `gb-qc evaluate-splits` tool will create `example_outputs/enhancers_dataset` folder with the following results:
 
-```
+```text
 split/
 └── sequence/
     └── enhancers_train_vs_enhancers_test/

@@ -83,7 +83,7 @@ Each command writes into its own sub-directory of `--out-folder` — `class/` fo
 `evaluate-classes` and `split/` for `evaluate-splits` — then into one directory
 per sequence column, then into one directory per comparison:
 
-```
+```text
 <out-folder>/
 ├── class/
 │   └── sequence/
@@ -118,7 +118,7 @@ or `--label-list` values in.
 
 ### evaluate-classes outputs
 
-```
+```text
 <out-folder>/class/
 └── <column>/                   # one directory per sequence column, named after
     │                           # it. FASTA inputs have no columns and use
@@ -157,7 +157,7 @@ or `--label-list` values in.
 
 ### evaluate-splits outputs
 
-```
+```text
 <out-folder>/split/
 └── <column>/                   # the sequence column that was searched. FASTA
     └── <train>_vs_<test>/      # inputs use `sequence`, and several columns

@@ -22,7 +22,7 @@ evaluate_classes.run(
 
 Running the above commands for `gb-qc evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following structure:
 
-```
+```text
 class/
 ├── gene/
 │   └── 0_vs_1/
