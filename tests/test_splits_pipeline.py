@@ -91,6 +91,7 @@ class TestHtmlReportBundle:
         mapping = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'mmseqs' / 'seq_index_mapping'
         assert mapping.joinpath('test_sequences.fasta').read_text().count('>') == 1
         assert '>seq_0_test' in mapping.joinpath('test_sequences.fasta').read_text()
+        assert mapping.joinpath('train_sequences.fasta').read_text().count('>') == 1
         assert '>seq_3_train' in mapping.joinpath('train_sequences.fasta').read_text()
 
     def test_a_search_with_no_hits_still_produces_a_report(self, tmp_path, split_inputs, stub_mmseqs):
