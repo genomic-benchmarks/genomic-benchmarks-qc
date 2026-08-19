@@ -13,18 +13,7 @@ gb-qc evaluate-classes \
   --out-folder example_outputs/enhancers_dataset
 ```
 
-or
-
-```python
-from genomic_benchmarks_qc import evaluate_classes
-
-evaluate_classes.run(
-  input=['example_datasets/enhancers_train.csv', 'example_datasets/enhancers_test.csv'],
-  out_folder='example_outputs/enhancers_dataset'
-)
-```
-
-Running the above commands for `gb-qc evaluate-classes` tool will create `example_outputs/enhancers_dataset` folder with the following results:
+Running the above command for `gb-qc evaluate-classes` tool will create `example_outputs/enhancers_dataset` folder with the following results:
 
 ```text
 class/
@@ -59,20 +48,7 @@ gb-qc evaluate-splits \
   --out-folder example_outputs/enhancers_dataset
 ```
 
-or
-
-```python
-from genomic_benchmarks_qc import evaluate_splits
-
-evaluate_splits.run(
-  train_files=['example_datasets/enhancers_train.csv'],
-  test_files=['example_datasets/enhancers_test.csv'],
-  sequence_column=['sequence'],
-  out_folder='example_outputs/enhancers_dataset'
-)
-```
-
-Running the above commands for `gb-qc evaluate-splits` tool will create `example_outputs/enhancers_dataset` folder with the following results:
+Running the above command for `gb-qc evaluate-splits` tool will create `example_outputs/enhancers_dataset` folder with the following results:
 
 ```text
 split/

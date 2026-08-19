@@ -10,19 +10,7 @@ gb-qc evaluate-classes \
   --sequence-column noncodingRNA
 ```
 
-or
-
-```python
-from genomic_benchmarks_qc import evaluate_classes
-
-evaluate_classes.run(
-  input=['example_datasets/miRNA_mRNA_pairs_dataset.tsv'], 
-  out_folder='example_outputs/miRNA_mRNA_dataset', 
-  sequence_column=['gene', 'noncodingRNA']
-)
-```
-
-Running the above commands for `gb-qc evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following structure:
+Running the above command for `gb-qc evaluate-classes` tool will create `example_outputs/miRNA_mRNA_dataset` folder with the following structure:
 
 ```text
 class/

@@ -9,18 +9,7 @@ gb-qc evaluate-classes \
   --out-folder example_outputs/coding_vs_intergenomic_dataset
 ```
 
-or
-
-```python
-from genomic_benchmarks_qc import evaluate_classes
-
-evaluate_classes.run(
-  input=['example_datasets/coding_seqs.fasta', 'example_datasets/intergenomic_seqs.fasta'], 
-  out_folder='example_outputs/coding_vs_intergenomic_dataset'
-)
-```
-
-Running the above commands for `gb-qc evaluate-classes` tool will create `example_outputs/coding_vs_intergenomic_dataset` folder with the following results:
+Running the above command for `gb-qc evaluate-classes` tool will create `example_outputs/coding_vs_intergenomic_dataset` folder with the following results:
 
 ```
 class/
