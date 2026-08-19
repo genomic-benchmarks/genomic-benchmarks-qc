@@ -125,7 +125,7 @@ def evaluate_classes(
     regression: bool = typer.Option(False, help="Treat label column as regression target and split into high/low."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    end_position: Optional[int] = typer.Option(None, help="End position for per-position stats."),
+    end_position: Optional[int] = typer.Option(None, help="Last position included in per-position stats. Defaults to the last position at least 75% of each class's sequences reach."),
     plot_type: str = typer.Option('boxen', help="Plot type to use for visualizations (boxen, violin)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),

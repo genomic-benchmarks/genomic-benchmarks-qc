@@ -202,7 +202,7 @@ none are cleaned up later; the path of each is written to the log.
 | `--out-folder` | `.` | Output directory; reports go into `<out-folder>/class/` |
 | `--report-types` | `html simple` | `json`, `html`, `simple` |
 | `--plot-type` | `boxen` | `boxen` or `violin` |
-| `--end-position` | auto | Max position for per-position stats |
+| `--end-position` | auto | Last position included in per-position stats. Defaults to the last position at least 75% of each class's sequences reach |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `--log-file` | none | Path to also write logs to; logs go to the console only when unset |
 

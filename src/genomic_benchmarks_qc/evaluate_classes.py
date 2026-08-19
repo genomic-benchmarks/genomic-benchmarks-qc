@@ -315,8 +315,12 @@ def run(input,
     @param regression: If True, label column is considered as a regression target and values are split into 2 classes
                        at the median. Raises ValueError if that does not produce two non-empty classes.
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param end_position: End position of the sequences to consider in per position statistics. 
-                         If not provided, 75th percentile of sequence lengths will be used. Default: None.
+    @param end_position: Last position of the sequences to consider in per position
+                         statistics, 1-based and inclusive. If not provided, the last
+                         position that at least 75% of each class's sequences reach is
+                         used, which is the 25th percentile of their lengths; the
+                         smaller of the two classes' values applies to the comparison.
+                         Default: None.
     @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is recommended. Default: 'boxen'.
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.

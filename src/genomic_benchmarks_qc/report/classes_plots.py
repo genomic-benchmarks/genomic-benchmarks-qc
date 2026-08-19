@@ -356,21 +356,27 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
             axs[index].set_title(f'{title}', fontsize=16)
 
     seq_lengths = list(stats1.stats['Sequence lengths'].values.flatten()) + list(stats2.stats['Sequence lengths'].values.flatten())
-    # Plot the number of sequences with length at least that position
-    length_counts = [sum(1 for length in seq_lengths if length >= pos) for pos in range(end_position)]
-    # normalize length_counts to [0, 1]
-    if length_counts:
-        length_counts = [count / max(length_counts) for count in length_counts]
+    # The proportion of sequences reaching each position is the denominator behind
+    # the curves above, since a position is scored only on the sequences that have
+    # it. Positions are 1-based here to line up with the x axis of the panels
+    # above; counting from 0 would shift the whole curve one position right and
+    # start it at a trivial 100%.
+    positions = range(1, end_position + 1)
+    length_counts = [sum(1 for length in seq_lengths if length >= pos) for pos in positions]
+    # Normalize against every sequence, not against the first plotted position, so
+    # the axis reads as a proportion of the dataset even when sequences are empty.
+    if seq_lengths:
+        length_counts = [count / len(seq_lengths) for count in length_counts]
 
     # plot length counts in the last subplot
     last_index = len(nucleotides)
-    axs[last_index].fill_between(range(1, end_position + 1), length_counts, color='lightgray', alpha=0.5)
-    axs[last_index].plot(range(1, end_position + 1), length_counts, color='lightgray', linewidth=2)
+    axs[last_index].fill_between(positions, length_counts, color='lightgray', alpha=0.5)
+    axs[last_index].plot(positions, length_counts, color='lightgray', linewidth=2)
     axs[last_index].set_xlabel(f"{x_label}", fontsize=14)
-    axs[last_index].set_ylabel('Proportion of\nsequences', fontsize=14)
+    axs[last_index].set_ylabel('Proportion of\nsequences\nreaching position', fontsize=14)
     axs[last_index].yaxis.set_label_position("right")
     axs[last_index].yaxis.tick_right()
-    axs[last_index].set_ylim(0, max(length_counts) * 1.1)  
+    axs[last_index].set_ylim(0, 1.1)
     axs[last_index].set_yticks([0, 0.5, 1])
     axs[last_index].set_yticklabels(['0', '0.5', '1'], fontsize=12)
     axs[last_index].tick_params(axis='x', labelsize=12)

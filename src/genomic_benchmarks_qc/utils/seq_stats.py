@@ -15,6 +15,12 @@ import pandas as pd
 
 from genomic_benchmarks_qc.utils.naming import slugify
 
+# Fraction of each class's sequences that must reach the last analysed position
+# when `end_position` is not given. Per-position statistics only compare the
+# sequences long enough to have that position, so this is the floor on how much
+# of each class stands behind any position in the window.
+DEFAULT_MIN_COVERAGE = 0.75
+
 class SequenceStatistics:
     """The sequences of one class, and the statistics computed from them.
 
@@ -30,8 +36,10 @@ class SequenceStatistics:
         @param filepath: Full path they came from, shown in the report.
         @param label: The class name, shown verbatim in reports and plots.
         @param seq_column: Sequence column they came from, or None for FASTA.
-        @param end_position: Last position included in per-position statistics.
-                             Defaults to the 75th percentile of the lengths.
+        @param end_position: Last position included in per-position statistics,
+                             1-based and inclusive. Defaults to the last
+                             position at least `DEFAULT_MIN_COVERAGE` of these
+                             sequences reach.
         @param slug: Path form of `label`; derived from it when not given, but
                      normally passed in by the caller, which is the only place
                      that can tell whether it collides with another class.
@@ -99,27 +107,50 @@ class SequenceStatistics:
     def _adjust_end_position(self):
         """Resolve `end_position`, defaulting it and capping it at the longest sequence.
 
-        Per-position statistics get noisier the further out they go, because
-        fewer and fewer sequences reach that far. Defaulting to the 75th
-        percentile of the lengths keeps at least a quarter of the sequences
-        behind every plotted position.
+        Per-position statistics compare only the sequences that reach the
+        position, so the further out a position lies the fewer sequences stand
+        behind it, and the noisier its estimate becomes. The default is the
+        25th percentile of the lengths, which is the last position at least
+        `DEFAULT_MIN_COVERAGE` of this class's sequences still reach; because
+        coverage only falls with position, that is a floor for the whole
+        analysed window, not just its final position.
+
+        Note the percentile is the complement of the coverage: keeping 75% of
+        the sequences means stopping at the 25th percentile of their lengths.
         """
 
         col_info = f" for {self.seq_column} comparison" if self.seq_column is not None else ""
 
         lengths = self.stats['Sequence lengths'].values.flatten()
 
-        if self.end_position is None:
-
-            # get second end position - where one of the stats contains less then 75% values
-            lengths_75th = np.percentile(lengths, 75)
-            # round to nearest integer
-            self.end_position = int(np.round(lengths_75th))
-
-            logging.debug(
-                f"End position argument not provided. Using end position: {self.end_position}{col_info}. "
-                 "This is the 75th percentile of sequence lengths."
+        if len(lengths) == 0:
+            # No sequences means no positions to analyse. Guard here rather than
+            # letting np.percentile raise on the empty array, so the rest of the
+            # report still gets written for a degenerate class.
+            self.end_position = 0
+            logging.warning(
+                f"No sequences{col_info}, so no positions are analysed in per-position statistics."
             )
+            return
+
+        if self.end_position is None:
+            # Floor rather than round: rounding up would land on a position the
+            # required fraction of sequences does not actually reach.
+            percentile = 100 * (1 - DEFAULT_MIN_COVERAGE)
+            self.end_position = int(np.floor(np.percentile(lengths, percentile)))
+
+            logging.info(
+                f"End position argument not provided. Using end position: {self.end_position}{col_info}. "
+                f"This is the {percentile:g}th percentile of sequence lengths, so at least "
+                f"{DEFAULT_MIN_COVERAGE:.0%} of sequences reach every analysed position."
+            )
+
+            if self.end_position < 1:
+                logging.warning(
+                    f"Sequences{col_info} are too short for per-position statistics: fewer than "
+                    f"{DEFAULT_MIN_COVERAGE:.0%} of them reach even the first position, so no "
+                    "positions are analysed."
+                )
         else:
             # Ensure end_position is not greater than the maximum sequence length
             max_length = int(max(lengths))
@@ -128,6 +159,29 @@ class SequenceStatistics:
                 self.end_position = max_length
 
             logging.info(f"Using end position: {self.end_position}{col_info}.")
+
+            # An explicit end position is honoured even where few sequences
+            # reach it, but the reader should know the tail is thinly covered.
+            coverage = self.coverage_at(self.end_position)
+            if coverage < DEFAULT_MIN_COVERAGE:
+                logging.warning(
+                    f"Only {coverage:.1%} of sequences reach position {self.end_position}{col_info}. "
+                    f"Per-position statistics there rest on {coverage:.1%} of the data; the flag "
+                    "threshold widens as the number of sequences behind a position falls, and "
+                    "positions too thinly covered to score at all are reported as Unknown."
+                )
+
+    def coverage_at(self, position: int) -> float:
+        """Fraction of this class's sequences that reach `position` (1-based).
+
+        This is the denominator behind every per-position statistic at that
+        position, and it is what the report shows so a reader can tell how much
+        data stands behind the far end of the per-position plots.
+        """
+        lengths = self.stats['Sequence lengths'].values.flatten()
+        if len(lengths) == 0:
+            return 0.0
+        return float(np.mean(lengths >= position))
 
     def _compute_basic_statistics(self):
         """Compute the whole-class counts shown in the report header."""
