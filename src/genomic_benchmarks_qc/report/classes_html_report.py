@@ -235,7 +235,7 @@ HTML_TEMPLATE = """
                 </div>
 
                 <!-- This will be populated with png plot --->
-                <img src="data:image/png;base64, {{sequence_length_plot_base64}}" alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+                <img src="data:image/png;base64, {{sequence_length_plot_base64}}" alt="Sequence Lengths Plot" class="plot-half">
             </section>
 
             <section id="per-sequence-gc-content">
@@ -249,7 +249,7 @@ HTML_TEMPLATE = """
                 <div id="gc-explanation" class="explanation-text">
                     <strong>Per Sequence GC Content</strong> shows the distribution of GC% (percentage of G and C bases) across all sequences in each label. GC content affects DNA structure and stability. Significant differences in GC distribution between labels may indicate sequence composition bias that could impact model training.
                 </div>
-                <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+                <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" class="plot-half">
             </section>
 
             <section id="per-sequence-nucleotide-content">
@@ -391,7 +391,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     else:
         # insert plot showing duplicate sequences
         html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", 
-                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">')
+                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" class="plot-wide">')
     html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
                              encode_image_to_base64(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
@@ -403,19 +403,19 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
                               'cannot be plotted.')
     html_template = put_data(html_template, "{{per-sequence-nucleotide-content}}",
                              image_or_message(plots_path['Per sequence nucleotide content'],
-                                              'Per Sequence Nucleotide Content', 'max-width: 100%; height: auto;',
+                                              'Per Sequence Nucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
     html_template = put_data(html_template, "{{per-sequence-dinucleotide-content}}",
                              image_or_message(plots_path['Per sequence dinucleotide content'],
-                                              'Per Sequence Dinucleotide Content', 'max-width: 100%; height: auto;',
+                                              'Per Sequence Dinucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
     html_template = put_data(html_template, "{{per-position-nucleotide-content}}",
                              image_or_message(plots_path['Per position nucleotide content'],
-                                              'Per Position Nucleotide Content', 'max-width: 108%; height: auto;',
+                                              'Per Position Nucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
     html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}",
                              image_or_message(plots_path['Per position reversed nucleotide content'],
-                                              'Per Position Reversed Nucleotide Content', 'max-width: 108%; height: auto;',
+                                              'Per Position Reversed Nucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
 
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain

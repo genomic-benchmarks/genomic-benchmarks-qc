@@ -40,7 +40,7 @@ def test_every_asset_is_declared_as_package_data(name):
 
 
 def test_the_stylesheets_carry_the_flag_colors():
-    css = assets.stylesheet('report.css')
+    css = assets.stylesheet('report.css', 'report_design.css')
 
     for color in (FAIL_COLOR, WARN_COLOR, PASS_COLOR, UNKNOWN_COLOR):
         assert color in css

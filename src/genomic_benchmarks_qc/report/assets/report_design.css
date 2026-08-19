@@ -1,0 +1,230 @@
+/* The report's visual design.
+ *
+ * This is layered on top of report.css, which is the original stylesheet shared
+ * by the class and split reports: the rules here deliberately override some of
+ * those, and rely on being concatenated after them. Where a rule looks
+ * redundant, check report.css before deleting it - it is probably undoing
+ * something. (Folding the two files into one is worth doing once the split
+ * report has been through the same pass.)
+ *
+ * Everything is driven by the tokens below, so a colour or radius is changed in
+ * one place. The status colours are the exception: they come from
+ * report.colors so the plots and the report cannot disagree.
+ */
+
+:root {
+  --ink: #10151c;            /* body text */
+  --ink-2: #4a5568;          /* secondary text, table labels */
+  --ink-3: #78849a;          /* captions, muted labels */
+  --line: #e3e8ef;           /* borders */
+  --line-2: #eef1f6;         /* hairline rules inside tables */
+  --panel: #ffffff;          /* cards, nav */
+  --ground: #f6f8fb;         /* the page behind the cards */
+  --accent: #1f6fd0;
+  --accent-soft: #eaf2fd;
+  --pass: {{PASS_COLOR}};
+  --warn: {{WARN_COLOR}};
+  --fail: {{FAIL_COLOR}};
+  --unknown: {{UNKNOWN_COLOR}};
+  --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 10px;                 /* card radius */
+  --sbw: 264px;              /* nav width */
+  --colw: 1040px;            /* reading column */
+  --dot: 20px;               /* status circle in the nav */
+}
+
+html, body { background: var(--ground); }
+body {
+  font-family: var(--ui); color: var(--ink); line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ---------------- layout ----------------
+ * The nav has to stay on screen, and position: sticky cannot be relied on to do
+ * that: report.css puts overflow-x: hidden on html and body, which makes them
+ * scroll containers and lets a sticky child scroll away with the page. So the
+ * nav is fixed, and .content is a plain block with a matching left margin -
+ * making it a flex sibling instead is what used to let it slide underneath. */
+.container { display: block; }
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 1000;
+  width: var(--sbw); height: auto; overflow-y: auto; overscroll-behavior: contain;
+  box-sizing: border-box; background: var(--panel); box-shadow: none;
+  border-right: 1px solid var(--line); padding: 22px 14px 40px;
+}
+.content {
+  width: auto; max-width: var(--colw); min-width: 0; box-sizing: border-box;
+  margin-left: var(--sbw); margin-right: 0; padding: 30px 34px 80px;
+  overflow-x: hidden;
+}
+@supports (margin-left: max(1px, 1%)) {
+  /* centre the column in the space left over, without ever crossing the nav */
+  .content {
+    margin-left: max(var(--sbw), calc(var(--sbw) + (100% - var(--sbw) - var(--colw)) / 2));
+  }
+}
+
+/* ---------------- nav ---------------- */
+.sidebar .logo { text-align: center; padding: 0 8px; }
+.sidebar .logo img { max-width: 132px !important; }
+.sidebar h2 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--ink-3); font-weight: 650; margin: 18px 0 10px 8px;
+  border: 0; padding: 0;
+}
+.sidebar > .sidebar-item {
+  position: relative; margin: 0 0 2px; padding: 5px 8px; gap: 9px;
+  border-radius: 8px; transition: background .15s;
+}
+.sidebar > .sidebar-item:hover { background: var(--ground); }
+.sidebar > .sidebar-item.is-active { background: var(--accent-soft); }
+.sidebar > .sidebar-item.is-active a { color: var(--accent); font-weight: 600; }
+/* report.css pins nav links to 175px and indents them, which clips the longer
+   check names; let them use the row, and make the whole row the target. */
+.sidebar a {
+  display: block; width: auto; margin-left: 0; font-size: 13.5px;
+  line-height: 1.35; color: var(--ink-2); overflow-wrap: break-word;
+}
+.sidebar > .sidebar-item > a::after { content: ""; position: absolute; inset: 0; }
+
+/* ---------------- sections as cards ---------------- */
+section {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 20px 22px; margin: 0 0 18px;
+}
+.report-header { margin-bottom: 8px !important; }
+.section-header { gap: 8px; align-items: center; }
+/* Each check heading is a .sidebar-item too - the status circle and the
+ * heading on one row - and report.css gives that row no gap, so the circle
+ * crowds the words. 8px puts the heading text at 34px, which is where
+ * .nucleotide-flags-container is indented to. */
+.content .sidebar-item { gap: 8px; }
+.content h2 {
+  font-size: 19px; font-weight: 650; color: var(--ink);
+  border-bottom: 0; padding: 0; margin: 0;
+}
+h3 { color: var(--ink-2); }
+
+/* ---------------- status circles ----------------
+ * Circles with the mark inside, echoing the logo: 26px in a heading, and the
+ * nav size in the nav. report.css draws them at 40px, which shouts. The first
+ * nav entry has no status and pads with a hardcoded 40px spacer, so that has to
+ * follow the nav size too. */
+.status-icon {
+  width: 26px; height: 26px; line-height: 26px; font-size: 13px;
+  border-radius: 50%; font-family: var(--ui); flex: none;
+}
+.sidebar > .sidebar-item .status-icon {
+  width: var(--dot); height: var(--dot); line-height: var(--dot); font-size: 11px;
+}
+.sidebar-item > span[style*="width: 40px"] { width: var(--dot) !important; }
+.status-icon-small {
+  width: 22px; height: 22px; line-height: 22px; font-size: 11px;
+  border-radius: 50%; font-family: var(--ui);
+}
+.status-pass { background-color: var(--pass); }
+.status-warn { background-color: var(--warn); }
+.status-fail { background-color: var(--fail); }
+.status-unknown { background-color: var(--unknown); }
+/* the chips under Unique Bases are positioned for the old 40px icons */
+.nucleotide-flags-container { margin: 2px 0 14px 34px; }
+.nucleotide-flag-item .nucleotide-label { font-weight: 600; color: var(--ink-2); }
+
+/* ---------------- explanations and notes ---------------- */
+.toggle-btn {
+  width: 20px; height: 20px; font-size: 12px; margin: 0; line-height: 1;
+  border: 1px solid var(--line); color: var(--ink-3); background: var(--panel);
+  border-radius: 50%; cursor: pointer; flex: none;
+}
+.toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.explanation-text {
+  background: var(--accent-soft); border-left: 3px solid var(--accent);
+  border-radius: 8px; font-size: 14px; color: var(--ink-2); margin: 12px 0 0;
+}
+.explanation-text p { margin: 10px 0 0; }
+.explanation-text p:first-child { margin-top: 0; }
+.explanation-text p:last-child { margin-bottom: 0; }
+.not-scored-note {
+  background-color: var(--ground); border-radius: 8px; color: var(--ink-2);
+  font-size: 13.5px;
+}
+/* the note names the Unknown icon mid-sentence, so that one sits in the text */
+.not-scored-note .status-icon {
+  width: 18px; height: 18px; line-height: 18px; font-size: 10px;
+  vertical-align: -3px;
+}
+.not-scored-note em { font-style: normal; font-weight: 600; color: var(--ink); }
+.not-scored-note ul { margin: 10px 0; padding-left: 20px; }
+.not-scored-note li { margin-bottom: 5px; }
+.no-plot-message { color: var(--ink-3); font-size: 14px; }
+pre { background: var(--line-2); border-radius: 8px; }
+.cluster { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+
+/* ---------------- tables ----------------
+ * report.css draws a full 1px grid and zebra stripes; rules and a hover row are
+ * quieter and let the numbers line up on the right. */
+.table-section table { margin: 14px 0 0; font-size: 14px; }
+.table-section table td {
+  padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line-2);
+  text-align: right;
+}
+.table-section table td:first-child {
+  text-align: left; width: auto; color: var(--ink-2); font-weight: 500;
+}
+.table-section table tr:nth-child(even) { background: transparent; }
+.table-section table tr:hover { background: var(--accent-soft); }
+.table-section table tr:first-child td { font-weight: 600; color: var(--ink); }
+.table-section table span { font-weight: 600; }
+#sequence-duplication-levels table th,
+#sequence-duplication-levels table td { border: 1px solid var(--line); }
+
+/* ---------------- figures ----------------
+ * .plot-wide is the family whose axes have to line up down the page: the
+ * per-sequence composition plots and the interactive per-position figure. They
+ * render at 92% because the per-position figure also carries the coverage
+ * panel's right-hand y axis, which sits outside the plot body and needs ~8%
+ * more width than the body it aligns to. Same width for all of them means the
+ * bodies land on the same pixels; see per_position_viewer.css. */
+.plot-wide { display: block; width: 92%; height: auto; border-radius: 6px; }
+.plot-half { display: block; max-width: 50%; height: auto; margin: 0 auto; border-radius: 6px; }
+
+/* ---------------- the needs-attention filter ----------------
+ * Two buttons rather than one toggle, so which view you are in is readable
+ * without remembering what you pressed. Added by report_ui.js. */
+.qc-filter {
+  display: inline-flex; padding: 3px; gap: 2px; margin: 0 8px 16px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+}
+.qc-filter button {
+  font-family: var(--ui); font-size: 11.5px; line-height: 1; color: var(--ink-2);
+  background: transparent; border: 0; border-radius: 999px; padding: 6px 10px;
+  cursor: pointer; white-space: nowrap;
+}
+.qc-filter button:hover { color: var(--accent); }
+.qc-filter button[aria-pressed="true"] {
+  background: var(--accent); color: #fff; font-weight: 600;
+}
+.qc-filter button[aria-pressed="true"]:hover { color: #fff; }
+/* Unknown is not hidden: it means the check was not run, which is not a pass. */
+body.qc-attention section[data-state="pass"],
+body.qc-attention .sidebar > .sidebar-item[data-state="pass"] { display: none; }
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: static; width: auto; bottom: auto; border-right: 0;
+    border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap;
+    gap: 4px; padding: 12px;
+  }
+  .sidebar .logo, .sidebar h2, .sidebar .qc-filter { width: 100%; }
+  .sidebar > .sidebar-item { margin: 0; }
+  .content { margin-left: 0; max-width: none; padding: 18px 14px 60px; }
+}
+@media print {
+  .sidebar, .qc-filter { display: none !important; }
+  .content { margin-left: 0; max-width: none; padding: 0; }
+  section { break-inside: avoid; }
+}

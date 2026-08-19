@@ -91,13 +91,16 @@ def encode_image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def image_or_message(image_path, alt, style, message):
+def image_or_message(image_path, alt, css_class, message):
     """Return an <img> element for a plot, or a text message when there is none.
 
     Args:
         image_path: Path to the plot image, or None when no plot was generated.
         alt: Alt text / label for the image.
-        style: Inline CSS style for the <img> element.
+        css_class: Class for the <img>: 'plot-wide' for the figures whose axes
+            line up down the page, 'plot-half' for the narrower centred ones.
+            Sizing lives in the stylesheet so those two families stay in step
+            with the interactive figure, which has to match them.
         message: Text to show instead of the image when image_path is None.
 
     Returns:
@@ -106,16 +109,16 @@ def image_or_message(image_path, alt, style, message):
     if image_path is None:
         return f'<p class="no-plot-message">{html.escape(message)}</p>'
     return (f'<img src="data:image/png;base64, {encode_image_to_base64(image_path)}" '
-            f'alt="{alt}" style="{style}">')
+            f'alt="{alt}" class="{css_class}">')
 
-# The stylesheet, inlined into every report. It lives as a file in
-# report.assets rather than as a string literal here, so an editor and a linter
-# can read it.
+# The stylesheets, inlined into every report. report.css is the original shared
+# stylesheet; the other two are layered on top of it, so their rules win where
+# they overlap - see the header comment in each file.
 #
-# report_ui.js is the behaviour that goes with it, and is added to the page by
+# report_ui.js is the behaviour that goes with them, and is added to the page by
 # the report modules rather than from here, because it has to sit at the end of
 # <body>.
-COMMON_CSS = assets.stylesheet('report.css')
+COMMON_CSS = assets.stylesheet('report.css', 'report_design.css')
 
 # Standard report header HTML fragment (uses placeholders)
 REPORT_HEADER_HTML = """
