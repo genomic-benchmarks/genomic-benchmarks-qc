@@ -60,7 +60,7 @@
     /* The static plot wraps this onto three lines. Two keeps the right margin
      * inside the 8% the report's padding allows, which is what lets the body
      * align with the plots above instead of being squeezed narrower. */
-    covLabel: ['Proportion of sequences', 'reaching position'],
+    covLabel: ['Proportion of each class', 'reaching position'],
     spine: '#000000',
     text: '#000000',
     legendEdge: '#cccccc',       // rcParams legend.edgecolor '0.8'
@@ -114,15 +114,20 @@
     var nts = data.nucleotides || [];
     if (!nts.length || !data.endPosition) return null;
 
+    // Every position in the payload was compared: the figure draws the window
+    // the report scored and stops there, so nothing on screen needs explaining
+    // away as un-scored.
     var end = data.endPosition;
     var canvas = root.querySelector('.ppv-canvas');
     var tooltip = root.querySelector('.ppv-tooltip');
     var readout = root.querySelector('.ppv-readout');
     var ctx = canvas.getContext('2d');
 
-    // Findings worth navigating to. Unknown is a statement about the cohort
-    // rather than a difference between the classes, so it is drawn but left out
-    // of the flag count and the jump order.
+    // Findings worth navigating to. Unknown should not occur inside the drawn
+    // window - it would mean the results table is missing a check - and it is a
+    // statement about the cohort rather than a difference between the classes,
+    // so where it does turn up it is drawn but left out of the flag count and
+    // the jump order.
     var flagList = [];
     Object.keys(data.flags || {}).forEach(function (nt) {
       Object.keys(data.flags[nt]).forEach(function (pos) {
@@ -133,8 +138,8 @@
     });
     flagList.sort(function (a, b) { return a.pos - b.pos; });
 
-    // Unknown arrives as runs, so merge them into spans once rather than
-    // stroking hundreds of adjacent one-pixel bands on every redraw.
+    // Merge any Unknown positions into spans once rather than stroking adjacent
+    // one-pixel bands on every redraw.
     var unknownRuns = {};
     Object.keys(data.flags || {}).forEach(function (nt) {
       var positions = Object.keys(data.flags[nt])
@@ -148,6 +153,24 @@
       });
       if (runs.length) unknownRuns[nt] = runs;
     });
+
+    /* Coverage arrives per class. The lower of the two curves is what a
+     * comparison at a position actually has to work with - a position is scored
+     * only where both classes clear the floor - so it is the one the panel
+     * fills under. */
+    var coverage = data.coverage || [[], []];
+    var bindingCoverage = (coverage[0] || []).map(function (value, index) {
+      var other = (coverage[1] || [])[index];
+      return other == null ? value : Math.min(value, other);
+    });
+
+    /* The flag the report gives this base at this position. Only flagged
+     * positions travel in the payload, so a position with no entry of its own is
+     * one that passed - the hover card names it rather than leaving a blank, so
+     * every row there says what the check decided. */
+    function flagAt(nt, pos) {
+      return (data.flags[nt] || {})[String(pos)] || 'Pass';
+    }
 
     var fullView = {
       x0: 1 - STYLE.xMarginFrac * (end - 1),
@@ -204,10 +227,10 @@
     }
 
     function span() { return view.x1 - view.x0; }
-    function atRest() {
-      return Math.abs(view.x0 - fullView.x0) < 1e-6
-        && Math.abs(view.x1 - fullView.x1) < 1e-6;
+    function atView(v) {
+      return Math.abs(view.x0 - v.x0) < 1e-6 && Math.abs(view.x1 - v.x1) < 1e-6;
     }
+    function atRest() { return atView(fullView); }
 
     function clampView(x0, x1) {
       if (x1 - x0 < MIN_SPAN) {
@@ -341,7 +364,7 @@
       c.restore();
     }
 
-    function drawSeries(c, g, values, color, top, h) {
+    function drawSeries(c, g, values, color, top, h, pt) {
       var ppp = g.plotW / span();
       var y = function (v) { return g.yToPx(v, top, h); };
       c.save();
@@ -349,7 +372,7 @@
       c.rect(g.left, top, g.plotW, h);   // stay inside the axes, as mpl clips
       c.clip();
       c.strokeStyle = color;
-      c.lineWidth = g.s(STYLE.seriesPt);
+      c.lineWidth = g.s(pt == null ? STYLE.seriesPt : pt);
       c.lineJoin = 'round';
       c.globalAlpha = STYLE.seriesAlpha;
       c.beginPath();
@@ -396,8 +419,8 @@
       c.rect(g.left, top, g.plotW, h);
       c.clip();
 
-      // Unknown spans sit underneath as a flat wash: these positions were not
-      // scored at all, so they read as absence of data rather than a finding.
+      // Any Unknown span sits underneath as a flat wash: nothing was concluded
+      // there, so it reads as absence of data rather than as a finding.
       (unknownRuns[nt] || []).forEach(function (run) {
         if (run[1] < view.x0 - 1 || run[0] > view.x1 + 1) return;
         var l = g.xToPx(run[0] - 0.5), r = g.xToPx(run[1] + 0.5);
@@ -423,9 +446,38 @@
       c.restore();
     }
 
+    /* The cohort floor: the sequences that have to reach a position before it
+     * may be flagged, as a share of a class. Drawn across the panel because it is
+     * the rule that ends the figure: the lower curve reaches it at the right-hand
+     * edge, which is what makes that edge read as a limit rather than as the
+     * sequences running out.
+     *
+     * A bare line, with no caption of its own - it used to carry one in italics
+     * inside the panel, which put a sentence on top of the curves it explained.
+     * The section's ? explanation says what the line is, once. */
+    function drawCoverageFloor(c, g, top, h) {
+      var floor = data.coverageFloor;
+      if (!(floor > 0) || floor > STYLE.yMax) return;
+      var y = Math.round(g.yToPx(floor, top, h)) + 0.5;
+      c.save();
+      c.strokeStyle = 'rgba(0,0,0,0.45)';
+      c.lineWidth = 1;
+      c.setLineDash([4, 3]);
+      c.beginPath();
+      c.moveTo(g.left, y);
+      c.lineTo(g.left + g.plotW, y);
+      c.stroke();
+      c.restore();
+    }
+
+    /* The bottom panel. One pooled grey curve only said that sequences end
+     * somewhere along here; per class, against the floor, it says which class
+     * runs out first and why the comparison stops where it does. The grey fill
+     * is under the lower of the two curves - the cohort a comparison at that
+     * position actually has - and the curves are the two classes in their own
+     * colours, so the legend below covers this panel too. */
     function drawCoverage(c, g, ticks) {
       var top = g.covTop, h = g.covH;
-      var cov = data.coverage || [];
       c.save();
       c.beginPath();
       c.rect(g.left, top, g.plotW, h);
@@ -438,26 +490,20 @@
       c.beginPath();
       c.moveTo(g.xToPx(from), g.yToPx(0, top, h));
       for (var p = from; p <= to; p += step) {
-        var v = cov[p - 1];
+        var v = bindingCoverage[p - 1];
         if (v != null) c.lineTo(g.xToPx(p), g.yToPx(v, top, h));
       }
       c.lineTo(g.xToPx(Math.min(to, end)), g.yToPx(0, top, h));
       c.closePath();
       c.fill();
       c.globalAlpha = 1;
-      c.strokeStyle = STYLE.coverageFill;
-      c.lineWidth = g.s(STYLE.coveragePt);
-      c.beginPath();
-      var started = false;
-      for (var q = from; q <= to; q += step) {
-        var vv = cov[q - 1];
-        if (vv == null) continue;
-        var px = g.xToPx(q);
-        if (!started) { c.moveTo(px, g.yToPx(vv, top, h)); started = true; }
-        else c.lineTo(px, g.yToPx(vv, top, h));
-      }
-      c.stroke();
       c.restore();
+
+      drawCoverageFloor(c, g, top, h);
+      // Second class first, as in the panels above, so the first label's curve
+      // is the one on top wherever they cross.
+      drawSeries(c, g, coverage[1] || [], data.colors[1], top, h, STYLE.coveragePt);
+      drawSeries(c, g, coverage[0] || [], data.colors[0], top, h, STYLE.coveragePt);
 
       drawSpines(c, g, top, h);
       drawYAxis(c, g, top, h, true);      // ticks and label on the right
@@ -480,7 +526,13 @@
       });
       var h = g.s(pt) * 1.6 + pad * 2;
       var x = g.left + g.plotW / 2 - w / 2;
-      var y = g.covTop + g.covH + LAYOUT.bottomPad * g.W * 0.62;
+      /* Under the x axis title, in the space the figure's bottom margin leaves
+       * below it, and clamped so it cannot run off the bottom of the canvas -
+       * which is where it used to end up, laid out against the canvas width
+       * instead of the figure scale. */
+      var below = g.covTop + g.covH + g.s(STYLE.tickLenPt) + g.s(STYLE.tickPt) * 1.6
+        + g.s(STYLE.labelPt) * 1.2 + g.s(4);
+      var y = Math.min(below, g.H - h - g.s(2));
       var r = g.s(3);
 
       c.globalAlpha = 0.8;                 // rcParams legend.framealpha
@@ -529,19 +581,22 @@
       c.lineTo(px, g.covTop + g.covH);
       c.stroke();
       c.setLineDash([]);
+      function dot(value, top, h, series) {
+        if (value == null) return;
+        c.beginPath();
+        c.arc(g.xToPx(hover), g.yToPx(value, top, h), g.s(2.4), 0, Math.PI * 2);
+        c.fillStyle = data.colors[series];
+        c.fill();
+        c.lineWidth = g.s(1.2);          // surface ring keeps the two dots
+        c.strokeStyle = STYLE.paper;     // readable where they overlap
+        c.stroke();
+      }
       nts.forEach(function (nt, i) {
         var top = g.panelTop(i);
-        [0, 1].forEach(function (s) {
-          var v = data.freq[nt][s][hover - 1];
-          if (v == null) return;
-          c.beginPath();
-          c.arc(g.xToPx(hover), g.yToPx(v, top, g.panelH), g.s(2.4), 0, Math.PI * 2);
-          c.fillStyle = data.colors[s];
-          c.fill();
-          c.lineWidth = g.s(1.2);        // surface ring keeps the two dots
-          c.strokeStyle = STYLE.paper;   // readable where they overlap
-          c.stroke();
-        });
+        [0, 1].forEach(function (s) { dot(data.freq[nt][s][hover - 1], top, g.panelH, s); });
+      });
+      [0, 1].forEach(function (s) {
+        dot((coverage[s] || [])[hover - 1], g.covTop, g.covH, s);
       });
     }
 
@@ -640,37 +695,71 @@
     function updateReadout() {
       if (!readout) return;
       var r = visibleRange();
-      readout.textContent = atRest()
-        ? 'Showing all ' + end + ' positions'
-        : 'Positions ' + r[0] + '–' + r[1] + ' of ' + end;
+      if (atRest()) {
+        readout.textContent = 'Showing all ' + end + ' positions';
+      } else {
+        readout.textContent = 'Positions ' + r[0] + '–' + r[1] + ' of ' + end;
+      }
+    }
+
+    /* The cohort behind the numbers above it: the bottom panel read at the
+     * hovered position, in sequences as well as per cent, because 'a fifth of
+     * the class' means something different in 200 sequences and in 2 million.
+     *
+     * One class per row rather than one run-on line: class labels are often
+     * bare numbers ('0' and '1'), and beside a percentage on the same line
+     * there is nothing to tell the label from the measurement. */
+    function reachBlock() {
+      var rows = [0, 1].map(function (i) {
+        var frac = (coverage[i] || [])[hover - 1];
+        if (frac == null) return null;
+        var count = (data.counts || [])[i];
+        // The per cent is bracketed after the count it restates - '450 of 600
+        // (75%)' - so the row reads as one measurement rather than as two
+        // numbers side by side. Unbracketed when there is no count to restate.
+        var reach = count == null
+          ? '<td>' + Math.round(frac * 100) + '%</td><td></td>'
+          : '<td>' + Math.round(frac * count).toLocaleString()
+            + ' of ' + count.toLocaleString() + '</td>'
+            + '<td>(' + Math.round(frac * 100) + '%)</td>';
+        return '<tr><th><span class="ppv-swatch" style="background:' + data.colors[i]
+          + '"></span>' + data.labels[i] + '</th>' + reach + '</tr>';
+      }).filter(Boolean);
+      return rows.length
+        ? '<div class="ppv-tt-reach"><div class="ppv-tt-reach-head">'
+          + 'Sequences reaching this position</div><table><tbody>'
+          + rows.join('') + '</tbody></table></div>'
+        : '';
     }
 
     function showTooltip(clientX, clientY) {
       if (hover == null) { tooltip.hidden = true; return; }
-      var anyUnknown = false;
+      /* Every base gets a chip, Pass included. The panels only shade what is
+       * wrong, so without it the card would name a flag on some rows and say
+       * nothing on the others, and silence there reads as missing data rather
+       * than as a position that was checked and passed. */
       var rows = nts.map(function (nt) {
         var v0 = data.freq[nt][0][hover - 1];
         var v1 = data.freq[nt][1][hover - 1];
-        var au = (data.auroc && data.auroc[nt]) ? data.auroc[nt][hover - 1] : null;
-        var fl = (data.flags[nt] || {})[String(hover)];
-        if (fl === 'Unknown') anyUnknown = true;
-        var chip = fl
-          ? '<span class="ppv-chip" style="background:' + data.flagColors[fl] + '">' + fl + '</span>'
-          : '';
+        var fl = flagAt(nt, hover);
+        var chip = '<span class="ppv-chip" style="background:'
+          + data.flagColors[fl] + '">' + fl + '</span>';
         return '<tr' + (nts[hoverPanel] === nt ? ' class="is-focus"' : '') + '>'
           + '<th>' + nt + '</th>'
           + '<td>' + fmt(v0) + '</td><td>' + fmt(v1) + '</td>'
-          + '<td>' + fmt(au) + '</td><td>' + chip + '</td></tr>';
+          + '<td class="ppv-tt-flag">' + chip + '</td></tr>';
       }).join('');
+      // The two numbers are the share of the sequences reaching this position
+      // that carry this base here. Saying so in the card is the only place a
+      // reader is told what the columns hold.
       tooltip.innerHTML =
         '<div class="ppv-tt-head">Position ' + hover + '</div>'
-        + '<table><thead><tr><th></th>'
+        + '<div class="ppv-tt-sub">Frequency of each base, per class</div>'
+        + '<table><thead><tr><th>Base</th>'
         + '<td><span class="ppv-swatch" style="background:' + data.colors[0] + '"></span>' + data.labels[0] + '</td>'
         + '<td><span class="ppv-swatch" style="background:' + data.colors[1] + '"></span>' + data.labels[1] + '</td>'
-        + '<td>AU-ROC</td><td></td></tr></thead><tbody>' + rows + '</tbody></table>'
-        + (anyUnknown
-          ? '<p class="ppv-tt-foot">Not scored &mdash; too few sequences reach this position.</p>'
-          : '');
+        + '<td>Flag</td></tr></thead><tbody>' + rows + '</tbody></table>'
+        + reachBlock();
       tooltip.hidden = false;
 
       var box = root.querySelector('.ppv-plot').getBoundingClientRect();
@@ -764,20 +853,6 @@
       draw();
     });
 
-    canvas.addEventListener('keydown', function (evt) {
-      var s = span(), f = evt.shiftKey ? 0.25 : 0.05, handled = true;
-      if (evt.key === 'ArrowRight') clampView(view.x0 + s * f, view.x1 + s * f);
-      else if (evt.key === 'ArrowLeft') clampView(view.x0 - s * f, view.x1 - s * f);
-      else if (evt.key === '+' || evt.key === '=') clampView(view.x0 + s * 0.15, view.x1 - s * 0.15);
-      else if (evt.key === '-' || evt.key === '_') clampView(view.x0 - s * 0.2, view.x1 + s * 0.2);
-      else if (evt.key === 'Home' || evt.key === '0') clampView(fullView.x0, fullView.x1);
-      else if (evt.key === 'n') gotoFlag(1);
-      else if (evt.key === 'p') gotoFlag(-1);
-      else if (evt.key === 's') savePng();
-      else handled = false;
-      if (handled) { evt.preventDefault(); draw(); }
-    });
-
     function gotoFlag(dir) {
       if (!flagList.length) return;
       var centre = (view.x0 + view.x1) / 2, target = null, i;
@@ -812,7 +887,6 @@
       clampView(pos - FLAG_WINDOW - 0.5, pos + FLAG_WINDOW + 0.5);
       hover = pos;
       draw();
-      canvas.focus();
     }
 
     root.querySelectorAll('[data-goto]').forEach(function (link) {
@@ -838,14 +912,18 @@
       var rank = function (f) {
         return Object.prototype.hasOwnProperty.call(SEVERITY, f.flag) ? SEVERITY[f.flag] : 9;
       };
+      var gap = function (f) {
+        return Math.abs(data.freq[f.nt][0][f.pos - 1] - data.freq[f.nt][1][f.pos - 1]);
+      };
       var rows = flagList.slice().sort(function (a, b) {
         var d = rank(a) - rank(b);
         if (d) return d;
-        var au = function (f) {
-          var col = (data.auroc || {})[f.nt];
-          return col && col[f.pos - 1] != null ? col[f.pos - 1] : 0;
-        };
-        return au(b) - au(a) || a.pos - b.pos;
+        // Within a severity, the widest gap between the classes first. This is
+        // the order the AU-ROC column used to give: for a 0/1 indicator like
+        // 'is this base here', AU-ROC is 0.5 + gap / 2, so ranking on the gap
+        // and ranking on the score are the same ranking. It orders the rows
+        // without being shown - it is the two frequencies, subtracted.
+        return gap(b) - gap(a) || a.pos - b.pos;
       });
 
       if (summary) {
@@ -856,17 +934,21 @@
         summary.textContent = rows.length
           ? rows.length + ' flagged position' + (rows.length === 1 ? '' : 's')
             + (parts.length ? ' (' + parts.join(', ') + ')' : '')
-          : 'No flagged positions';
+          : (data.compared === false ? 'Nothing was compared' : 'No flagged positions');
       }
       if (!rows.length) {
-        host.innerHTML = '<p class="ppv-empty">Every position passed in this direction.</p>';
+        // An empty list means two opposite things, and reading the wrong one is
+        // reading an unscored comparison as a clean one.
+        host.innerHTML = data.compared === false
+          ? '<p class="ppv-empty">No position here was compared: too few sequences reach any of '
+            + 'them. The frequencies are drawn so they can be read by eye, and nothing in the '
+            + 'figure is a finding.</p>'
+          : '<p class="ppv-empty">Every position passed in this direction.</p>';
         return;
       }
 
       var shown = Math.min(ROW_CAP, rows.length);
       function cell(r) {
-        var col = (data.auroc || {})[r.nt];
-        var au = col && col[r.pos - 1] != null ? col[r.pos - 1].toFixed(3) : '—';
         return '<tr tabindex="0" data-pos="' + r.pos + '">'
           + '<td class="ppv-c-flag"><span class="ppv-sev" style="background:'
           + data.flagColors[r.flag] + '"></span>' + r.flag + '</td>'
@@ -874,15 +956,32 @@
           + '<td class="ppv-c-base">' + r.nt + '</td>'
           + '<td class="ppv-c-num">' + data.freq[r.nt][0][r.pos - 1].toFixed(3) + '</td>'
           + '<td class="ppv-c-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td>'
-          + '<td class="ppv-c-num">' + au + '</td>'
           + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td></tr>';
       }
+      /* One header row, and what the numeric columns hold said above the table
+       * rather than in a cell spanning them. The spanning cell was centred over
+       * two columns and sat a row above the class names, so it read as a
+       * heading for the table and not as a description of those two numbers.
+       * The caption is the hover card's subtitle, in the same words: the card
+       * and the table describe the same measurement.
+       *
+       * The columns themselves then only need the class names, because the row
+       * already says which base and which position. */
+      function swatch(i) {
+        return '<span class="ppv-swatch" style="background:' + data.colors[i] + '"></span>';
+      }
+      var posLabel = data.xLabel || 'Position in sequence';
       function paint(limit) {
         host.innerHTML =
-          '<table class="ppv-flagtable"><thead><tr>'
-          + '<th>Flag</th><th>Position</th><th>Base</th>'
-          + '<th>' + data.labels[0] + '</th><th>' + data.labels[1] + '</th>'
-          + '<th>AU-ROC</th><th></th></tr></thead><tbody>'
+          '<p class="ppv-flags-caption">Frequency of this base at this position, '
+          + 'per class</p>'
+          + '<table class="ppv-flagtable"><thead>'
+          + '<tr><th class="ppv-h-left">Flag</th>'
+          + '<th class="ppv-h-left">' + posLabel + '</th>'
+          + '<th class="ppv-h-left">Base</th>'
+          + '<th>' + swatch(0) + data.labels[0] + '</th>'
+          + '<th>' + swatch(1) + data.labels[1] + '</th>'
+          + '<th></th></tr></thead><tbody>'
           + rows.slice(0, limit).map(cell).join('')
           + '</tbody></table>'
           + (limit < rows.length
