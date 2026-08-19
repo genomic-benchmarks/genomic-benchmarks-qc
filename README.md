@@ -173,6 +173,17 @@ whether something *is present* — a base in one class and not the other, a
 sequence in both classes — rather than whether a model could exploit it, and a
 single occurrence is worth reporting however small the dataset.
 
+**The per-position figure is interactive.** A flagged position is one pixel wide
+in a plot spanning hundreds of positions, so in the report the per-position
+panels are drawn in the browser from the numbers behind them rather than embedded
+as an image: drag across the plot to zoom, hover for the frequencies and AU-ROC
+at a position, and step between flagged positions with the buttons or `n` / `p`.
+`Save view` writes the current window as a PNG. Underneath, the flagged
+positions are listed in a table that jumps the plot to any of them. The static
+PNGs are still written to `plots/`, and the data is embedded per position rather
+than per sequence, so the report's size follows the length of the analysed
+window and not the size of the dataset.
+
 **Evaluated features:**
 - Nucleotide vocabulary
 - Sequence lengths distribution

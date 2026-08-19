@@ -17,6 +17,7 @@ from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 from genomic_benchmarks_qc.report import classes_plots
 from genomic_benchmarks_qc.report import splits_plots
+from genomic_benchmarks_qc.report.per_position_payload import build_payload
 
 def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max):
     """
@@ -92,8 +93,20 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     # the report lives in a directory of its own, so this is a plain sibling
     duplicate_seqs_path = Path(output_path).parent / DUPLICATES_FILE
 
+    # The data behind the interactive per-position figures. Everything it needs
+    # was computed for the flags and the plots; this only reshapes it. Both
+    # directions come back None when the two classes share no bases, which is
+    # the same condition that leaves those plots unmade.
+    bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
+    per_position_payloads = {
+        direction: build_payload(stats1, stats2, bases_overlap, end_position, results, direction)
+        for direction in ('forward', 'reversed')
+    }
+
     # Load the HTML template
-    template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs, duplicate_seqs_file=duplicate_seqs_path)
+    template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs,
+                                         duplicate_seqs_file=duplicate_seqs_path,
+                                         per_position_payloads=per_position_payloads)
 
     with open(output_path, 'w') as file:
         file.write(template)

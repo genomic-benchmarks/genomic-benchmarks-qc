@@ -7,6 +7,7 @@ anywhere without losing anything.
 
 from datetime import datetime
 from genomic_benchmarks_qc.report import assets
+from genomic_benchmarks_qc.report.per_position_payload import viewer_html
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, MIN_SEQUENCES_PER_POSITION
@@ -419,7 +420,7 @@ def generate_position_window_html(stats1, stats2):
 
 
 def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, duplicate_seqs, duplicate_seqs_file=None,
-                             tool_description=None):
+                             tool_description=None, per_position_payloads=None):
     """
     Returns the HTML template for the report.
 
@@ -430,6 +431,10 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         duplicate_seqs: list of duplicate sequences.
         duplicate_seqs_file: path to file with duplicate sequences (optional).
         tool_description: short description of the tool to include in the header (optional).
+        per_position_payloads: dict keyed 'forward'/'reversed' with the data for
+            the interactive per-position figures, as built by
+            per_position_payload.build_payload. A direction that is absent or
+            None renders the no-plot message instead.
 
     `summary_statuses` must contain the 'Sequence Duplications within Labels' flag,
     which selects between the duplication plot and the "no duplicates" message.
@@ -437,7 +442,8 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = HTML_TEMPLATE
 
     # insert shared CSS and header fragment
-    html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
+    html_template = put_data(html_template, "{{common_css}}",
+                             COMMON_CSS + assets.stylesheet('per_position_viewer.css'))
     html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
 
     # insert logo
@@ -516,14 +522,23 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     position_window_note = generate_position_window_html(stats1, stats2)
     html_template = put_data(html_template, "{{position_window_note}}", position_window_note)
     html_template = put_data(html_template, "{{position_window_note_reversed}}", position_window_note)
-    html_template = put_data(html_template, "{{per-position-nucleotide-content}}",
-                             image_or_message(plots_path['Per position nucleotide content'],
-                                              'Per Position Nucleotide Content', 'plot-wide',
-                                              disjoint_bases_message))
-    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}",
-                             image_or_message(plots_path['Per position reversed nucleotide content'],
-                                              'Per Position Reversed Nucleotide Content', 'plot-wide',
-                                              disjoint_bases_message))
+    # The per-position panels are drawn in the browser from the numbers behind
+    # them, not embedded as a picture: a flagged position is one pixel wide in a
+    # 400-position window, which is what the zoom exists for. The PNG is still
+    # written to the plots directory, it is just not what the page shows.
+    per_position_payloads = per_position_payloads or {}
+    for placeholder, direction, dom_id, name in (
+        ("{{per-position-nucleotide-content}}", 'forward', 'ppv-fwd',
+         'Per Position Nucleotide Content'),
+        ("{{per-position-reversed-nucleotide-content}}", 'reversed', 'ppv-rev',
+         'Per Position Reversed Nucleotide Content'),
+    ):
+        payload = per_position_payloads.get(direction)
+        if payload is None:
+            html_template = put_data(html_template, placeholder,
+                                     f'<p class="no-plot-message">{disjoint_bases_message}</p>')
+        else:
+            html_template = put_data(html_template, placeholder, viewer_html(payload, dom_id))
 
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
@@ -563,7 +578,8 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         """
         # The sequences go in as JSON data rather than as a JavaScript literal, so
         # report_ui.js stays a file that can be linted and a sequence cannot
-        # break out of the script element.
+        # break out of the script element. Escaped for the same reason as the
+        # per-position payload.
         escaped_seqs = [escape_str(seq) for seq in duplicate_seqs[:10]]
         duplication_table += ('\n<script type="application/json" id="duplicate-sequences">['
                               + ', '.join(escaped_seqs) + ']</script>')
@@ -581,8 +597,15 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
 
     # The behaviour goes in at the end of the body so it runs against a complete
-    # page.
-    html_template = put_data(html_template, "{{report_scripts}}", assets.script('report_ui.js'))
+    # page: the viewer measures the width of the box it is drawn into, which is
+    # only known once the layout exists. The viewer and its data are left out
+    # entirely when there is nothing to draw.
+    scripts = ''
+    if any(payload is not None for payload in per_position_payloads.values()):
+        scripts += assets.script('per_position_viewer.js')
+        scripts += '\n<script>initPerPositionViewers();</script>\n'
+    scripts += assets.script('report_ui.js')
+    html_template = put_data(html_template, "{{report_scripts}}", scripts)
 
     # Generate unique bases flags
     unique_bases_flags = generate_nucleotide_flags_html(summary_statuses, 'Unique bases')
