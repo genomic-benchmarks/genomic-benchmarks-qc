@@ -537,7 +537,10 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_la
     ax.legend(
         handles = legend_handles,
         labels = legend_labels,
-        fontsize='12',
+        # A number, not a string: matplotlib takes either a point size or one of
+        # its size keywords here, so a quoted '12' is silently dropped and every
+        # legend falls back to the 10pt rcParams default.
+        fontsize=12,
         loc='upper center', 
         bbox_to_anchor=box_to_anchor, 
         ncol=3,
