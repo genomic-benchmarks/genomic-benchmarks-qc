@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genomic-benchmarks-qc"
-version = "0.9.0"
+dynamic = ["version"]
 description = "Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -54,6 +54,11 @@ gb-qc = "genomic_benchmarks_qc.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Read from the package itself, so the number lives in exactly one place; see
+# the comment in src/genomic_benchmarks_qc/__init__.py.
+[tool.setuptools.dynamic]
+version = {attr = "genomic_benchmarks_qc.__version__"}
 
 # The report's stylesheets and scripts are read at report-generation time and
 # inlined into the HTML, so they have to ship in the wheel. tests/test_report_assets.py

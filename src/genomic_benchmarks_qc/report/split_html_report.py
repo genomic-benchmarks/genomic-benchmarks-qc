@@ -6,11 +6,11 @@ styling, and the top alignments rendered inline as text.
 
 from datetime import datetime
 import html
+from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
-import importlib.metadata
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -244,7 +244,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genomic-benchmarks-qc"))
+    html_template = put_data(html_template, "{{version}}", __version__)
 
     html_template = put_data(html_template, "{{train_filename}}", str(basic_stats['train_filename']))
     html_template = put_data(html_template, "{{test_filename}}", str(basic_stats['test_filename']))

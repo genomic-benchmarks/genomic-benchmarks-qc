@@ -6,12 +6,12 @@ anywhere without losing anything.
 """
 
 from datetime import datetime
+from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.per_position_payload import viewer_html
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, MIN_SEQUENCES_PER_POSITION
-import importlib.metadata
 
 
 def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
@@ -465,7 +465,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genomic-benchmarks-qc"))
+    html_template = put_data(html_template, "{{version}}", __version__)
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
