@@ -49,9 +49,9 @@ def run_analysis(input_statistics, report_dir, report_types, plot_type):
         <report_dir>/
             per-class/<class>.json
             <classA>_vs_<classB>/
-                report.csv
-                report.html
-                duplicates.txt
+                gb-qc-report.csv
+                gb-qc-report.html
+                gb-qc-duplicates.txt
                 plots/
 
     Classes are compared in the order they arrive, which `run` has already

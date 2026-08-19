@@ -14,7 +14,7 @@ from genomic_benchmarks_qc import evaluate_classes
 
 
 def _reports(root):
-    return sorted(str(p.relative_to(root)) for p in root.rglob('report.csv'))
+    return sorted(str(p.relative_to(root)) for p in root.rglob('gb-qc-report.csv'))
 
 
 class TestRegressionTargets:
@@ -29,7 +29,7 @@ class TestRegressionTargets:
             report_types=['simple'],
         )
 
-        assert _reports(tmp_path / 'out') == ['class/sequence/high_vs_low/report.csv']
+        assert _reports(tmp_path / 'out') == ['class/sequence/high_vs_low/gb-qc-report.csv']
 
     def test_non_numeric_values_are_dropped_with_a_warning(self, tmp_path, caplog):
         values = [str(i) for i in range(18)] + ['not-a-number', 'also-not']
@@ -45,7 +45,7 @@ class TestRegressionTargets:
             )
 
         assert 'Dropped 2 rows with non-numeric values' in caplog.text
-        assert _reports(tmp_path / 'out') == ['class/sequence/high_vs_low/report.csv']
+        assert _reports(tmp_path / 'out') == ['class/sequence/high_vs_low/gb-qc-report.csv']
 
     def test_a_fully_non_numeric_target_is_an_error(self, tmp_path, caplog):
         csv_path = write_regression_csv(tmp_path / 'data.csv', ['abc'] * 10)
@@ -143,7 +143,7 @@ class TestInputMerging:
             )
 
         assert 'Merging 2 input files' in caplog.text
-        assert _reports(tmp_path / 'out') == ['class/sequence/a_vs_b/report.csv']
+        assert _reports(tmp_path / 'out') == ['class/sequence/a_vs_b/gb-qc-report.csv']
 
         # Reports name the merged source rather than either individual file.
         import json
@@ -164,8 +164,8 @@ class TestDefaults:
         )
 
         comparison = tmp_path / 'out' / 'class' / 'sequence' / 'a_vs_b'
-        assert (comparison / 'report.csv').is_file()
-        assert (comparison / 'report.html').is_file()
+        assert (comparison / 'gb-qc-report.csv').is_file()
+        assert (comparison / 'gb-qc-report.html').is_file()
 
     def test_run_analysis_defaults_to_html_and_simple_reports(self, tmp_path):
         """run_analysis is part of the public module surface and defaults on its own."""
@@ -188,8 +188,8 @@ class TestDefaults:
             plot_type='boxen',
         )
 
-        assert (tmp_path / 'out' / 'a_vs_b' / 'report.csv').is_file()
-        assert (tmp_path / 'out' / 'a_vs_b' / 'report.html').is_file()
+        assert (tmp_path / 'out' / 'a_vs_b' / 'gb-qc-report.csv').is_file()
+        assert (tmp_path / 'out' / 'a_vs_b' / 'gb-qc-report.html').is_file()
 
     def test_an_existing_output_folder_is_reused(self, tmp_path):
         out_folder = tmp_path / 'out'
@@ -207,4 +207,4 @@ class TestDefaults:
         )
 
         assert (out_folder / 'pre-existing.txt').read_text() == 'kept'
-        assert _reports(out_folder) == ['class/sequence/neg_vs_pos/report.csv']
+        assert _reports(out_folder) == ['class/sequence/neg_vs_pos/gb-qc-report.csv']

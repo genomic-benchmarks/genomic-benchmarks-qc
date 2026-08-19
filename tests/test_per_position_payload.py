@@ -139,7 +139,7 @@ class TestFlags:
     def test_no_separability_score_travels_with_the_flags(self, payload):
         """The report shows the flags and the frequencies behind them. For a
         per-position base the AU-ROC is a restatement of the gap between those
-        two frequencies, so it stays in report.csv and out of the page."""
+        two frequencies, so it stays in gb-qc-report.csv and out of the page."""
         assert 'auroc' not in payload
 
     def test_only_the_flags_the_figure_marks_carry_a_colour(self, payload):

@@ -5,7 +5,7 @@ here, so the layout can be read in one place instead of being reassembled from
 string literals scattered over the command and report modules.
 
 Two kinds of name live here. The fixed ones - ``class``, ``split``,
-``report.html`` - are plain constants. The derived ones come from user data
+``gb-qc-report.html`` - are plain constants. The derived ones come from user data
 (class labels, input file names, sequence column names) and go through
 ``slugify``/``unique_slugs`` first, because report paths and report *contents*
 have conflicting requirements: the HTML tables, plot legends and JSON reports
@@ -58,11 +58,17 @@ DEFAULT_COLUMN_DIR = 'sequence'
 # Directory holding the analysis of all sequence columns concatenated together.
 MERGED_COLUMN_DIR = 'merged'
 
+# Prefix on every file the tool writes, matching the `gb-qc` command name.
+# Reports are routinely moved out of their directory - mailed, attached to an
+# issue, dropped in a shared folder - and the surrounding layout is what says
+# where they came from, so the name carries the tool on its own.
+TOOL_PREFIX = 'gb-qc-'
+
 # Fixed names inside a comparison directory. Because every comparison has a
 # directory of its own, each report type can have the same name in all of them.
-SIMPLE_REPORT_FILE = 'report.csv'
-HTML_REPORT_FILE = 'report.html'
-DUPLICATES_FILE = 'duplicates.txt'
+SIMPLE_REPORT_FILE = f'{TOOL_PREFIX}report.csv'
+HTML_REPORT_FILE = f'{TOOL_PREFIX}report.html'
+DUPLICATES_FILE = f'{TOOL_PREFIX}duplicates.txt'
 PLOTS_DIR = 'plots'
 MMSEQS_DIR = 'mmseqs'
 
@@ -73,7 +79,7 @@ MMSEQS_DIR = 'mmseqs'
 # directory afterwards without risking someone else's data. A fixed name would
 # have to be adopted if it already existed, and removing it would then destroy
 # whatever was there - including the files a concurrent run is still using.
-TMP_PREFIX = 'gb-qc-mmseqs-'
+TMP_PREFIX = f'{TOOL_PREFIX}mmseqs-'
 
 # Per-class statistics are not a comparison, so they sit beside them.
 PER_CLASS_DIR = 'per-class'

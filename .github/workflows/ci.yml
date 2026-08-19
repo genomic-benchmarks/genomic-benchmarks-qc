@@ -81,8 +81,8 @@ jobs:
             --input example_datasets/intergenomic_seqs.fasta \
             --out-folder ci_out/coding
           out="ci_out/coding/class/sequence/coding_seqs_vs_intergenomic_seqs"
-          test -f "$out/report.csv"
-          test -f "$out/report.html"
+          test -f "$out/gb-qc-report.csv"
+          test -f "$out/gb-qc-report.html"
           test -f "$out/plots/per_sequence_nucleotide_content.png"
           test -f "$out/plots/per_position_nucleotide_content.png"
 
@@ -92,8 +92,8 @@ jobs:
             --input example_datasets/enhancers_train.csv \
             --input example_datasets/enhancers_test.csv \
             --out-folder ci_out/enhancers
-          test -f "ci_out/enhancers/class/sequence/0_vs_1/report.csv"
-          test -f "ci_out/enhancers/class/sequence/0_vs_1/report.html"
+          test -f "ci_out/enhancers/class/sequence/0_vs_1/gb-qc-report.csv"
+          test -f "ci_out/enhancers/class/sequence/0_vs_1/gb-qc-report.html"
 
       - name: evaluate-classes (TSV, multiple sequence columns)
         run: |
@@ -103,9 +103,9 @@ jobs:
             --sequence-column noncodingRNA \
             --label-column label \
             --out-folder ci_out/miRNA
-          test -f "ci_out/miRNA/class/gene/0_vs_1/report.csv"
-          test -f "ci_out/miRNA/class/noncodingrna/0_vs_1/report.csv"
-          test -f "ci_out/miRNA/class/merged/0_vs_1/report.csv"
+          test -f "ci_out/miRNA/class/gene/0_vs_1/gb-qc-report.csv"
+          test -f "ci_out/miRNA/class/noncodingrna/0_vs_1/gb-qc-report.csv"
+          test -f "ci_out/miRNA/class/merged/0_vs_1/gb-qc-report.csv"
 
       - name: evaluate-splits (data leakage, uses MMseqs2)
         run: |
@@ -114,5 +114,5 @@ jobs:
             --test-input example_datasets/enhancers_test.csv \
             --sequence-column sequence \
             --out-folder ci_out/splits
-          test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/report.csv"
-          test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/report.html"
+          test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.csv"
+          test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html"

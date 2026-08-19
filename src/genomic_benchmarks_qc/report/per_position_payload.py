@@ -12,7 +12,7 @@ picture. The numbers are all computed already - this module only reshapes what
 
 The window is the compared one, so an unflagged stretch of the figure is a
 stretch that passed. Positions past it are still reported - as Unknown, in
-`report.csv` and in the count of checks that were not scored - but they are not
+`gb-qc-report.csv` and in the count of checks that were not scored - but they are not
 drawn: a figure that mixed the two would have a tail where a missing flag means
 nothing, and saying so took a wash and a caption that were most of what the
 figure had to explain about itself. What is left to say about them is a sentence
@@ -29,7 +29,7 @@ one figure: either every position drawn was compared, or none of them was.
 The report shows the flags and the frequencies behind them, and no separate
 separability score: for a per-position base the AU-ROC is a restatement of the
 gap between the two frequencies, so printing it beside them says the same thing
-twice. It stays in `report.csv`, which is where a number to compute on belongs.
+twice. It stays in `gb-qc-report.csv`, which is where a number to compute on belongs.
 
 Nothing here rounds or subsets for size beyond three decimals, because the
 payload grows with the *length* of the compared window and not with the number

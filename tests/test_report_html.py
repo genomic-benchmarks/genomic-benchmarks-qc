@@ -40,12 +40,12 @@ def render(tmp_path, stats1, stats2):
     """Run the class report end to end and return the page."""
     results, failed_by_feature = flag_significant_differences(stats1, stats2)
     generate_dataset_html_report(
-        stats1, stats2, tmp_path / 'report.html', plots_path=tmp_path / 'plots',
+        stats1, stats2, tmp_path / 'gb-qc-report.html', plots_path=tmp_path / 'plots',
         plot_type='boxen',
         results=pd.DataFrame.from_dict(results, orient='index'),
         failed_by_feature=failed_by_feature,
     )
-    return (tmp_path / 'report.html').read_text()
+    return (tmp_path / 'gb-qc-report.html').read_text()
 
 
 def payload_from(page, dom_id):
@@ -182,7 +182,7 @@ class TestSplitReport:
         evaluate_splits.run(train_files=[train], test_files=[test], format='csv',
                             out_folder=str(tmp_path / 'out'), report_types=['html'])
 
-        page = (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'report.html').read_text()
+        page = (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'gb-qc-report.html').read_text()
 
         assert 'window.toggleExplanation' in page      # report_ui.js
         assert 'window.toggleAlignment' in page        # split_report.js

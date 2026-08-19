@@ -88,22 +88,22 @@ per sequence column, then into one directory per comparison:
 ├── class/
 │   └── sequence/
 │       └── negatives_vs_positives/
-│           ├── report.csv
-│           └── report.html
+│           ├── gb-qc-report.csv
+│           └── gb-qc-report.html
 └── split/
     └── sequence/
         └── train_vs_test/
-            ├── report.csv
-            └── report.html
+            ├── gb-qc-report.csv
+            └── gb-qc-report.html
 ```
 
 Every report ends up at the same kind of path whatever the input format was, and
 because each comparison gets a directory of its own, the files inside it always
-have the same names — `report.html` is the HTML report for whichever comparison
-the directory is named after. You can run both commands on the same dataset with
-the same `--out-folder` without them overwriting each other; if you are checking
-several datasets, give each one its own `--out-folder` to keep the results side
-by side.
+have the same names — `gb-qc-report.html` is the HTML report for whichever
+comparison the directory is named after. You can run both commands on the same
+dataset with the same `--out-folder` without them overwriting each other; if you
+are checking several datasets, give each one its own `--out-folder` to keep the
+results side by side.
 
 Directory names come from your class labels, sequence-column names, and input file
 names. They are lowercased and reduced to characters that are safe on any filesystem.
@@ -125,9 +125,9 @@ or `--label-list` values in.
     │                           # `sequence`; if you give several columns, an
     │                           # extra `merged` report joins them all together
     ├── <classA>_vs_<classB>/
-    │   ├── report.csv
-    │   ├── report.html
-    │   ├── duplicates.txt
+    │   ├── gb-qc-report.csv
+    │   ├── gb-qc-report.html
+    │   ├── gb-qc-duplicates.txt
     │   └── plots/
     └── per-class/
         └── <class>.json
@@ -135,10 +135,10 @@ or `--label-list` values in.
 
 | File | Description |
 |------|-------------|
-| `report.csv` | Simple comparison report with Pass/Warning/Fail flags. |
-| `report.html` | Standalone HTML report: one file, no external assets. |
+| `gb-qc-report.csv` | Simple comparison report with Pass/Warning/Fail flags. |
+| `gb-qc-report.html` | Standalone HTML report: one file, no external assets. |
 | `plots/` | Individual plot images (PNG). |
-| `duplicates.txt` | Sequences appearing in both compared classes; written only when there are any. |
+| `gb-qc-duplicates.txt` | Sequences appearing in both compared classes; written only when there are any. |
 | `per-class/<class>.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies); written only when `json` is in `--report-types`. |
 
 **Flag thresholds (AU-ROC):**
@@ -185,9 +185,9 @@ single occurrence is worth reporting however small the dataset.
 the scored window and no further, so every position in them was compared and an
 unflagged stretch is a stretch that passed, with nothing on the figure to read
 past. Positions the sequences reach but the comparison could not use are still
-reported as `Unknown` — in `report.csv` and in the count of checks that were not
-scored — and the section's explanation says how far they run and why they were
-left out. A comparison where *no* position could be scored is the one exception:
+reported as `Unknown` — in `gb-qc-report.csv` and in the count of checks that
+were not scored — and the section's explanation says how far they run and why
+they were left out. A comparison where *no* position could be scored is the one exception:
 there the figures fall back to the full reported window, as every other plot in
 an underpowered report is still drawn, with every position `Unknown` and no flag
 on any of them. The panel under each figure shows how many sequences stand behind each
@@ -220,8 +220,8 @@ window and not the size of the dataset.
 <out-folder>/split/
 └── <column>/                   # the sequence column that was searched. FASTA
     └── <train>_vs_<test>/      # inputs use `sequence`, and several columns
-        ├── report.csv          # searched together use `merged`
-        ├── report.html
+        ├── gb-qc-report.csv    # searched together use `merged`
+        ├── gb-qc-report.html
         ├── plots/
         └── mmseqs/
 ```
@@ -232,8 +232,8 @@ single `merged/` comparison rather than one per column.
 
 | File | Description |
 |------|-------------|
-| `report.csv` | Simple leakage summary. |
-| `report.html` | Interactive HTML report with alignments. |
+| `gb-qc-report.csv` | Simple leakage summary. |
+| `gb-qc-report.html` | Interactive HTML report with alignments. |
 | `mmseqs/` | Raw MMseqs2 results and filtered FASTA files. |
 | `plots/` | Similarity distribution plots. |
 

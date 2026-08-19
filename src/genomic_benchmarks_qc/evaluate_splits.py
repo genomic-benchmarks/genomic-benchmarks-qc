@@ -148,7 +148,7 @@ def _write_mmseqs_report_bundle(
     - mmseqs/seq_index_mapping/: FASTA files of only the sequences involved in
       those hits, mapping the internal seq_* ids back to the input sequences
     - plots/: similarity distribution plots
-    - report.html: the plots, the leakage summary and the top alignments
+    - gb-qc-report.html: the plots, the leakage summary and the top alignments
     """
     train_filenames = ",".join([Path(f).name for f in train_files])
     test_filenames = ",".join([Path(f).name for f in test_files])

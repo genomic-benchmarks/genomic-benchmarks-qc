@@ -55,7 +55,7 @@ class TestHtmlReportBundle:
         )
 
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
-        assert (comparison / 'report.html').is_file()
+        assert (comparison / 'gb-qc-report.html').is_file()
         assert (comparison / 'plots' / 'similarity_histograms.png').is_file()
         assert (comparison / 'mmseqs' / 'mmseqs2_search_result.tsv').is_file()
         assert (comparison / 'mmseqs' / 'seq_index_mapping' / 'test_sequences.fasta').is_file()
@@ -104,8 +104,8 @@ class TestHtmlReportBundle:
         )
 
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
-        assert (comparison / 'report.html').is_file()
-        assert (comparison / 'report.csv').is_file()
+        assert (comparison / 'gb-qc-report.html').is_file()
+        assert (comparison / 'gb-qc-report.csv').is_file()
 
 
 class TestAddAlignmentSequences:
@@ -215,7 +215,7 @@ class TestFailureHandling:
             )
 
         assert 'Failed to remove temporary directory' in caplog.text
-        assert (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'report.csv').is_file()
+        assert (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'gb-qc-report.csv').is_file()
 
 
 class TestDefaults:
@@ -232,8 +232,8 @@ class TestDefaults:
         )
 
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
-        assert (comparison / 'report.csv').is_file()
-        assert (comparison / 'report.html').is_file()
+        assert (comparison / 'gb-qc-report.csv').is_file()
+        assert (comparison / 'gb-qc-report.html').is_file()
 
     def test_an_explicit_sequence_column_is_used(self, tmp_path, stub_mmseqs):
         stub_mmseqs()
@@ -248,7 +248,7 @@ class TestDefaults:
         )
 
         # The column directory is named after the column that was searched.
-        assert (tmp_path / 'out' / 'split' / 'seq' / 'train_vs_test' / 'report.csv').is_file()
+        assert (tmp_path / 'out' / 'split' / 'seq' / 'train_vs_test' / 'gb-qc-report.csv').is_file()
 
     def test_an_existing_comparison_folder_is_reused(self, tmp_path, split_inputs, stub_mmseqs):
         train, test = split_inputs
@@ -261,4 +261,4 @@ class TestDefaults:
             out_folder=str(tmp_path / 'out'), report_types=['simple'],
         )
 
-        assert (comparison / 'report.csv').is_file()
+        assert (comparison / 'gb-qc-report.csv').is_file()

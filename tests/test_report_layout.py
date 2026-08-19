@@ -33,7 +33,7 @@ class TestClassesLayout:
         )
 
         column_dir = tmp_path / 'out' / 'class' / 'sequence'
-        assert (column_dir / 'neg_vs_pos' / 'report.csv').is_file()
+        assert (column_dir / 'neg_vs_pos' / 'gb-qc-report.csv').is_file()
         assert (column_dir / 'per-class' / 'pos.json').is_file()
         assert (column_dir / 'per-class' / 'neg.json').is_file()
 
@@ -61,7 +61,7 @@ class TestClassesLayout:
             'test-pos_vs_train-pos',
         ]
         for comparison in comparisons:
-            assert (class_dir / comparison / 'report.csv').is_file()
+            assert (class_dir / comparison / 'gb-qc-report.csv').is_file()
 
         assert sorted(p.name for p in (class_dir / 'per-class').iterdir()) == [
             'neg.json',
@@ -80,7 +80,7 @@ class TestClassesLayout:
             report_types=['simple'],
         )
 
-        assert (tmp_path / 'out' / 'class' / 'sequence' / '5-utr_vs_a-b' / 'report.csv').is_file()
+        assert (tmp_path / 'out' / 'class' / 'sequence' / '5-utr_vs_a-b' / 'gb-qc-report.csv').is_file()
 
     def test_labels_keep_their_original_form_in_the_report(self, tmp_path):
         """Slugging is for paths only; the report still shows the real label."""
@@ -109,10 +109,10 @@ class TestClassesLayout:
         )
 
         class_dir = tmp_path / 'out' / 'class'
-        assert (class_dir / 'seq_a' / '0_vs_1' / 'report.csv').is_file()
-        assert (class_dir / 'seq_b' / '0_vs_1' / 'report.csv').is_file()
+        assert (class_dir / 'seq_a' / '0_vs_1' / 'gb-qc-report.csv').is_file()
+        assert (class_dir / 'seq_b' / '0_vs_1' / 'gb-qc-report.csv').is_file()
         # Multiple columns are additionally analysed concatenated together.
-        assert (class_dir / 'merged' / '0_vs_1' / 'report.csv').is_file()
+        assert (class_dir / 'merged' / '0_vs_1' / 'gb-qc-report.csv').is_file()
 
     def test_a_column_named_merged_does_not_take_the_merged_directory(self, tmp_path):
         csv_path = _write_csv(tmp_path / 'data.csv', ['0', '1'], columns=('merged', 'seq_b'))
@@ -148,10 +148,10 @@ class TestClassesLayout:
         )
 
         comparison = tmp_path / 'out' / 'class' / 'sequence' / 'a_vs_b'
-        assert (comparison / 'report.html').is_file()
+        assert (comparison / 'gb-qc-report.html').is_file()
         assert (comparison / 'plots').is_dir()
-        assert (comparison / 'duplicates.txt').is_file()
-        assert set((comparison / 'duplicates.txt').read_text().split()) == set(shared)
+        assert (comparison / 'gb-qc-duplicates.txt').is_file()
+        assert set((comparison / 'gb-qc-duplicates.txt').read_text().split()) == set(shared)
 
 
 class TestSplitsLayout:
@@ -182,7 +182,7 @@ class TestSplitsLayout:
         )
 
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'enhancers_train_vs_enhancers_test'
-        assert (comparison / 'report.csv').is_file()
+        assert (comparison / 'gb-qc-report.csv').is_file()
 
     def test_train_and_test_sharing_a_stem_get_separate_directories(self, tmp_path, stub_mmseqs):
         """'train/data.csv' vs 'val/data.csv' and vs 'test/data.csv' must differ.
@@ -258,7 +258,7 @@ class TestSplitsLayout:
             report_types=['simple'],
         )
 
-        assert (tmp_path / 'out' / 'split' / 'gene' / 'train_vs_test' / 'report.csv').is_file()
+        assert (tmp_path / 'out' / 'split' / 'gene' / 'train_vs_test' / 'gb-qc-report.csv').is_file()
 
     def test_several_columns_are_reported_as_merged(self, tmp_path, stub_mmseqs):
         """The columns are concatenated into one search, as 'class/merged/' is."""
@@ -274,7 +274,7 @@ class TestSplitsLayout:
             report_types=['simple'],
         )
 
-        assert (tmp_path / 'out' / 'split' / 'merged' / 'train_vs_test' / 'report.csv').is_file()
+        assert (tmp_path / 'out' / 'split' / 'merged' / 'train_vs_test' / 'gb-qc-report.csv').is_file()
 
     def test_fasta_inputs_use_the_default_column_directory(self, tmp_path, stub_mmseqs):
         evaluate_splits.run(
@@ -285,14 +285,14 @@ class TestSplitsLayout:
             report_types=['simple'],
         )
 
-        assert (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'report.csv').is_file()
+        assert (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'gb-qc-report.csv').is_file()
 
 
 class TestLayoutIsFormatIndependent:
     def test_fasta_and_csv_reports_sit_at_the_same_depth(self, tmp_path):
         """FASTA has no sequence column, but its reports still go one level deep.
 
-        A caller can then resolve any report as class/<column>/<pair>/report.html
+        A caller can then resolve any report as class/<column>/<pair>/gb-qc-report.html
         without branching on the input format.
         """
         evaluate_classes.run(
@@ -312,12 +312,12 @@ class TestLayoutIsFormatIndependent:
         )
 
         def layout(root):
-            return sorted(str(p.relative_to(root)) for p in root.rglob('report.csv'))
+            return sorted(str(p.relative_to(root)) for p in root.rglob('gb-qc-report.csv'))
 
         # Identical paths, not merely identical depth: classes are sorted by path
         # name for both formats, so 'pos' and 'neg' give 'neg_vs_pos' either way.
-        assert layout(tmp_path / 'from_fasta') == ['class/sequence/neg_vs_pos/report.csv']
-        assert layout(tmp_path / 'from_csv') == ['class/sequence/neg_vs_pos/report.csv']
+        assert layout(tmp_path / 'from_fasta') == ['class/sequence/neg_vs_pos/gb-qc-report.csv']
+        assert layout(tmp_path / 'from_csv') == ['class/sequence/neg_vs_pos/gb-qc-report.csv']
 
     def test_both_commands_report_at_the_same_depth(self, tmp_path, monkeypatch):
         """<command>/<column>/<comparison>/ holds every report either command writes."""
@@ -345,10 +345,10 @@ class TestLayoutIsFormatIndependent:
             report_types=['simple'],
         )
 
-        reports = sorted(str(p.relative_to(out_folder)) for p in out_folder.rglob('report.csv'))
+        reports = sorted(str(p.relative_to(out_folder)) for p in out_folder.rglob('gb-qc-report.csv'))
         assert reports == [
-            'class/sequence/neg_vs_pos/report.csv',
-            'split/sequence/train_vs_test/report.csv',
+            'class/sequence/neg_vs_pos/gb-qc-report.csv',
+            'split/sequence/train_vs_test/gb-qc-report.csv',
         ]
         assert all(len(pathlib.Path(report).parts) == 4 for report in reports)
 
@@ -370,9 +370,9 @@ class TestClassOrdering:
 
         def layout(name):
             root = tmp_path / name
-            return sorted(str(p.relative_to(root)) for p in root.rglob('report.csv'))
+            return sorted(str(p.relative_to(root)) for p in root.rglob('gb-qc-report.csv'))
 
-        assert layout('forward') == layout('reversed') == ['class/sequence/neg_vs_pos/report.csv']
+        assert layout('forward') == layout('reversed') == ['class/sequence/neg_vs_pos/gb-qc-report.csv']
 
     def test_explicit_label_list_order_does_not_change_report_paths(self, tmp_path):
         csv_path = _write_csv(tmp_path / 'data.csv', ['pos', 'neg'])
@@ -387,4 +387,4 @@ class TestClassOrdering:
             )
 
         for name in ('forward', 'reversed'):
-            assert (tmp_path / name / 'class' / 'sequence' / 'neg_vs_pos' / 'report.csv').is_file()
+            assert (tmp_path / name / 'class' / 'sequence' / 'neg_vs_pos' / 'gb-qc-report.csv').is_file()

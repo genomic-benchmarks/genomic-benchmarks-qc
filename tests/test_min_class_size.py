@@ -255,13 +255,13 @@ class TestReportSaysWhatWasNotScored:
         results, failed_by_feature = flag_significant_differences(stats1, stats2)
 
         generate_dataset_html_report(
-            stats1, stats2, tmp_path / 'report.html', plots_path=tmp_path / 'plots',
+            stats1, stats2, tmp_path / 'gb-qc-report.html', plots_path=tmp_path / 'plots',
             plot_type='boxen',
             results=pd.DataFrame.from_dict(results, orient='index'),
             failed_by_feature=failed_by_feature,
         )
 
-        page = (tmp_path / 'report.html').read_text()
+        page = (tmp_path / 'gb-qc-report.html').read_text()
         assert 'not-scored-note' in page
         assert 'were not scored' in page
         # Every plot is still drawn from all the data, floor or no floor - the
