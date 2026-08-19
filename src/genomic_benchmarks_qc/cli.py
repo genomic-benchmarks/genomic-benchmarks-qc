@@ -125,7 +125,8 @@ def evaluate_classes(
     regression: bool = typer.Option(False, help="Treat label column as regression target and split into high/low."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    end_position: Optional[int] = typer.Option(None, help="Last position included in per-position stats. Defaults to the last position at least 75% of each class's sequences reach."),
+    end_position: Optional[int] = typer.Option(None, help="Last position the per-position checks reach. Defaults to the last position at least 50 of each class's sequences reach. Can only narrow the flagged window, never widen it - what is flagged is decided by --min-coverage, and that window is what the figures draw."),
+    min_coverage: float = typer.Option(0.25, help="Fraction of each class's sequences that must reach a position before it can be flagged, on top of the 250 sequences every compared position needs. This window is what the per-position figures draw; further positions are reported as Unknown and not drawn. 0 leaves only the 250."),
     plot_type: str = typer.Option('boxen', help="Plot type to use for visualizations (boxen, violin)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
@@ -147,6 +148,9 @@ def evaluate_classes(
     if end_position is not None and end_position <= 0:
         _fail(f"end_position must be a positive integer, got {end_position}")
 
+    if not 0 <= min_coverage <= 1:
+        _fail(f"min_coverage must be a fraction between 0 and 1, got {min_coverage}")
+
     _run_command(
         run_evaluate_classes,
         input=input,
@@ -158,6 +162,7 @@ def evaluate_classes(
         regression=regression,
         report_types=report_types,
         end_position=end_position,
+        min_coverage=min_coverage,
         plot_type=plot_type,
         log_level=log_level,
         log_file=log_file,
