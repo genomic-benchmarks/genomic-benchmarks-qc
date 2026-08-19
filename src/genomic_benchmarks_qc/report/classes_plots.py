@@ -12,6 +12,7 @@ from matplotlib.patches import Patch
 import pandas as pd
 import logging
 from genomic_benchmarks_qc.report.colors import CLASS_COLORS
+from genomic_benchmarks_qc.utils.seq_stats import cohort_floor
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
@@ -294,8 +295,33 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
 
     return fig
 
+def _draw_coverage_floor(ax, floor):
+    """Mark the cohort a position has to have behind it to be compared.
+
+    The line is the rule that ends the plot: the window stops where the lower
+    coverage curve crosses it, so the curve arriving at the line and the figure
+    running out of positions happen at the same place, and the line is what says
+    the second is a consequence of the first.
+
+    Left as a bare line. It carried an italic caption naming the cohort it
+    stands for, which put a sentence inside the panel it was explaining; the
+    section's `?` explanation says the same thing once, outside the figure.
+    """
+    if not 0 < floor <= 1.1:
+        return
+
+    ax.axhline(floor, color='dimgray', linewidth=1, linestyle=(0, (4, 3)), zorder=2)
+
+
 def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', failed_positions=None):
     """Plot per-base sequence comparison with optional failure shading.
+
+    The curves run to `end_position`, which callers set to the compared window:
+    every position drawn is a position that was scored, so an unflagged stretch
+    reads as a stretch that passed. The one exception is a comparison that scored
+    nothing, where the caller passes the reported window instead and no position
+    is flagged at all. The coverage panel below says how much data stands behind
+    each position and marks the floor that ends the window.
 
     Args:
         stats1, stats2: Statistics objects for two datasets.
@@ -355,25 +381,35 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         if title and index == 0:
             axs[index].set_title(f'{title}', fontsize=16)
 
-    seq_lengths = list(stats1.stats['Sequence lengths'].values.flatten()) + list(stats2.stats['Sequence lengths'].values.flatten())
     # The proportion of sequences reaching each position is the denominator behind
     # the curves above, since a position is scored only on the sequences that have
-    # it. Positions are 1-based here to line up with the x axis of the panels
-    # above; counting from 0 would shift the whole curve one position right and
-    # start it at a trivial 100%.
-    positions = range(1, end_position + 1)
-    length_counts = [sum(1 for length in seq_lengths if length >= pos) for pos in positions]
-    # Normalize against every sequence, not against the first plotted position, so
-    # the axis reads as a proportion of the dataset even when sequences are empty.
-    if seq_lengths:
-        length_counts = [count / len(seq_lengths) for count in length_counts]
+    # it. One curve per class rather than one pooled curve: a position is compared
+    # only where *both* classes clear the coverage floor, so the class that runs
+    # out first is what ends the compared window, and pooling hides it. Positions
+    # are 1-based here to line up with the x axis of the panels above; counting
+    # from 0 would shift the whole curve one position right and start it at a
+    # trivial 100%.
+    positions = list(range(1, end_position + 1))
+    coverage = []
+    for stats in (stats1, stats2):
+        # Normalized against every sequence in the class, not against the first
+        # plotted position, so the axis reads as a proportion of the class even
+        # when sequences are empty.
+        lengths = list(stats.stats['Sequence lengths'].values.flatten())
+        coverage.append([sum(1 for length in lengths if length >= pos) / len(lengths)
+                         if lengths else 0.0
+                         for pos in positions])
+    # The cohort a comparison at a position actually has is the smaller of the two.
+    binding = [min(pair) for pair in zip(*coverage)]
 
-    # plot length counts in the last subplot
+    # plot coverage in the last subplot
     last_index = len(nucleotides)
-    axs[last_index].fill_between(positions, length_counts, color='lightgray', alpha=0.5)
-    axs[last_index].plot(positions, length_counts, color='lightgray', linewidth=2)
+    axs[last_index].fill_between(positions, binding, color='lightgray', alpha=0.5)
+    axs[last_index].plot(positions, coverage[0], color=HuePalette()[0], alpha=0.7, linewidth=2)
+    axs[last_index].plot(positions, coverage[1], color=HuePalette()[1], alpha=0.7, linewidth=2)
+    _draw_coverage_floor(axs[last_index], cohort_floor(stats1, stats2))
     axs[last_index].set_xlabel(f"{x_label}", fontsize=14)
-    axs[last_index].set_ylabel('Proportion of\nsequences\nreaching position', fontsize=14)
+    axs[last_index].set_ylabel('Proportion of\neach class\nreaching position', fontsize=14)
     axs[last_index].yaxis.set_label_position("right")
     axs[last_index].yaxis.tick_right()
     axs[last_index].set_ylim(0, 1.1)
