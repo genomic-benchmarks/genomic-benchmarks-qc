@@ -8,6 +8,8 @@ anywhere without losing anything.
 from datetime import datetime
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE
+from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, MIN_SEQUENCES_PER_POSITION
 import importlib.metadata
 
 
@@ -55,7 +57,7 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
                 status_class = 'status-fail'
                 symbol = '✖'
             else:
-                status_class = 'status-pass'
+                status_class = 'status-unknown'
                 symbol = '?'
         
         flags_html += f'''<div class="nucleotide-flag-item">
@@ -105,6 +107,8 @@ HTML_TEMPLATE = """
 
             <!-- Report header: logo, short description and generated-on/data source info -->
             {{report_header}}
+
+            {{not_scored_note}}
 
             <section id="basic-descriptive-statistics" class="table-section">
                 <div class="section-header">
@@ -290,6 +294,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div id="per-position-explanation" class="explanation-text">
                     <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of sequences extend to each position.
+                    {{position_window_note}}
                 </div>
                 {{per-position-nucleotide-content}}
             </section>
@@ -304,6 +309,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
                     <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction). This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data.
+                    {{position_window_note_reversed}}
                 </div>
                 {{per-position-reversed-nucleotide-content}}
             </section>
@@ -315,6 +321,102 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
+def generate_not_scored_html(stats1, stats2, summary_statuses):
+    """Explain, at the top of the report, any check that was not scored.
+
+    A grey "?" in the sidebar is easy to read as a pass, and the difference is
+    the whole point: Unknown means the comparison was not made, because there
+    were not enough sequences behind it for its result to mean anything. Saying
+    so once, in full, is what lets a reader trust the flags that are there.
+
+    Returns an empty string when every check was scored, so the note costs
+    nothing on a normally sized dataset.
+    """
+    if not summary_statuses:
+        return ''
+
+    # Only the top-level checks; the per-base and per-position detail rows carry
+    # their own Unknowns and would bury the message.
+    unscored = [name for name, flag in summary_statuses.items()
+                if ' - ' not in name and str(flag).strip().lower() == 'unknown']
+    if not unscored:
+        return ''
+
+    positional = [name for name in unscored if 'position' in name.lower()]
+    per_sequence = [name for name in unscored if name not in positional]
+
+    def names(items):
+        return ', '.join(f'<em>{name}</em>' for name in items)
+
+    reasons = []
+    if per_sequence:
+        smaller = min(stats1.stats['Number of sequences'], stats2.stats['Number of sequences'])
+        reasons.append(
+            f'{names(per_sequence)} &mdash; the smaller class holds {smaller:,} sequences, and below '
+            f'{MIN_SEQUENCES_PER_CLASS} these checks report a difference on sampling noise alone too '
+            'often for a flag to be informative.'
+        )
+    if positional:
+        reasons.append(
+            f'{names(positional)} &mdash; every position is compared on the sequences long enough to '
+            f'reach it, and no analysed position has {MIN_SEQUENCES_PER_POSITION} sequences in both '
+            'classes.'
+        )
+
+    items = ''.join(f'<li>{reason}</li>' for reason in reasons)
+    return (
+        '<div class="not-scored-note">'
+        f'<strong>{len(unscored)} check(s) were not scored.</strong> They are marked '
+        '<span class="status-icon status-unknown">?</span> rather than passed, because not enough '
+        'data stands behind them to tell a real difference from sampling noise &mdash; which is not '
+        'the same as having found no difference.'
+        f'<ul>{items}</ul>'
+        'The plots and the descriptive statistics below are computed from all the data and are '
+        'unaffected, so the distributions can still be compared by eye.'
+        '</div>'
+    )
+
+
+def generate_position_window_html(stats1, stats2):
+    """Describe the analysed per-position window and how well it is covered.
+
+    The per-position plots and flags stop at a position chosen from the sequence
+    lengths, and each position is scored only on the sequences that reach it. A
+    reader who cannot see where the window ends, or how much of each class still
+    stands behind its far end, cannot tell a thinly supported difference from a
+    well supported one -- so both are stated. It goes inside the section's ?
+    explanation rather than above the figure: it is background for reading the
+    plot, not a finding, and on its own above the figure it read as a second
+    explanation of the same check.
+    """
+    end_position = min(stats1.end_position, stats2.end_position)
+
+    if end_position < 1:
+        return ('<p>Sequences are too short for per-position '
+                'statistics, so no positions were analysed.</p>')
+
+    parts = []
+    for stats in (stats1, stats2):
+        label = stats.label if stats.label is not None else stats.filename
+        coverage = stats.coverage_at(end_position)
+        count = int(round(coverage * stats.stats['Number of sequences']))
+        parts.append(f"{label}: {coverage:.1%} ({count:,} sequences)")
+
+    thin = min(stats1.coverage_at(end_position), stats2.coverage_at(end_position)) < DEFAULT_MIN_COVERAGE
+    caveat = ''
+    if thin:
+        caveat = (' Fewer sequences reach the end of this window than the '
+                  f'{DEFAULT_MIN_COVERAGE:.0%} default, so its later positions rest on less data.')
+
+    return (f'<p>Positions 1&ndash;{end_position} were analysed. '
+            f'Each position is compared on the sequences that reach it; at position {end_position} '
+            f'that is {parts[0]} and {parts[1]}.'
+            f' A position is scored only where at least {MIN_SEQUENCES_PER_POSITION} sequences in '
+            'each class reach it, and the difference it needs to show before it is flagged widens '
+            'as its cohort shrinks, so that the worst case over the whole window is not set by '
+            f'sampling noise.{caveat}</p>')
+
 
 def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, duplicate_seqs, duplicate_seqs_file=None,
                              tool_description=None):
@@ -409,6 +511,11 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
                              image_or_message(plots_path['Per sequence dinucleotide content'],
                                               'Per Sequence Dinucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
+    html_template = put_data(html_template, "{{not_scored_note}}",
+                             generate_not_scored_html(stats1, stats2, summary_statuses))
+    position_window_note = generate_position_window_html(stats1, stats2)
+    html_template = put_data(html_template, "{{position_window_note}}", position_window_note)
+    html_template = put_data(html_template, "{{position_window_note_reversed}}", position_window_note)
     html_template = put_data(html_template, "{{per-position-nucleotide-content}}",
                              image_or_message(plots_path['Per position nucleotide content'],
                                               'Per Position Nucleotide Content', 'plot-wide',

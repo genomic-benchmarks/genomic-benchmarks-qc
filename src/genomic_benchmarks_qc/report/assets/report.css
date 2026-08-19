@@ -205,3 +205,11 @@ pre {
 .explanation-text.visible {
     display: block;
 }
+.not-scored-note {
+    background-color: #f4f4f2;
+    border-left: 4px solid {{UNKNOWN_COLOR}};
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+    line-height: 1.5;
+}

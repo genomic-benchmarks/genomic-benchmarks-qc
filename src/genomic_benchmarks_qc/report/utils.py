@@ -70,6 +70,11 @@ def icon_html(summary_statuses, key):
         return '<span class="status-icon status-warn">!</span>'
     if lv in ('fail', 'failed', 'error'):
         return '<span class="status-icon status-fail">✖</span>'
+    if lv == 'unknown':
+        # Not scored: too few sequences behind the check for its result to mean
+        # anything. Deliberately distinct from Pass, which is a verdict.
+        return ('<span class="status-icon status-unknown" '
+                'title="Not enough sequences to score this check">?</span>')
     # Otherwise assume the value is an HTML snippet or a custom symbol and return as-is
     return s
 

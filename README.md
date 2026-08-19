@@ -145,6 +145,33 @@ or `--label-list` values in.
 - **Pass**: ≤ 0.6 (classes not distinguishable by feature)
 - **Warning**: ≤ 0.7
 - **Fail**: > 0.7 (significant bias detected)
+- **Unknown**: not enough sequences to score the check (see below)
+
+**How small is too small.** Each check reports the worst case over its features,
+and the worst case over many weak features crosses a fixed boundary on sampling
+noise alone when the classes are small. Two guards keep a flag meaning what it
+says:
+
+- The per-sequence checks need at least **200 sequences in the smaller class**.
+  Below that they report `Unknown` rather than a verdict, because at 100
+  sequences per class the dinucleotide check flags two classes drawn from the
+  same process 19.4% of the time, against 1.2% at 200.
+- The per-position checks compare each position on the sequences long enough to
+  reach it, so their cohorts shrink along the sequence and one class-wide floor
+  would silence the far end of every variable-length dataset. Instead, the
+  difference a position must show before it counts widens as its own cohort
+  shrinks. On a normally sized dataset this falls below 0.6 and the fixed
+  boundaries above apply unchanged.
+
+`Unknown` is not `Pass`: it says the comparison was not made, not that it came
+out clean. The plots, the per-class statistics and the descriptive tables are
+computed from all the data either way, so small datasets can still be compared
+by eye, and the terminal says which checks were skipped and why.
+
+The vocabulary and duplication checks are exempt from all of this. They ask
+whether something *is present* — a base in one class and not the other, a
+sequence in both classes — rather than whether a model could exploit it, and a
+single occurrence is worth reporting however small the dataset.
 
 **Evaluated features:**
 - Nucleotide vocabulary
