@@ -41,7 +41,7 @@ def render(tmp_path, stats1, stats2):
     results, failed_by_feature = flag_significant_differences(stats1, stats2)
     generate_dataset_html_report(
         stats1, stats2, tmp_path / 'report.html', plots_path=tmp_path / 'plots',
-        end_position=min(stats1.end_position, stats2.end_position), plot_type='boxen',
+        plot_type='boxen',
         results=pd.DataFrame.from_dict(results, orient='index'),
         failed_by_feature=failed_by_feature,
     )
@@ -59,8 +59,8 @@ def payload_from(page, dom_id):
 def page(tmp_path_factory):
     """A report with enough sequences for the per-position checks to be scored."""
     tmp_path = tmp_path_factory.mktemp('report')
-    stats1 = make_stats(random_sequences(80, 30, seed=1), label='a')
-    stats2 = make_stats(random_sequences(80, 30, seed=2, composition=[.7, .1, .1, .1]), label='b')
+    stats1 = make_stats(random_sequences(300, 30, seed=1), label='a')
+    stats2 = make_stats(random_sequences(300, 30, seed=2, composition=[.7, .1, .1, .1]), label='b')
     return render(tmp_path, stats1, stats2)
 
 
@@ -79,7 +79,7 @@ class TestInteractivePerPosition:
             payload = payload_from(page, dom_id)
             assert payload['endPosition'] > 0
             assert payload['labels'] == ['a', 'b']
-            assert len(payload['coverage']) == payload['endPosition']
+            assert all(len(series) == payload['endPosition'] for series in payload['coverage'])
             assert set(payload['nucleotides']) == set('ACGT')
 
     def test_the_flagged_positions_reach_the_page(self, page):
@@ -102,8 +102,8 @@ class TestInteractivePerPosition:
 
     def test_the_static_plots_are_still_written_to_disk(self, tmp_path):
         """The report does not show them, but the PNGs remain part of the output."""
-        stats1 = make_stats(random_sequences(20, 30, seed=3), label='a')
-        stats2 = make_stats(random_sequences(20, 30, seed=4), label='b')
+        stats1 = make_stats(random_sequences(300, 30, seed=3), label='a')
+        stats2 = make_stats(random_sequences(300, 30, seed=4), label='b')
 
         render(tmp_path, stats1, stats2)
 

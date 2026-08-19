@@ -17,7 +17,7 @@ from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 from genomic_benchmarks_qc.report import classes_plots
 from genomic_benchmarks_qc.report import splits_plots
-from genomic_benchmarks_qc.report.per_position_payload import build_payload
+from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 
 def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max):
     """
@@ -45,7 +45,7 @@ def generate_split_plots(query_similarity_max, target_similarity_max, threshold_
 
     return plots_paths_dict
 
-def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_position, plot_type, results, failed_by_feature):
+def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_type, results, failed_by_feature):
     """Generate HTML report comparing two dataset statistics.
 
     Generates plots with colored failure indicators (red #c62828 for Fail, orange #f57f17 for Warning),
@@ -55,7 +55,6 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
         stats1, stats2: Statistics objects for two datasets.
         output_path: Path to save HTML report (.html).
         plots_path: Directory to save plot images.
-        end_position: Maximum position for per-position plots.
         plot_type: Plot type ('boxen' or 'violin').
         results: DataFrame with pre-computed flags, as produced by
             `flag_significant_differences`. Column 'Flag' is used for the summary
@@ -73,6 +72,11 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     """
     plots_path.mkdir(parents=True, exist_ok=True)
 
+    # The per-position window comes from the two classes' sequence lengths, so it
+    # is read off the statistics rather than passed in: a window that disagreed
+    # with the statistics it is drawn from would misplace every flag.
+    end_position = drawn_window(stats1, stats2)
+
     summary_statuses = results['Flag'].to_dict()
 
     # Extract percent remaining, which only the duplication check computes
@@ -83,7 +87,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
             percent_remaining = dup_info['Percent Remaining']
     # generate plots (with failure shading if failed_by_feature available)
     plots_paths = generate_dataset_plots(
-        stats1, stats2, plots_path, end_position, plot_type,
+        stats1, stats2, plots_path, plot_type,
         failed_by_feature=failed_by_feature,
         percent_remaining=percent_remaining
     )
@@ -94,12 +98,14 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
     duplicate_seqs_path = Path(output_path).parent / DUPLICATES_FILE
 
     # The data behind the interactive per-position figures. Everything it needs
-    # was computed for the flags and the plots; this only reshapes it. Both
-    # directions come back None when the two classes share no bases, which is
-    # the same condition that leaves those plots unmade.
+    # was computed for the flags and the plots; this only reshapes it. The window
+    # is the compared one, or the reported one when nothing could be compared -
+    # see `drawn_window`. Both directions come back None when the two classes
+    # share no bases, which is the same condition that leaves those plots unmade.
     bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
     per_position_payloads = {
-        direction: build_payload(stats1, stats2, bases_overlap, end_position, results, direction)
+        direction: build_payload(stats1, stats2, bases_overlap, end_position,
+                                 results, direction)
         for direction in ('forward', 'reversed')
     }
 
@@ -134,13 +140,12 @@ def generate_simple_report(results, output_path):
     results.index.name = 'Check'
     results.to_csv(output_path)
 
-def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type='boxen', failed_by_feature=None, percent_remaining=None):
+def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen', failed_by_feature=None, percent_remaining=None):
     """Generate comparison plots between two datasets.
 
     Args:
         stats1, stats2: Statistics objects for two datasets.
         output_path: Directory to save plots.
-        end_position: Maximum position for per-position plots.
         plot_type: Plot type ('boxen' or 'violin').
         failed_by_feature: Dict with failure info for shading (optional).
         percent_remaining: Optional float with the percentage of sequences remaining after deduplication.
@@ -150,6 +155,12 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     """
 
     logging.info(f"Generating PNG plots at: {output_path}")
+
+    # The per-position figures draw only what was compared, so the scored window
+    # is the one they are plotted over; the wider window the checks themselves
+    # run over is not drawn, except when nothing was compared and it is all
+    # there is - see `drawn_window`.
+    end_position = drawn_window(stats1, stats2)
 
     plots_paths = {}
 
@@ -227,67 +238,54 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
         else:
             plots_paths['Per sequence dinucleotide content'] = no_flags_path
 
-        # Plot per position nucleotide content (forward) - create both versions
-        # No-flags version
-        fig = classes_plots.plot_per_base_sequence_comparison(
-            stats1,
-            stats2,
-            stats_name='Per position nucleotide content',
-            nucleotides = bases_overlap,
-            end_position=end_position,
-            x_label='Position in sequence',
-            failed_positions=None
-        )
-        no_flags_path = output_path / 'per_position_nucleotide_content.png'
-        fig.savefig(no_flags_path, bbox_inches='tight')
-        plt.close(fig)
-        if failed_pos_forward:
-            fig = classes_plots.plot_per_base_sequence_comparison(
-                stats1,
-                stats2,
-                stats_name='Per position nucleotide content',
-                nucleotides = bases_overlap,
-                end_position=end_position,
-                x_label='Position in sequence',
-                failed_positions=failed_pos_forward
-            )
-            with_flags_path = output_path / 'per_position_nucleotide_content_with_flags.png'
-            fig.savefig(with_flags_path, bbox_inches='tight')
-            plt.close(fig)
-            plots_paths['Per position nucleotide content'] = with_flags_path
-        else:
-            plots_paths['Per position nucleotide content'] = no_flags_path
+        # The per-position figures, one per direction, drawn over the window
+        # `drawn_window` resolves: what was compared, or - when nothing was - the
+        # positions the checks are named for, every one of them Unknown. Only a
+        # comparison with no per-position checks at all leaves them unmade, and
+        # the HTML renders a message in their place the way it does for
+        # disjoint bases.
+        # The axis wording comes from X_LABELS, the same place the interactive
+        # figure and its flag table take it from, so the PNG in plots/ and the
+        # figure on the page cannot end up counting positions differently.
+        for stats_name, x_label, file_stem, failed_positions in (
+            ('Per position nucleotide content', X_LABELS['forward'],
+             'per_position_nucleotide_content', failed_pos_forward),
+            ('Per position reversed nucleotide content', X_LABELS['reversed'],
+             'per_position_reversed_nucleotide_content', failed_pos_reverse),
+        ):
+            if end_position < 1:
+                plots_paths[stats_name] = None
+                continue
 
-        # Plot per reversed position nucleotide content - create both versions
-        # No-flags version
-        fig = classes_plots.plot_per_base_sequence_comparison(
-            stats1,
-            stats2,
-            stats_name='Per position reversed nucleotide content',
-            nucleotides = bases_overlap,
-            end_position=end_position,
-            x_label='Position in reversed sequence',
-            failed_positions=None
-        )
-        no_flags_path = output_path / 'per_position_reversed_nucleotide_content.png'
-        fig.savefig(no_flags_path, bbox_inches='tight')
-        plt.close(fig)
-        if failed_pos_reverse:
+            # No-flags version
             fig = classes_plots.plot_per_base_sequence_comparison(
                 stats1,
                 stats2,
-                stats_name='Per position reversed nucleotide content',
+                stats_name=stats_name,
                 nucleotides = bases_overlap,
                 end_position=end_position,
-                x_label='Position in reversed sequence',
-                failed_positions=failed_pos_reverse
+                x_label=x_label,
+                failed_positions=None
             )
-            with_flags_path = output_path / 'per_position_reversed_nucleotide_content_with_flags.png'
-            fig.savefig(with_flags_path, bbox_inches='tight')
+            no_flags_path = output_path / f'{file_stem}.png'
+            fig.savefig(no_flags_path, bbox_inches='tight')
             plt.close(fig)
-            plots_paths['Per position reversed nucleotide content'] = with_flags_path
-        else:
-            plots_paths['Per position reversed nucleotide content'] = no_flags_path
+            plots_paths[stats_name] = no_flags_path
+
+            if failed_positions:
+                fig = classes_plots.plot_per_base_sequence_comparison(
+                    stats1,
+                    stats2,
+                    stats_name=stats_name,
+                    nucleotides = bases_overlap,
+                    end_position=end_position,
+                    x_label=x_label,
+                    failed_positions=failed_positions
+                )
+                with_flags_path = output_path / f'{file_stem}_with_flags.png'
+                fig.savefig(with_flags_path, bbox_inches='tight')
+                plt.close(fig)
+                plots_paths[stats_name] = with_flags_path
 
     # Plot length distribution
     fig = classes_plots.plot_lengths(

@@ -7,12 +7,32 @@ picture. The numbers are all computed already - this module only reshapes what
 `flag_significant_differences` and the statistics objects produced:
 
     freq      per label, per base, per position - the lines themselves
-    coverage  the proportion of sequences reaching each position
-    auroc     per base, per position - how well that base separates the labels
-    flags     per base, only the positions that were flagged, or not scored
+    coverage  per label, the proportion of that class reaching each position
+    flags     per base, only the positions that were flagged
+
+The window is the compared one, so an unflagged stretch of the figure is a
+stretch that passed. Positions past it are still reported - as Unknown, in
+`report.csv` and in the count of checks that were not scored - but they are not
+drawn: a figure that mixed the two would have a tail where a missing flag means
+nothing, and saying so took a wash and a caption that were most of what the
+figure had to explain about itself. What is left to say about them is a sentence
+in the section's explanation, where a reader who wants it can open it.
+
+When no position clears the cohort floor there is no compared window, and the
+figure falls back to the reported one - drawn, but with every position Unknown.
+That is what the rest of the report does with an underpowered comparison: the
+plots are still made, because a distribution is worth looking at whether or not
+it was scored, and the flags say Unknown rather than Pass. The fallback keeps
+that promise for the per-position panels without ever mixing the two cases in
+one figure: either every position drawn was compared, or none of them was.
+
+The report shows the flags and the frequencies behind them, and no separate
+separability score: for a per-position base the AU-ROC is a restatement of the
+gap between the two frequencies, so printing it beside them says the same thing
+twice. It stays in `report.csv`, which is where a number to compute on belongs.
 
 Nothing here rounds or subsets for size beyond three decimals, because the
-payload grows with the *length* of the analysed window and not with the number
+payload grows with the *length* of the compared window and not with the number
 of sequences: it is ~75 bytes per position per direction, against ~900 KB for
 the PNG it replaces.
 """
@@ -21,9 +41,12 @@ import json
 
 import numpy as np
 
+from genomic_benchmarks_qc.utils.seq_stats import cohort_floor
+from genomic_benchmarks_qc.utils.testing import position_windows
 from genomic_benchmarks_qc.report.colors import (
     CLASS_COLORS,
     FAIL_COLOR,
+    PASS_COLOR,
     UNKNOWN_COLOR,
     WARN_COLOR,
 )
@@ -35,21 +58,54 @@ FEATURE_NAMES = {
     'reversed': 'Per position reversed nucleotide content',
 }
 
+# What the x axis counts, in both directions. The viewer puts the same wording on
+# the position column of its flag table, so a reader never has to work out which
+# end position 1 is: 'in reversed sequence' named the transform rather than the
+# measurement, and left that open.
 X_LABELS = {
     'forward': 'Position in sequence',
-    'reversed': 'Position in reversed sequence',
+    'reversed': 'Position from sequence end',
 }
 
-# Flag colors used for the bands drawn over the panels. Fail and Warning match
-# the shading of the static plots; Unknown is not a severity, it says the
-# position was not scored, so it reads as a flat grey wash instead.
+# Flag colors, for the bands drawn over the panels and for the chips the viewer
+# puts in its hover card. Fail and Warning match the shading of the static
+# plots; Unknown is not a severity, it says the position was not scored, so it
+# reads as a flat grey wash instead. Inside a compared window Unknown is only
+# reached when the results table is missing a check the window says should be
+# there; the wash covers the whole figure in the one case where nothing could be
+# compared at all. Pass is never drawn as a band - it would cover the whole
+# window - but the hover card names it, so it needs a color.
 FLAG_COLORS = {
     'Fail': FAIL_COLOR,
     'Warning': WARN_COLOR,
+    'Pass': PASS_COLOR,
     'Unknown': UNKNOWN_COLOR,
 }
 
+# The flags a position is worth carrying in the payload. Pass is the common
+# case and would be most of the bytes, so it is left out and the viewer reads a
+# position with no entry as a Pass.
+STORED_FLAGS = ('Fail', 'Warning', 'Unknown')
+
 DECIMALS = 3
+
+
+def drawn_window(stats1, stats2):
+    """The window the per-position figures draw, given two classes.
+
+    The compared window, which is what makes an unflagged position on the figure
+    a position that passed. When nothing could be compared there is no such
+    window, and rather than drop the figure the panels fall back to the reported
+    one: an underpowered comparison still gets its plots everywhere else in the
+    report, and every position in the fallback is Unknown, so nothing in it can
+    be misread as having passed.
+
+    Returns:
+        Last position to draw, 1-based and inclusive; 0 when the comparison has
+        no per-position checks at all and there is genuinely nothing to draw.
+    """
+    end_position, scored_end_position = position_windows(stats1, stats2)
+    return scored_end_position if scored_end_position >= 1 else end_position
 
 
 def _series(frame, base, end_position):
@@ -62,16 +118,15 @@ def _series(frame, base, end_position):
     return [round(float(value), DECIMALS) for value in values]
 
 
-def _coverage(stats1, stats2, end_position):
-    """Proportion of all sequences reaching each position, 1-based.
+def _coverage(stats, end_position):
+    """Proportion of one class's sequences reaching each position, 1-based.
 
-    Pooled over both labels, which is what the static plot's bottom panel shows:
-    it is the denominator behind the curves above it.
+    One curve per class rather than one pooled curve: this is the denominator
+    behind that class's frequencies, and it is also what ends the compared
+    window - which happens where the *lower* of the two curves drops through the
+    coverage floor, something a pooled curve cannot show.
     """
-    lengths = np.concatenate([
-        np.asarray(stats1.stats['Sequence lengths']).flatten(),
-        np.asarray(stats2.stats['Sequence lengths']).flatten(),
-    ])
+    lengths = np.asarray(stats.stats['Sequence lengths']).flatten()
     if lengths.size == 0:
         return [0.0] * end_position
     positions = np.arange(1, end_position + 1)
@@ -84,36 +139,33 @@ def _label(stats):
     return str(stats.label if stats.label is not None else stats.filename)
 
 
-def _metrics_by_position(results, prefix, bases, end_position):
-    """Pull the per-position AU-ROC and flag out of the results table.
+def _flags_by_position(results, prefix, bases, end_position):
+    """Pull the per-position flag out of the results table.
 
     `results` is indexed by check name, and the per-position checks are named
     '<prefix> - <base> position <n>' with n 1-based. Looked up in one reindex per
     base rather than row by row, because a wide window is thousands of rows.
 
     Returns:
-        Tuple of (auroc, flags) where auroc maps base -> list of AU-ROC values or
-        None per position, and flags maps base -> {position: flag} holding only
-        the positions that were flagged or not scored.
+        Dict of base -> {position: flag}, holding only the positions that were
+        flagged. A position missing from it passed; that is the reading the
+        viewer relies on, so anything the results table does not name is recorded
+        as Unknown rather than dropped.
     """
-    auroc = {}
     flags = {}
     for base in bases:
         names = [f'{prefix} - {base} position {position}'
                  for position in range(1, end_position + 1)]
         rows = results.reindex(names)
-        scores = rows['AU-ROC'].to_numpy(dtype=float) if 'AU-ROC' in rows else np.full(end_position, np.nan)
-        auroc[base] = [None if not np.isfinite(value) else round(float(value), DECIMALS)
-                       for value in scores]
 
         base_flags = {}
         if 'Flag' in rows:
             for position, flag in enumerate(rows['Flag'].tolist(), start=1):
-                # Pass is the common case and says nothing worth drawing.
-                if flag in FLAG_COLORS:
-                    base_flags[str(position)] = flag
+                if flag == 'Pass':
+                    continue
+                base_flags[str(position)] = flag if flag in STORED_FLAGS else 'Unknown'
         flags[base] = base_flags
-    return auroc, flags
+    return flags
 
 
 def build_payload(stats1, stats2, bases, end_position, results, direction):
@@ -122,25 +174,36 @@ def build_payload(stats1, stats2, bases, end_position, results, direction):
     Args:
         stats1, stats2: SequenceStatistics objects for the two classes.
         bases: Bases present in both classes, in plotting order.
-        end_position: Last analysed position, 1-based and inclusive.
+        end_position: Last position to draw, 1-based and inclusive, as
+            `drawn_window` resolves it - normally the compared window, and the
+            reported one when nothing could be compared.
         results: DataFrame of every check's metrics, indexed by check name.
         direction: 'forward' or 'reversed'.
 
     Returns:
-        A JSON-serialisable dict, or None when there is nothing to draw.
+        A JSON-serialisable dict, or None when there is nothing to draw: no base
+        in common, or no per-position check at all.
     """
     if direction not in FEATURE_NAMES:
         raise ValueError(f"Unknown direction: {direction}")
     if not bases or end_position < 1:
         return None
 
+    floor = cohort_floor(stats1, stats2)
     frame1 = stats1.stats[FEATURE_NAMES[direction]]
     frame2 = stats2.stats[FEATURE_NAMES[direction]]
-    auroc, flags = _metrics_by_position(results, FEATURE_NAMES[direction], bases, end_position)
+    flags = _flags_by_position(results, FEATURE_NAMES[direction], bases, end_position)
+
+    # Whether anything in the window was compared. False only in the fallback
+    # case, where the figure is the reported window with every position Unknown;
+    # the viewer needs it to say 'nothing here was compared' where it would
+    # otherwise say 'every position passed'.
+    _, scored_end_position = position_windows(stats1, stats2)
 
     return {
         'direction': direction,
         'endPosition': int(end_position),
+        'compared': bool(scored_end_position >= 1),
         'xLabel': X_LABELS[direction],
         'labels': [_label(stats1), _label(stats2)],
         'colors': list(CLASS_COLORS),
@@ -150,9 +213,15 @@ def build_payload(stats1, stats2, bases, end_position, results, direction):
         'nucleotides': list(bases),
         'freq': {base: [_series(frame1, base, end_position),
                         _series(frame2, base, end_position)] for base in bases},
-        'coverage': _coverage(stats1, stats2, end_position),
+        'coverage': [_coverage(stats1, end_position), _coverage(stats2, end_position)],
+        # The floor that ends the window the figure draws, as a line across the
+        # coverage panel: the curves reach it at the right-hand edge, which is
+        # what makes the edge legible as a limit rather than as the data ending.
+        # The binding one of the two, as the report's note uses: a position has
+        # to clear the floor in both classes. It travels without a caption - the
+        # section's explanation is where the line is named.
+        'coverageFloor': floor,
         'flags': flags,
-        'auroc': auroc,
     }
 
 
@@ -188,23 +257,22 @@ def viewer_html(payload, dom_id):
     return f'''{payload_script(payload, dom_id + '-data')}
 <div class="ppv" id="{dom_id}" data-payload="{dom_id}-data">
   <div class="ppv-bar">
-    <button type="button" data-action="prev" title="Previous flagged position (p)">&#9664; Prev flag</button>
-    <button type="button" data-action="next" title="Next flagged position (n)">Next flag &#9654;</button>
+    <button type="button" data-action="prev" title="Previous flagged position">&#9664; Prev flag</button>
+    <button type="button" data-action="next" title="Next flagged position">Next flag &#9654;</button>
     <span class="ppv-readout" aria-live="polite"></span>
     <span class="ppv-bar-gap"></span>
-    <button type="button" data-action="reset" title="Reset zoom (double-click or Home)">Reset zoom</button>
-    <button type="button" data-action="save" title="Save the current window as PNG (s)">&#8595; Save view</button>
+    <button type="button" data-action="reset" title="Reset zoom (or double-click the figure)">Reset zoom</button>
+    <button type="button" data-action="save" title="Save the current window as PNG">&#8595; Save view</button>
   </div>
   <div class="ppv-plot">
-    <canvas class="ppv-canvas" tabindex="0" role="img" aria-label="{aria}"></canvas>
+    <canvas class="ppv-canvas" role="img" aria-label="{aria}"></canvas>
     <div class="ppv-tooltip" hidden></div>
     <p class="ppv-fallback">This figure is drawn in the browser and needs JavaScript.
     The flagged positions are listed below, and the same plot is in this report's
     <code>plots/</code> directory as a PNG.</p>
   </div>
   <p class="ppv-hint">Drag to zoom &middot; shift-drag to pan &middot; scroll to zoom &middot;
-  double-click to reset &middot; hover for the values at a position &middot;
-  keys: n / p for the next and previous flag, s to save the view</p>
+  double-click to reset &middot; hover for the frequencies and flags at a position</p>
   <details class="ppv-flags">
     <summary><span class="ppv-flags-count">Flagged positions</span></summary>
     <div class="ppv-flags-body"></div>

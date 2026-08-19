@@ -102,7 +102,6 @@ def run_analysis(input_statistics, report_dir, report_types, plot_type):
                 stat1, stat2,
                 comparison_dir / HTML_REPORT_FILE,
                 plots_path=comparison_dir / PLOTS_DIR,
-                end_position=min(stat1.end_position, stat2.end_position),
                 plot_type=plot_type,
                 results=results_df,
                 failed_by_feature=failed_by_feature
