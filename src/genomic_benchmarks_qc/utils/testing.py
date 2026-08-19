@@ -351,12 +351,12 @@ def direct_feature_model(stats1, stats2):
     # Position features (reverse)
     pos_results_rev, per_base_agg_rev = _score_position_features(
         stats1.sequences, stats2.sequences, bases,
-        'Per reverse position nucleotide content',
+        'Per position reversed nucleotide content',
         reverse=True, end_position=end_position,
     )
     results.update(pos_results_rev)
     if per_base_agg_rev:
-        results['Per reverse position nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg_rev.values())
+        results['Per position reversed nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg_rev.values())
 
     return results
 
@@ -376,7 +376,7 @@ def flag_significant_differences(stats1, stats2):
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
             'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per reverse position nucleotide content': {...}
+            'Per position reversed nucleotide content': {...}
           }
     """
     results = {}
@@ -390,7 +390,7 @@ def flag_significant_differences(stats1, stats2):
         'Per sequence nucleotide content',
         'Per sequence dinucleotide content',
         'Per position nucleotide content',
-        'Per reverse position nucleotide content',
+        'Per position reversed nucleotide content',
     ]
 
     all_results = {}
@@ -432,14 +432,14 @@ def _extract_failed_features(all_results: dict) -> dict:
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
             'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per reverse position nucleotide content': {'A': {10: 'Fail'}, ...},
+            'Per position reversed nucleotide content': {'A': {10: 'Fail'}, ...},
         }
     """
     failed_by_feature = {
         'Per sequence nucleotide content': {},
         'Per sequence dinucleotide content': {},
         'Per position nucleotide content': {},
-        'Per reverse position nucleotide content': {},
+        'Per position reversed nucleotide content': {},
     }
 
     for key, value in all_results.items():
@@ -471,19 +471,19 @@ def _extract_failed_features(all_results: dict) -> dict:
                     # Not a position entry (e.g., aggregate "Per position nucleotide content - A")
                     pass
 
-        elif key.startswith('Per reverse position nucleotide content - ') and ' position ' in key:
-            # Parse "Per reverse position nucleotide content - G position 52"
+        elif key.startswith('Per position reversed nucleotide content - ') and ' position ' in key:
+            # Parse "Per position reversed nucleotide content - G position 52"
             parts = key.rsplit(' position ', 1)
             if len(parts) == 2:
-                base = parts[0].replace('Per reverse position nucleotide content - ', '')
+                base = parts[0].replace('Per position reversed nucleotide content - ', '')
                 try:
                     position = int(parts[1])
-                    if base not in failed_by_feature['Per reverse position nucleotide content']:
-                        failed_by_feature['Per reverse position nucleotide content'][base] = {}
+                    if base not in failed_by_feature['Per position reversed nucleotide content']:
+                        failed_by_feature['Per position reversed nucleotide content'][base] = {}
                     if flag in ('Fail', 'Warning'):
-                        failed_by_feature['Per reverse position nucleotide content'][base][position] = flag
+                        failed_by_feature['Per position reversed nucleotide content'][base][position] = flag
                 except ValueError:
-                    # Not a position entry (e.g., aggregate "Per reverse position nucleotide content - A")
+                    # Not a position entry (e.g., aggregate "Per position reversed nucleotide content - A")
                     pass
 
     return failed_by_feature

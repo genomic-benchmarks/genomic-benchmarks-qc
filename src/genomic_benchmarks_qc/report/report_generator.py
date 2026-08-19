@@ -66,7 +66,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, end_po
                 'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
                 'Per sequence dinucleotide content': {'AA': 'Fail'},
                 'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail'}},
-                'Per reverse position nucleotide content': {...},
+                'Per position reversed nucleotide content': {...},
                 'Sequence Duplications within Labels': {'Pass'}
             }
     """
@@ -146,7 +146,7 @@ def generate_dataset_plots(stats1, stats2, output_path, end_position, plot_type=
     failed_nucleotides = failed_by_feature.get('Per sequence nucleotide content', {}) if failed_by_feature else None
     failed_dinucleotides = failed_by_feature.get('Per sequence dinucleotide content', {}) if failed_by_feature else None
     failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
-    failed_pos_reverse = failed_by_feature.get('Per reverse position nucleotide content', {}) if failed_by_feature else None
+    failed_pos_reverse = failed_by_feature.get('Per position reversed nucleotide content', {}) if failed_by_feature else None
 
     # Handle disjoint bases case - no common bases between datasets.
     # No plots are produced; the HTML report renders an explanatory message
