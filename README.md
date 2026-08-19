@@ -19,12 +19,12 @@ Compare sequence characteristics across different classes/labels to detect bias.
 **FASTA files (one per class):**
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/G4_positives.fasta \
-  --input example_datasets/G4_negatives.fasta \
-  --out-folder example_outputs/G4_dataset
+  --input example_datasets/coding_seqs.fasta \
+  --input example_datasets/intergenomic_seqs.fasta \
+  --out-folder example_outputs/coding_vs_intergenomic_dataset
 ```
 
-Each FASTA file represents one class, and its filename stem (the name without extensions) is used as the class/label name — e.g. `G4_positives.fasta` becomes the label `G4_positives`.
+Each FASTA file represents one class, and its filename stem (the name without extensions) is used as the class/label name — e.g. `coding_seqs.fasta` becomes the label `coding_seqs`.
 
 **Multiple CSV/TSV files:**
 ```bash
