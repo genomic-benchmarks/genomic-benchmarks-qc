@@ -6,9 +6,15 @@ import html
 import json
 from pathlib import Path
 
-FAIL_COLOR = '#c62828'   # .status-fail background-color
-WARN_COLOR = '#f57f17'   # .status-warn background-color
-PASS_COLOR = '#2e7d32'   # .status-pass background-color
+from genomic_benchmarks_qc.report import assets
+# Re-exported: the colors are defined in report.colors, which the stylesheets
+# also read, and imported from here by the plotting modules.
+from genomic_benchmarks_qc.report.colors import (  # noqa: F401
+    FAIL_COLOR,
+    PASS_COLOR,
+    UNKNOWN_COLOR,
+    WARN_COLOR,
+)
 
 def put_file_details(html_template, filename):
     """
@@ -102,218 +108,14 @@ def image_or_message(image_path, alt, style, message):
     return (f'<img src="data:image/png;base64, {encode_image_to_base64(image_path)}" '
             f'alt="{alt}" style="{style}">')
 
-# Shared CSS used by all report HTML templates. Keep this as plain CSS (no <style> tags).
-COMMON_CSS_TEMPLATE = """
-/* Make sure the root uses border-box sizing and doesn't allow the
-   page to horizontally overflow. Individual <pre> blocks will
-   still allow internal horizontal scrolling. */
-html, body {
-    box-sizing: border-box;
-    overflow-x: hidden; /* prevent accidental page-wide horizontal scroll */
-    margin: 0;
-    padding: 0;
-    background: #ffffff;
-}
-body {
-    font-family: Arial, sans-serif;
-    max-width: 100%; /* Prevents content from exceeding the viewport width */
-}
-.sidebar {
-    width: 220px;
-    background: #f4f4f4;
-    padding: 15px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    height: 100vh; /* Full height */
-    position: fixed; /* Fixed position */
-    overflow-y: auto;
-    z-index: 1000; /* Ensures it stays above other elements */
-}
-.sidebar a {
-    display: inline-block;
-    margin-left: 10px;
-    text-decoration: none;
-    color: #333;
-    width: 175px;
-}
-.sidebar-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-}
-.status-icon {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
-    line-height: 40px;
-    border-radius: 50%;
-    color: white;
-    font-size: 25px;
-    font-family: verdana;
-    text-align: center;
-    justify-content: center;
-}
-.status-icon-small {
-    display: inline-flex;
-    width: 28px;
-    height: 28px;
-    line-height: 28px;
-    border-radius: 50%;
-    color: white;
-    font-size: 14px;
-    font-family: verdana;
-    text-align: center;
-    justify-content: center;
-    margin: 0 4px 4px 0;
-}
-.status-pass { background-color: {{PASS_COLOR}}; color: #ffffff; }
-.status-warn { background-color: {{WARN_COLOR}}; color: #ffffff; }
-.status-fail { background-color: {{FAIL_COLOR}}; color: #ffffff; }
-.nucleotide-flags-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: -15px 0 15px 60px;
-    align-items: flex-start;
-}
-.nucleotide-flag-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-.nucleotide-flag-item .nucleotide-label {
-    font-size: 14px;
-    font-weight: bold;
-    text-align: center;
-    min-width: 24px;
-}
-.container {
-    /* in some layouts the flex parent can grow to fit unbreakable children;
-       make sure the container can shrink so .content's min-width:0 works */
-    min-width: 0;
-    box-sizing: border-box;
-}
-.content {
-    margin-left: 260px;
-    padding: 10px;
-    padding-right: 8%;
-    width: min(calc(100% - 260px), 1000px); /* Adjust width to avoid overlap */
-    overflow-x: hidden;
-    /* allow flex child to shrink below its content width so long lines
-       inside (e.g. long sequences in <pre>) don't expand the whole page */
-    min-width: 0;
-    box-sizing: border-box;
-}
-#sequence-duplication-levels table {
-    table-layout: fixed; /* Ensures columns respect defined widths */
-    width: 100%;
-    border-collapse: collapse;
-}
-#sequence-duplication-levels table th,
-#sequence-duplication-levels table td {
-    padding: 8px;
-    border: 1px solid #ddd;
-}
-#sequence-duplication-levels table td {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.count_column { width: 45px; }
-.sequence_column { width: 95%; }
-h1 { text-align: center; margin-bottom: 50px; }
-section { margin-bottom: 50px; }
-h2 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-left: 10px; }
-h3 { color: #555; margin-bottom: 15px; }
-.chart-container { margin-bottom: 30px; }
-.data-item { font-size: 1.2em; margin-bottom: 10px; }
-.data-item span { font-weight: bold; font-size: 1em; }
-
-/* basic descriptive statistics table */
-.table-section table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-.table-section table td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-.table-section table td:first-child { text-align: left; width: 200px; }
-.table-section table tr:nth-child(even) { background-color: #f9f9f9; }
-.table-section table tr:hover { background-color: #f1f1f1; }
-.table-section table span { font-weight: bold; }
-.cluster { 
-    border: 1px solid #ccc; 
-    margin-bottom: 20px; 
-    padding: 15px; 
-    border-radius: 5px; 
-    background: #fff; 
-}
-pre {
-     background: #f9f9f9;
-     padding: 10px;
-     /* prevent <pre> from forcing page width; allow internal horizontal
-         scrolling when the sequence is longer than the content area */
-     max-width: 100%;
-     overflow-x: auto;
-     /* keep original whitespace formatting but don't let the pre tag
-         itself grow the parent container in flex layout */
-     white-space: pre;
-     box-sizing: border-box;
-}
-.report-header img { 
-    max-width: 350px; 
-    height: auto;
-    margin: 0 0 10px; 
-}
-
-/* Toggle button styles */
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-}
-
-.toggle-btn {
-    background: transparent;
-    border: 1.5px solid #cbd5e1;
-    margin-bottom: 20px;
-    color: #94a3b8;
-    cursor: pointer;
-    font-size: 12px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    line-height: 1;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.toggle-btn:hover {
-    border-color: #94a3b8;
-    color: #64748b;
-}
-
-.toggle-btn:active {
-    transform: scale(0.95);
-}
-
-.explanation-text {
-    display: none;
-    background-color: #f0f7ff;
-    border-left: 4px solid #4a90e2;
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.explanation-text.visible {
-    display: block;
-}
-"""
-
-# make COMMON_CSS by substituting the color placeholders with actual color values
-COMMON_CSS = COMMON_CSS_TEMPLATE.replace("{{FAIL_COLOR}}", FAIL_COLOR).replace("{{WARN_COLOR}}", WARN_COLOR).replace("{{PASS_COLOR}}", PASS_COLOR)
+# The stylesheet, inlined into every report. It lives as a file in
+# report.assets rather than as a string literal here, so an editor and a linter
+# can read it.
+#
+# report_ui.js is the behaviour that goes with it, and is added to the page by
+# the report modules rather than from here, because it has to sit at the end of
+# <body>.
+COMMON_CSS = assets.stylesheet('report.css')
 
 # Standard report header HTML fragment (uses placeholders)
 REPORT_HEADER_HTML = """

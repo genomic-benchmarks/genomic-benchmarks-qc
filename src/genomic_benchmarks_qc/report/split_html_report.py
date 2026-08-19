@@ -6,6 +6,7 @@ styling, and the top alignments rendered inline as text.
 
 from datetime import datetime
 import html
+from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
@@ -212,30 +213,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <script>
-        function toggleAlignment(id, btn) {
-            const row = document.getElementById(id);
-            if (!row) return;
-
-            if (row.style.display === "none") {
-                row.style.display = "table-row";
-                btn.textContent = "Hide";
-            } else {
-                row.style.display = "none";
-                btn.textContent = "Show";
-            }
-        }
-
-        // Toggle explanation visibility
-        function toggleExplanation(elementId) {
-            var element = document.getElementById(elementId);
-            if (element.classList.contains('visible')) {
-                element.classList.remove('visible');
-            } else {
-                element.classList.add('visible');
-            }
-        }
-    </script>
+{{report_scripts}}
 
 </body>
 </html>
@@ -248,6 +226,10 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
 
     # insert shared CSS and header fragment
     html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
+    # The shared behaviour, plus this report's own alignment toggles. At the end
+    # of the body so it runs against a complete page.
+    html_template = put_data(html_template, "{{report_scripts}}",
+                             assets.script('report_ui.js', 'split_report.js'))
     html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
 
     # insert logo

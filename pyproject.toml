@@ -54,6 +54,13 @@ gb-qc = "genomic_benchmarks_qc.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# The report's stylesheets and scripts are read at report-generation time and
+# inlined into the HTML, so they have to ship in the wheel. tests/test_report_assets.py
+# loads every one of them through the loader, which is what catches a file added
+# here and forgotten below.
+[tool.setuptools.package-data]
+"genomic_benchmarks_qc.report.assets" = ["*.css", "*.js"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

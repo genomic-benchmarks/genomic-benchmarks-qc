@@ -6,6 +6,7 @@ anywhere without losing anything.
 """
 
 from datetime import datetime
+from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 import importlib.metadata
 
@@ -309,34 +310,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <script>
-        var sequenceDuplicationLevels = {{sequence_duplication_levels_seqs}};
-
-        // Populate table for sequence duplication levels
-        var tableBody = document.querySelector("#sequence-duplication-levels tbody");
-        for (var i = 0; i < sequenceDuplicationLevels.length; i++) {
-            var sequence = sequenceDuplicationLevels[i];
-
-            var row = document.createElement("tr");
-            var sequenceCell = document.createElement("td");
-
-            sequenceCell.textContent = sequence;
-            sequenceCell.className = "sequence_column";
-
-            row.appendChild(sequenceCell);
-            tableBody.appendChild(row);
-        }
-        
-        // Toggle explanation visibility
-        function toggleExplanation(elementId) {
-            var element = document.getElementById(elementId);
-            if (element.classList.contains('visible')) {
-                element.classList.remove('visible');
-            } else {
-                element.classList.add('visible');
-            }
-        }
-    </script>
+{{report_scripts}}
 
 </body>
 </html>
@@ -463,8 +437,6 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         <p>No duplicate sequences were found between classes.</p>
         """
         html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_message)
-        # set empty list for JS population
-        html_template = put_data(html_template, "{{sequence_duplication_levels_seqs}}", "[]")
     else:
         # insert table showing duplicate sequences
         duplication_table = """
@@ -482,11 +454,13 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
                     <p>{{sequence_duplication_levels_rest}} {{sequence_duplication_levels_file}}</p>
                 </div>
         """
-        html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_table)
-        # pass list of duplicate sequences for JS population
+        # The sequences go in as JSON data rather than as a JavaScript literal, so
+        # report_ui.js stays a file that can be linted and a sequence cannot
+        # break out of the script element.
         escaped_seqs = [escape_str(seq) for seq in duplicate_seqs[:10]]
-        html_template = put_data(html_template, "{{sequence_duplication_levels_seqs}}",
-                                 '[' + ', '.join(f'{seq}' for seq in escaped_seqs) + ']')
+        duplication_table += ('\n<script type="application/json" id="duplicate-sequences">['
+                              + ', '.join(escaped_seqs) + ']</script>')
+        html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_table)
         if len(duplicate_seqs) > 10:
             # If there are more than 10 sequences, we show how many more there are
             # and set the rest to a placeholder
@@ -498,6 +472,10 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All {len(duplicate_seqs)} duplicate sequences saved to {duplicate_seqs_file}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
+
+    # The behaviour goes in at the end of the body so it runs against a complete
+    # page.
+    html_template = put_data(html_template, "{{report_scripts}}", assets.script('report_ui.js'))
 
     # Generate unique bases flags
     unique_bases_flags = generate_nucleotide_flags_html(summary_statuses, 'Unique bases')

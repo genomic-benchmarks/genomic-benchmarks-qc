@@ -136,7 +136,7 @@ or `--label-list` values in.
 | File | Description |
 |------|-------------|
 | `report.csv` | Simple comparison report with Pass/Warning/Fail flags. |
-| `report.html` | Interactive HTML report with visualizations. |
+| `report.html` | Standalone HTML report: one file, no external assets. |
 | `plots/` | Individual plot images (PNG). |
 | `duplicates.txt` | Sequences appearing in both compared classes; written only when there are any. |
 | `per-class/<class>.json` | Per-class statistics (count, GC%, length, base/dinucleotide frequencies); written only when `json` is in `--report-types`. |

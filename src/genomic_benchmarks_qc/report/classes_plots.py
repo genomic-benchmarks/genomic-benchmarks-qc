@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import pandas as pd
 import logging
+from genomic_benchmarks_qc.report.colors import CLASS_COLORS
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
@@ -549,7 +550,7 @@ class HuePalette:
     def __new__(palette):
         """Return the shared palette, building it on first use."""
         if palette._palette is None:
-            palette._palette = sns.color_palette(['#003D99', '#66A3FF'])
+            palette._palette = sns.color_palette(list(CLASS_COLORS))
 
         return palette._palette
                 
