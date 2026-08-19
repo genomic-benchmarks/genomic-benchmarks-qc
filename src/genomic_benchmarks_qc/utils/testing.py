@@ -7,17 +7,30 @@ and generate flags for comparing two datasets.
 Every check here asks the same question: can a single feature tell the two
 classes apart? The answer is an AU-ROC, and a fixed boundary on it decides the
 flag. That boundary only means what it says when there are enough sequences
-behind it, so two guards sit in front of the scoring:
+behind it, and when those sequences are the class rather than a corner of it, so
+two guards sit in front of the scoring:
 
-- The per-sequence checks are not scored at all below
-  `MIN_SEQUENCES_PER_CLASS` sequences in the smaller class, and report Unknown.
-- The per-position checks reduce hundreds of positions to their worst case, and
-  the number of sequences behind a position falls as the position grows, so
-  they use a threshold that widens with the sampling noise of that position's
-  own cohort instead of a size floor on the whole class.
+- Nothing is scored on fewer than `MIN_SEQUENCES_PER_CLASS` sequences. For the
+  per-sequence checks that is a floor on the smaller class; for the per-position
+  checks it is a floor on the cohort reaching each position, since a position is
+  compared only on the sequences long enough to have it.
+- The per-position checks additionally stop where the cohort reaching a position
+  falls below `seq_stats.DEFAULT_MIN_COVERAGE` of its class, well before the
+  plots stop drawing it. A cohort far out along the sequence can be large and
+  still not stand for the class - it is all of the class's long sequences, and a
+  difference there can be a difference between those subsets rather than between
+  the classes. Size does not bound that; only stopping does.
 
-Both rules were chosen by simulation against the class comparisons this tool
-was built for; the study is in the companion manuscript's `analyses/` directory.
+Together the two put the same requirement on every comparison: at least
+`MIN_SEQUENCES_PER_CLASS` sequences, and at least `DEFAULT_MIN_COVERAGE` of the
+class. The count binds on small and mid-sized classes, where sampling noise is
+the risk; the fraction binds on large ones, where a tail cohort can clear the
+count many times over and still describe only the longest sequences.
+
+The size floor was chosen by simulation against the class comparisons this tool
+was built for; the study is in `analyses/`. The coverage floor is not a question
+about power and was not simulated - no sample size makes a subset of the class
+stand for the class.
 
 An underpowered comparison reports Unknown rather than Pass: no evidence of a
 difference is not evidence of no difference.
@@ -27,29 +40,22 @@ import logging
 
 import numpy as np
 import pandas as pd
-from scipy.special import ndtri
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
-# Below this many sequences in the smaller class, a per-sequence check is not
-# scored and reports Unknown. Under a null - two classes drawn from the same
-# process - the worst of these checks, dinucleotide content, crosses the 0.6
-# Warning boundary in 70.2% of replicates at 50 sequences per class and 19.4% at
-# 100, against 1.2% at 200. Only 2.5% of the class comparisons in the benchmark
-# audit this tool was built for fall below it.
-MIN_SEQUENCES_PER_CLASS = 200
-
-# Per-position checks score each position on the sequences that reach it, so
-# their cohorts shrink along the sequence and a floor of MIN_SEQUENCES_PER_CLASS
-# would silence the far end of every variable-length dataset. They use the
-# adaptive threshold below instead, and this is only the point beneath which even
-# that threshold is not trusted.
-MIN_SEQUENCES_PER_POSITION = 50
-
-# Family-wise error rate the per-position threshold targets across all
-# (position, base) tests within one per-position check.
-ADAPTIVE_ALPHA = 0.05
+# Sequences a comparison needs before it is made at all: in the smaller class
+# for the per-sequence checks, and in each position's cohort for the per-position
+# ones. Below it a check reports Unknown.
+#
+# Under a null - two classes drawn from the same process - the worst per-sequence
+# check, dinucleotide content, crosses the 0.6 Warning boundary in 70.2% of
+# replicates at 50 sequences per class and 19.4% at 100, against 0.2% at 250 and
+# 0.9% at 200. The per-position checks reach 0.0% at 250 across every class size
+# simulated, which is what lets them share one fixed boundary with the
+# per-sequence checks instead of correcting for the hundreds of tests they
+# aggregate. `analyses/` holds both studies.
+MIN_SEQUENCES_PER_CLASS = 250
 
 def _compute_best_threshold_accuracy(labels: np.ndarray, scores: np.ndarray) -> float:
     """Find the threshold that maximizes accuracy on given labels/scores.
@@ -145,10 +151,9 @@ def _chance_metrics(size_1: int, size_2: int) -> dict:
 
     The values a perfectly uninformative feature would produce: chance AU-ROC,
     an AU-PR at the prevalence, and the accuracy of always guessing the larger
-    class. Used both for a feature that takes one value across both classes and
-    for a position whose observed difference does not exceed sampling noise -
-    in both cases the honest summary is "no information", not the number that
-    happened to come out.
+    class. Used for a feature that takes one value across both classes, where the
+    honest summary is "no information" rather than whatever the degenerate ROC
+    computation would return.
 
     Args:
         size_1: Number of values from dataset 1.
@@ -261,38 +266,21 @@ def _position_cohorts(sequences: list[str], end_position: int) -> np.ndarray:
     return np.array([int(np.sum(lengths > position)) for position in range(end_position)])
 
 
-def _adaptive_threshold(values_1: np.ndarray, values_2: np.ndarray, n_tests: int) -> float:
-    """Smallest AU-ROC a position must reach before it may set a check's flag.
+def position_windows(stats1, stats2) -> tuple[int, int]:
+    """The per-position windows a comparison of two classes runs in.
 
-    A per-position check reduces every (position, base) pair to its worst case.
-    Each pair is a deliberately weak test - for a binary indicator the AU-ROC
-    this module computes is exactly 0.5 + |p1 - p2| / 2 - so the maximum over
-    hundreds of them crosses a fixed boundary on sampling noise alone once the
-    cohorts behind those positions are small. The boundary is therefore moved
-    out to the largest difference sampling would be expected to produce across
-    `n_tests` tests, at a family-wise error rate of `ADAPTIVE_ALPHA`:
-
-        0.5 + z(1 - alpha / 2 n_tests) * SE / 2,
-
-    with SE the pooled standard error of the difference in rates in this
-    position's own cohorts. The correction is two-sided because AU-ROC is folded
-    to at least 0.5, and the bound shrinks towards zero as cohorts grow - on a
-    large dataset it falls below 0.6 and the check reduces to the fixed
-    boundaries, differing only where the data are thin.
-
-    Args:
-        values_1: Binary indicator values from dataset 1 at this position.
-        values_2: Binary indicator values from dataset 2 at this position.
-        n_tests: Number of (position, base) tests the check aggregates.
+    Each class resolves its own windows from its own sequence lengths, and a
+    position belongs to a window only where it belongs to it in both: a position
+    that half of one class does not reach cannot be flagged on the strength of
+    the other class reaching it.
 
     Returns:
-        The AU-ROC a difference here must exceed to count as evidence.
+        Tuple of (end_position, scored_end_position), 1-based and inclusive - the
+        last position reported on and the last position allowed to set a flag,
+        which is also the last position drawn.
     """
-    size_1, size_2 = values_1.size, values_2.size
-    pooled = (values_1.sum() + values_2.sum()) / (size_1 + size_2)
-    standard_error = np.sqrt(pooled * (1 - pooled) * (1 / size_1 + 1 / size_2))
-    critical = ndtri(1 - ADAPTIVE_ALPHA / (2 * n_tests))
-    return float(0.5 + critical * standard_error / 2)
+    return (min(stats1.end_position, stats2.end_position),
+            min(stats1.scored_end_position, stats2.scored_end_position))
 
 
 def _score_position_features(
@@ -301,27 +289,35 @@ def _score_position_features(
     bases: list[str],
     prefix: str,
     end_position: int,
+    scored_end_position: int,
     reverse: bool = False,
-    min_cohort: int = MIN_SEQUENCES_PER_POSITION,
+    min_cohort: int = MIN_SEQUENCES_PER_CLASS,
 ) -> tuple[dict, dict]:
     """Compute per-position metrics for all bases.
 
-    Each position is scored on the sequences that reach it, and two things then
-    stand between a position and the check's verdict. A position whose cohort has
-    fallen below `min_cohort` in either class is reported as Unknown rather than
-    scored at all. A position that is scored must additionally show a difference
-    larger than `_adaptive_threshold` allows for its own cohort size; below that
-    it is reported at chance, because the alternative is to let the worst case
-    over hundreds of weak tests be set by whichever of them was luckiest.
+    Every position up to `end_position` gets a row, because a position the
+    report is silent about is indistinguishable from one the sequences never
+    reach, but only the positions up to `scored_end_position` are compared: past
+    it too small a fraction of each class reaches the position for a difference
+    there to be about the position rather than about the longest sequences, and
+    the rows say Unknown.
+
+    A position whose cohort has fallen below `min_cohort` in either class is
+    reported as Unknown as well. `SequenceStatistics` already ends the scored
+    window where that happens, so within a window it derived this is a redundant
+    guard; it matters when the window was narrowed by hand, and it keeps the
+    function honest on its own terms.
 
     Args:
         sequences_1: Sequences from dataset 1.
         sequences_2: Sequences from dataset 2.
         bases: Bases to analyze.
         prefix: Name prefix for result keys.
-        end_position: Last position to analyze, 1-based and inclusive. Chosen by
-            `SequenceStatistics._adjust_end_position` so that most sequences
-            reach every position in the window.
+        end_position: Last position to report on, 1-based and inclusive. Chosen
+            by `SequenceStatistics._reported_window`.
+        scored_end_position: Last position allowed to set a flag, 1-based and
+            inclusive. Chosen by `SequenceStatistics._scored_window`, and the
+            window the per-position figures draw.
         reverse: If True, analyze from end of sequences.
         min_cohort: Sequences a position needs in both classes to be scored.
 
@@ -332,13 +328,13 @@ def _score_position_features(
     per_base_aggregates = {}
 
     # Which positions can be scored at all depends only on how many sequences
-    # reach them, not on the base, so this is settled once - and it has to be,
-    # because the threshold each position must clear depends on how many tests
-    # the check ends up aggregating.
+    # reach them, not on the base, so this is settled once. Both gates are
+    # monotone in the position, so the scorable positions are always a prefix of
+    # the plotted ones.
     cohorts_1 = _position_cohorts(sequences_1, end_position)
     cohorts_2 = _position_cohorts(sequences_2, end_position)
-    scorable = np.minimum(cohorts_1, cohorts_2) >= max(min_cohort, 1)
-    n_tests = int(scorable.sum()) * len(bases)
+    within_window = np.arange(end_position) < scored_end_position
+    scorable = within_window & (np.minimum(cohorts_1, cohorts_2) >= max(min_cohort, 1))
 
     for base in bases:
         pos_metrics_list = []
@@ -349,9 +345,6 @@ def _score_position_features(
                 vals1 = _compute_position_binary_scores(sequences_1, base, position, reverse)
                 vals2 = _compute_position_binary_scores(sequences_2, base, position, reverse)
                 metrics = _compute_metrics_from_arrays(vals1, vals2)
-                threshold = _adaptive_threshold(vals1, vals2, n_tests)
-                if not metrics['AU-ROC'] > threshold:
-                    metrics = _chance_metrics(vals1.size, vals2.size)
             metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
             result_name = f'{prefix} - {base} position {position + 1}'
             results[result_name] = metrics
@@ -505,12 +498,13 @@ def direct_feature_model(stats1, stats2):
 
     # Position features (forward)
     bases = sorted(set(stats1.stats['Unique bases']) | set(stats2.stats['Unique bases']))
-    end_position = min(stats1.end_position, stats2.end_position)
+    end_position, scored_end_position = position_windows(stats1, stats2)
 
     pos_results, per_base_agg = _score_position_features(
         stats1.sequences, stats2.sequences, bases,
         'Per position nucleotide content',
-        end_position=end_position, reverse=False,
+        end_position=end_position, scored_end_position=scored_end_position,
+        reverse=False,
     )
     results.update(pos_results)
     if per_base_agg:
@@ -520,7 +514,8 @@ def direct_feature_model(stats1, stats2):
     pos_results_rev, per_base_agg_rev = _score_position_features(
         stats1.sequences, stats2.sequences, bases,
         'Per position reversed nucleotide content',
-        end_position=end_position, reverse=True,
+        end_position=end_position, scored_end_position=scored_end_position,
+        reverse=True,
     )
     results.update(pos_results_rev)
     if per_base_agg_rev:
@@ -633,9 +628,10 @@ def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: 
         logging.warning(
             f"Not enough sequences to score {len(positional)} check(s): "
             f"{', '.join(positional)}. Each position is compared on the sequences long "
-            f"enough to reach it, and no position in the analysed window has at least "
-            f"{MIN_SEQUENCES_PER_POSITION} sequences in both classes. The per-position "
-            "plots are still produced."
+            f"enough to reach it, and no position has at least "
+            f"{MIN_SEQUENCES_PER_CLASS} sequences in both classes. The figures are still "
+            "drawn, over every position the checks are named for, so the frequencies can "
+            "be compared by eye - but nothing in them carries a flag."
         )
 
 

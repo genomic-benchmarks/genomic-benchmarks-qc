@@ -10,8 +10,7 @@ from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.per_position_payload import viewer_html
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
-from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE
-from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, MIN_SEQUENCES_PER_POSITION
+from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, position_windows
 
 
 def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
@@ -294,7 +293,7 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-explanation" class="explanation-text">
-                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of sequences extend to each position.
+                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position, with a dashed line at the coverage a position needs before it can be compared: where the lower curve drops through that line is where the compared window ends.
                     {{position_window_note}}
                 </div>
                 {{per-position-nucleotide-content}}
@@ -309,7 +308,7 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
-                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction). This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data.
+                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, with a dashed line at the coverage a position needs before it can be compared.
                     {{position_window_note_reversed}}
                 </div>
                 {{per-position-reversed-nucleotide-content}}
@@ -361,7 +360,7 @@ def generate_not_scored_html(stats1, stats2, summary_statuses):
     if positional:
         reasons.append(
             f'{names(positional)} &mdash; every position is compared on the sequences long enough to '
-            f'reach it, and no analysed position has {MIN_SEQUENCES_PER_POSITION} sequences in both '
+            f'reach it, and no scored position has {MIN_SEQUENCES_PER_CLASS} sequences in both '
             'classes.'
         )
 
@@ -380,43 +379,91 @@ def generate_not_scored_html(stats1, stats2, summary_statuses):
 
 
 def generate_position_window_html(stats1, stats2):
-    """Describe the analysed per-position window and how well it is covered.
+    """Describe the per-position window and how well it is covered.
 
-    The per-position plots and flags stop at a position chosen from the sequence
-    lengths, and each position is scored only on the sequences that reach it. A
-    reader who cannot see where the window ends, or how much of each class still
-    stands behind its far end, cannot tell a thinly supported difference from a
-    well supported one -- so both are stated. It goes inside the section's ?
-    explanation rather than above the figure: it is background for reading the
-    plot, not a finding, and on its own above the figure it read as a second
-    explanation of the same check.
+    The figure stops where the comparison did, so nothing in it has to be read
+    with a caveat - and the caveat itself, that there are later positions the
+    report saw and could not compare, still has to be said somewhere or the
+    figure quietly stands in for the whole sequence. It is said here. The one
+    comparison whose figure does carry a caveat is the one where nothing could be
+    compared at all: there the panels fall back to the reported window, as the
+    rest of the report's plots do when a comparison is underpowered, and the
+    caveat covers all of it.
+
+    It goes inside the section's ? explanation rather than above the figure: it is
+    background for reading the plot, not a finding, and on its own above the
+    figure it read as a second explanation of the same check.
     """
-    end_position = min(stats1.end_position, stats2.end_position)
+    end_position, scored_end_position = position_windows(stats1, stats2)
 
     if end_position < 1:
         return ('<p>Sequences are too short for per-position '
                 'statistics, so no positions were analysed.</p>')
 
-    parts = []
-    for stats in (stats1, stats2):
-        label = stats.label if stats.label is not None else stats.filename
-        coverage = stats.coverage_at(end_position)
-        count = int(round(coverage * stats.stats['Number of sequences']))
-        parts.append(f"{label}: {coverage:.1%} ({count:,} sequences)")
+    def coverage_at(position):
+        parts = []
+        for stats in (stats1, stats2):
+            label = stats.label if stats.label is not None else stats.filename
+            coverage = stats.coverage_at(position)
+            count = int(round(coverage * stats.stats['Number of sequences']))
+            parts.append(f"{label}: {coverage:.1%} ({count:,} sequences)")
+        return f'{parts[0]} and {parts[1]}'
 
-    thin = min(stats1.coverage_at(end_position), stats2.coverage_at(end_position)) < DEFAULT_MIN_COVERAGE
-    caveat = ''
-    if thin:
-        caveat = (' Fewer sequences reach the end of this window than the '
-                  f'{DEFAULT_MIN_COVERAGE:.0%} default, so its later positions rest on less data.')
+    def required_cohorts():
+        """What each class needed behind a position, in its own terms.
 
-    return (f'<p>Positions 1&ndash;{end_position} were analysed. '
-            f'Each position is compared on the sequences that reach it; at position {end_position} '
-            f'that is {parts[0]} and {parts[1]}.'
-            f' A position is scored only where at least {MIN_SEQUENCES_PER_POSITION} sequences in '
-            'each class reach it, and the difference it needs to show before it is flagged widens '
-            'as its cohort shrinks, so that the worst case over the whole window is not set by '
-            f'sampling noise.{caveat}</p>')
+        Collapsed to one phrase when both classes require the same number, which
+        is the common case and reads as padding spelled out twice.
+        """
+        needed = []
+        for stats in (stats1, stats2):
+            count = stats.stats['Number of sequences']
+            needed.append(stats._required_cohort(count) if count else 0)
+        if needed[0] == needed[1]:
+            return f'{needed[0]:,} sequences in each class'
+        parts = []
+        for stats, count in zip((stats1, stats2), needed):
+            label = stats.label if stats.label is not None else stats.filename
+            parts.append(f'{label}: {count:,}')
+        return f'{parts[0]} and {parts[1]} sequences'
+
+    if scored_end_position < 1:
+        return (f'<p>No position could be compared. A position is compared only where '
+                f'{required_cohorts()} reach it, and none does, so all {end_position} positions '
+                f'the report covers are reported as Unknown rather than compared. The figure is '
+                f'still drawn, over all {end_position} of them, because the frequencies are worth '
+                f'looking at whether or not they were scored - but nothing in it carries a flag, '
+                f'and a difference visible in it is not a difference this report is standing '
+                f'behind. {coverage_at(end_position)} reach the last position drawn.</p>')
+
+    # The share each class was asked for, not the share that turned out to be
+    # binding: on most datasets the latter is the sequence count restated as a
+    # percentage, which explains nothing. The counts themselves come from the
+    # boundary position below, where the binding class sits exactly on its floor.
+    requested = min(stats1.min_coverage, stats2.min_coverage)
+    parts = [f'<p>Positions 1&ndash;{scored_end_position} were compared, and those are the '
+             f'positions the figure draws: everything in it was scored, so a stretch with no '
+             f'flag on it is a stretch that passed. '
+             f'Each position is compared on the sequences that reach it, and only where enough of '
+             f'them do: the larger of {MIN_SEQUENCES_PER_CLASS} sequences &mdash; below which a '
+             'difference this size turns up on sampling noise alone &mdash; and '
+             f'{requested:.0%} of the class, below which a cohort can be large and still describe '
+             f'only the longest sequences. Position {scored_end_position} is the last that clears '
+             f'both: {coverage_at(scored_end_position)}.</p>']
+
+    if end_position > scored_end_position:
+        parts.append(
+            f'<p>The sequences run further, to position {end_position}, where '
+            f'{coverage_at(end_position)} remain. Those later positions are not drawn and are '
+            'reported as Unknown rather than compared: they are reached by too few of each class '
+            'for a difference there to be a difference between the classes rather than between '
+            'their longest sequences. So the figure ends before the sequences do, and says '
+            'nothing either way about what happens past its right-hand edge. The panel at the '
+            'bottom shows how the number of sequences behind each class falls along the window, '
+            'and marks the floor they have to stay above - the window ends where the lower curve '
+            'crosses it.</p>')
+
+    return ''.join(parts)
 
 
 def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, duplicate_seqs, duplicate_seqs_file=None,
@@ -524,8 +571,9 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{position_window_note_reversed}}", position_window_note)
     # The per-position panels are drawn in the browser from the numbers behind
     # them, not embedded as a picture: a flagged position is one pixel wide in a
-    # 400-position window, which is what the zoom exists for. The PNG is still
-    # written to the plots directory, it is just not what the page shows.
+    # 400-position window, which is what the zoom exists for. The same figure is
+    # still written to the plots directory as a PNG, it is just not what the page
+    # shows.
     per_position_payloads = per_position_payloads or {}
     for placeholder, direction, dom_id, name in (
         ("{{per-position-nucleotide-content}}", 'forward', 'ppv-fwd',

@@ -256,7 +256,7 @@ class TestReportSaysWhatWasNotScored:
 
         generate_dataset_html_report(
             stats1, stats2, tmp_path / 'report.html', plots_path=tmp_path / 'plots',
-            end_position=min(stats1.end_position, stats2.end_position), plot_type='boxen',
+            plot_type='boxen',
             results=pd.DataFrame.from_dict(results, orient='index'),
             failed_by_feature=failed_by_feature,
         )
@@ -264,6 +264,11 @@ class TestReportSaysWhatWasNotScored:
         page = (tmp_path / 'report.html').read_text()
         assert 'not-scored-note' in page
         assert 'were not scored' in page
-        # The plots are still drawn from all the data, floor or no floor.
+        # Every plot is still drawn from all the data, floor or no floor - the
+        # per-position ones included, over the reported window, since with no
+        # compared window there is no narrower one to draw. What the floor
+        # changes is the flags, not the figures.
         assert (tmp_path / 'plots' / 'sequence_lengths.png').exists()
         assert (tmp_path / 'plots' / 'per_position_nucleotide_content.png').exists()
+        assert 'id="ppv-fwd"' in page
+        assert 'No position could be compared' in page

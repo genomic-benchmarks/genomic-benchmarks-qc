@@ -1,12 +1,14 @@
-"""Tests for the per-position window and the scoring inside it.
+"""Tests for the per-position windows and the scoring inside them.
 
 Three decisions are pinned here. A position is compared only on the sequences
 that reach it, so that per-position flags answer a question about composition
-rather than re-answering the one `Sequence lengths` already asks. The window
-ends where most sequences still reach. And within the window, the difference a
-position must show before it may set the check's verdict widens as its cohort
-shrinks -- without that, the worst case over hundreds of positions reports
-sampling noise as the check's verdict.
+rather than re-answering the one `Sequence lengths` already asks. A position is
+compared only where enough of them do: the larger of MIN_SEQUENCES_PER_CLASS
+sequences and a fraction of the class, one guard against sampling noise and one
+against a cohort that is large but is only the class's longest sequences. And the
+reported window runs further than either, as far as a cohort worth naming a check
+after survives -- what the report accounts for and what it compares are separate
+questions, and the figures draw the second.
 """
 
 import numpy as np
@@ -14,11 +16,12 @@ import pytest
 
 from genomic_benchmarks_qc.utils.seq_stats import (
     DEFAULT_MIN_COVERAGE,
+    MIN_SEQUENCES_PER_REPORTED_POSITION,
     SequenceStatistics,
+    cohort_floor,
 )
 from genomic_benchmarks_qc.utils.testing import (
-    MIN_SEQUENCES_PER_POSITION,
-    _adaptive_threshold,
+    MIN_SEQUENCES_PER_CLASS,
     _compute_position_binary_scores,
     _extract_failed_features,
     _position_cohorts,
@@ -26,10 +29,10 @@ from genomic_benchmarks_qc.utils.testing import (
 )
 
 
-def make_stats(sequences, end_position=None, label='cls'):
+def make_stats(sequences, end_position=None, label='cls', min_coverage=DEFAULT_MIN_COVERAGE):
     stats = SequenceStatistics(
         sequences=sequences, filename='f.fa', filepath='/f.fa',
-        label=label, end_position=end_position,
+        label=label, end_position=end_position, min_coverage=min_coverage,
     )
     stats.compute()
     return stats
@@ -98,6 +101,7 @@ class TestScoringIsNotDrivenByLength:
         results, _ = _score_position_features(
             stats1.sequences, stats2.sequences, ['A', 'C', 'G', 'T'],
             'Per position nucleotide content', end_position=end_position,
+            scored_end_position=end_position,
         )
 
         flags = {name: metrics['Flag'] for name, metrics in results.items()}
@@ -111,6 +115,7 @@ class TestScoringIsNotDrivenByLength:
         results, _ = _score_position_features(
             sequences_1, sequences_2, ['A'],
             'Per position nucleotide content', end_position=40,
+            scored_end_position=40,
         )
 
         assert results['Per position nucleotide content - A position 1']['Flag'] == 'Fail'
@@ -118,12 +123,13 @@ class TestScoringIsNotDrivenByLength:
 
 class TestThinPositionsAreNotScored:
     def test_position_below_the_floor_is_unknown(self):
-        sequences_1 = random_sequences(MIN_SEQUENCES_PER_POSITION - 1, 10, seed=5)
-        sequences_2 = random_sequences(MIN_SEQUENCES_PER_POSITION + 50, 10, seed=6)
+        sequences_1 = random_sequences(MIN_SEQUENCES_PER_CLASS - 1, 10, seed=5)
+        sequences_2 = random_sequences(MIN_SEQUENCES_PER_CLASS + 50, 10, seed=6)
 
         results, _ = _score_position_features(
             sequences_1, sequences_2, ['A'],
             'Per position nucleotide content', end_position=10,
+            scored_end_position=10,
         )
 
         metrics = results['Per position nucleotide content - A position 1']
@@ -137,11 +143,12 @@ class TestThinPositionsAreNotScored:
         so the same comparison scores the near positions and reports the far
         ones as Unknown.
         """
-        sequences = ['A' * 20] * 10 + ['A' * 5] * 200
+        sequences = ['A' * 20] * 100 + ['A' * 5] * 200
 
         results, _ = _score_position_features(
             sequences, sequences, ['A'],
             'Per position nucleotide content', end_position=20,
+            scored_end_position=20,
         )
 
         assert results['Per position nucleotide content - A position 1']['Flag'] != 'Unknown'
@@ -153,6 +160,7 @@ class TestThinPositionsAreNotScored:
         _, per_base = _score_position_features(
             sequences, sequences, ['A'],
             'Per position nucleotide content', end_position=10,
+            scored_end_position=10,
         )
 
         assert per_base['A']['Flag'] == 'Unknown'
@@ -171,100 +179,222 @@ class TestThinPositionsAreNotScored:
         _, per_base = _score_position_features(
             sequences_1, sequences_2, ['A', 'C', 'G', 'T'],
             'Per position nucleotide content', end_position=100,
+            scored_end_position=100,
         )
 
         assert {aggregate['Flag'] for aggregate in per_base.values()} == {'Unknown'}
 
 
-class TestAdaptiveThreshold:
-    def test_tightens_as_the_number_of_tests_grows(self):
-        values_1 = np.array([1.0] * 30 + [0.0] * 70)
-        values_2 = np.array([1.0] * 40 + [0.0] * 60)
+class TestTheFixedBoundaryHoldsAtTheCohortFloor:
+    """Why the per-position checks can share one boundary with the rest.
 
-        one_test = _adaptive_threshold(values_1, values_2, n_tests=1)
-        many_tests = _adaptive_threshold(values_1, values_2, n_tests=1600)
+    A per-position check reduces hundreds of (position, base) pairs to their worst
+    case, so the boundary it aggregates against has to survive that maximum under
+    the null. It does, at the cohort floor and above: the floor is set where a
+    difference of the size the boundary asks for stops turning up by chance. That
+    is what lets these checks use the same fixed 0.6/0.7 as every other check,
+    instead of a threshold that moves with each cohort.
+    """
 
-        assert 0.5 < one_test < many_tests
-
-    def test_relaxes_below_the_fixed_boundary_on_large_cohorts(self):
-        """On a normally sized dataset the rule must reduce to the tool's own
-        boundaries, so that a decision only ever changes where data are thin."""
-        small_1 = np.array([1.0] * 30 + [0.0] * 70)
-        small_2 = np.array([1.0] * 40 + [0.0] * 60)
-        large_1 = np.array([1.0] * 1500 + [0.0] * 3500)
-        large_2 = np.array([1.0] * 2000 + [0.0] * 3000)
-
-        assert _adaptive_threshold(small_1, small_2, n_tests=1600) > 0.6
-        assert _adaptive_threshold(large_1, large_2, n_tests=1600) < 0.6
-
-    def test_a_difference_within_sampling_noise_is_reported_at_chance(self):
-        """A hundred sequences per class over a hundred positions crosses 0.6 on
-        noise alone; the threshold turns those positions back into chance."""
-        sequences_1 = random_sequences(100, 100, seed=20)
-        sequences_2 = random_sequences(100, 100, seed=21)
+    def test_a_null_comparison_at_the_floor_does_not_flag(self):
+        """Two classes from one process, at exactly the floor, over a hundred
+        positions and four bases: the worst of those four hundred tests still has
+        to come out Pass."""
+        sequences_1 = random_sequences(MIN_SEQUENCES_PER_CLASS, 100, seed=20)
+        sequences_2 = random_sequences(MIN_SEQUENCES_PER_CLASS, 100, seed=21)
 
         results, per_base = _score_position_features(
             sequences_1, sequences_2, ['A', 'C', 'G', 'T'],
             'Per position nucleotide content', end_position=100,
+            scored_end_position=100,
         )
 
         assert {aggregate['Flag'] for aggregate in per_base.values()} == {'Pass'}
-        # Chance is reported as chance, not as the value that happened to come out.
-        assert max(metrics['AU-ROC'] for metrics in results.values()) == pytest.approx(0.5)
+        worst = max(metrics['AU-ROC'] for metrics in results.values()
+                    if not np.isnan(metrics['AU-ROC']))
+        assert worst < 0.6, worst
 
-    def test_a_real_difference_survives_the_same_cohort_size(self):
-        """The threshold must cost specificity, not the signal it was built around."""
-        sequences_1 = ['A' + seq[1:] for seq in random_sequences(100, 100, seed=22)]
-        sequences_2 = ['C' + seq[1:] for seq in random_sequences(100, 100, seed=23)]
+    def test_a_real_difference_at_the_floor_is_still_flagged(self):
+        """The floor must cost specificity, not the signal it was built around."""
+        sequences_1 = ['A' + seq[1:]
+                       for seq in random_sequences(MIN_SEQUENCES_PER_CLASS, 100, seed=22)]
+        sequences_2 = ['C' + seq[1:]
+                       for seq in random_sequences(MIN_SEQUENCES_PER_CLASS, 100, seed=23)]
 
         results, _ = _score_position_features(
             sequences_1, sequences_2, ['A'],
             'Per position nucleotide content', end_position=100,
+            scored_end_position=100,
         )
 
         assert results['Per position nucleotide content - A position 1']['Flag'] == 'Fail'
 
-    def test_a_scored_position_carries_a_consistent_metric_set(self):
-        """A position reported at chance reports chance for every metric, so the
-        row cannot show an AU-ROC of 0.5 next to an accuracy that suggests
-        otherwise."""
-        sequences = random_sequences(100, 20, seed=24)
+    def test_a_scored_position_reports_what_was_measured(self):
+        """A difference too small to flag is reported as the number it was.
+
+        The threshold this replaced overwrote such a position with chance, so the
+        table showed 0.500 where the observed value was something else. Nothing
+        rewrites a scored row now: below the boundary it reads Pass at its own
+        AU-ROC.
+        """
+        sequences_1 = random_sequences(MIN_SEQUENCES_PER_CLASS, 40, seed=24)
+        sequences_2 = random_sequences(MIN_SEQUENCES_PER_CLASS, 40, seed=25)
 
         results, _ = _score_position_features(
-            sequences, sequences, ['A'],
-            'Per position nucleotide content', end_position=20,
+            sequences_1, sequences_2, ['A'],
+            'Per position nucleotide content', end_position=40,
+            scored_end_position=40,
         )
 
-        metrics = results['Per position nucleotide content - A position 1']
-        assert metrics['AU-ROC'] == pytest.approx(0.5)
-        assert metrics['AU-PR'] == pytest.approx(0.5)
-        assert metrics['Accuracy'] == pytest.approx(0.5)
+        scores = [metrics['AU-ROC'] for name, metrics in results.items() if 'position' in name]
+        assert all(0.5 <= score < 0.6 for score in scores), scores
+        assert any(score > 0.5 for score in scores), 'every position came out at exactly chance'
 
 
-class TestEndPositionWindow:
-    def test_default_keeps_the_required_coverage(self):
-        # A quarter of the sequences stop at 20, the rest run to 100.
-        sequences = random_sequences(400, 100, seed=10)
+class TestScoredWindow:
+    """The window is where the required cohort still reaches.
+
+    The requirement is one number made of two: a count that guards against
+    sampling noise, and a share of the class that guards against a cohort made
+    only of its longest sequences. Which one binds depends on the class size, and
+    the tests below pin both regimes.
+    """
+
+    def test_the_count_binds_on_a_class_this_size(self):
+        stats = make_stats(random_sequences(600, 20, seed=10))
+
+        assert stats._required_cohort(600) == MIN_SEQUENCES_PER_CLASS
+
+    def test_the_fraction_binds_once_the_class_is_large_enough(self):
+        # A quarter of 2000 is 500 sequences, well past the count floor.
+        stats = make_stats(['A' * 20] * 2000)
+
+        assert stats._required_cohort(2000) == 500
+
+    def test_the_window_ends_where_the_required_cohort_stops(self):
+        # 300 sequences run to 100, the other 300 stop at 20, so exactly 300
+        # reach anything past 20 and the floor of 250 is still met there.
+        sequences = ['A' * 100] * 300 + ['A' * 20] * 300
+
+        stats = make_stats(sequences)
+
+        assert stats._required_cohort(600) == MIN_SEQUENCES_PER_CLASS
+        assert stats.scored_end_position == 100
+
+    def test_a_position_the_cohort_does_not_reach_is_left_out(self):
+        # Only 200 sequences run past 20, which is short of the floor.
+        sequences = ['A' * 100] * 200 + ['A' * 20] * 400
+
+        stats = make_stats(sequences)
+
+        assert stats.scored_end_position == 20
+
+    def test_the_window_keeps_the_required_coverage(self):
+        sequences = random_sequences(2000, 100, seed=10)
         sequences = [seq[:20] if i % 4 == 0 else seq for i, seq in enumerate(sequences)]
 
         stats = make_stats(sequences)
 
-        assert stats.coverage_at(stats.end_position) >= DEFAULT_MIN_COVERAGE
+        assert stats.coverage_at(stats.scored_end_position) >= DEFAULT_MIN_COVERAGE
 
-    def test_default_is_the_complement_percentile_of_the_lengths(self):
-        lengths = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-        sequences = ['A' * length for length in lengths]
+    def test_min_coverage_moves_the_window_and_leaves_the_plots_alone(self):
+        sequences = ['A' * 100] * 700 + ['A' * 20] * 300
+
+        strict = make_stats(sequences, min_coverage=0.9)
+        loose = make_stats(sequences, min_coverage=0.5)
+
+        assert strict.scored_end_position == 20
+        assert loose.scored_end_position == 100
+        assert strict.end_position == loose.end_position
+
+    def test_min_coverage_cannot_go_below_the_count_floor(self):
+        """`--min-coverage 0` asks for no share of the class, not for no floor:
+        the count is the guard against sampling noise and is not negotiable."""
+        stats = make_stats(['A' * 100] * 200 + ['A' * 20] * 400, min_coverage=0)
+
+        assert stats._required_cohort(600) == MIN_SEQUENCES_PER_CLASS
+        assert stats.scored_end_position == 20
+
+    def test_a_class_below_the_count_floor_scores_nothing(self):
+        stats = make_stats(['A' * 100] * (MIN_SEQUENCES_PER_CLASS - 1))
+
+        assert stats.scored_end_position == 0
+        assert stats.end_position == 100
+
+    def test_too_few_sequences_to_score_still_gets_a_reported_window(self, caplog):
+        sequences = ['A' * 100] * 10
+
+        with caplog.at_level('WARNING'):
+            stats = make_stats(sequences)
+
+        assert stats.scored_end_position == 0
+        assert stats.end_position == 100
+        assert any('Not enough sequences' in record.message for record in caplog.records)
+
+
+class TestCohortFloorForAComparison:
+    """What the plots and the viewer are told to draw as the floor.
+
+    A bare number: the line is drawn without a caption, and what it stands for is
+    said in the section's explanation instead of inside the panel.
+    """
+
+    def test_the_class_with_the_larger_share_sets_the_line(self):
+        """The same count is half of a 500-sequence class and a sixteenth of a
+        4000-sequence one, so the smaller class draws the higher line."""
+        small = make_stats(['A' * 50] * 500, label='small')
+        large = make_stats(['A' * 50] * 4000, label='large')
+
+        assert cohort_floor(small, large) == pytest.approx(MIN_SEQUENCES_PER_CLASS / 500)
+
+    def test_the_share_binds_once_the_class_is_large_enough(self):
+        """Past 1000 sequences a quarter of the class is the larger of the two,
+        so the line stops being the sequence count and grows with the class."""
+        stats1 = make_stats(['A' * 50] * 4000, label='a')
+        stats2 = make_stats(['A' * 50] * 4000, label='b')
+
+        assert cohort_floor(stats1, stats2) == pytest.approx(DEFAULT_MIN_COVERAGE)
+
+    def test_an_empty_class_has_no_floor_to_draw(self):
+        empty = make_stats([], label='empty')
+
+        assert cohort_floor(empty, empty) == 0.0
+
+
+class TestPlotWindow:
+    def test_default_ends_where_the_drawing_floor_does(self):
+        # 60 sequences reach position 40; only 50 of them reach position 30.
+        sequences = ['A' * 40] * 10 + ['A' * 30] * 40 + ['A' * 10] * 10
 
         stats = make_stats(sequences)
 
-        expected = int(np.floor(np.percentile(lengths, 100 * (1 - DEFAULT_MIN_COVERAGE))))
-        assert stats.end_position == expected
+        assert stats.end_position == 30
+        assert stats.coverage_at(30) == pytest.approx(50 / 60)
+
+    def test_a_class_below_the_floor_reports_to_its_longest_sequence(self):
+        """No position clears the floor, and stopping at 0 would leave the class
+        with no per-position checks at all."""
+        stats = make_stats(['A' * 30] * (MIN_SEQUENCES_PER_REPORTED_POSITION - 2) + ['A' * 10])
+
+        assert stats.end_position == 30
 
     def test_uniform_lengths_use_the_whole_sequence(self):
-        stats = make_stats(random_sequences(50, 60, seed=11))
+        stats = make_stats(random_sequences(MIN_SEQUENCES_PER_CLASS, 60, seed=11))
 
         assert stats.end_position == 60
+        assert stats.scored_end_position == 60
         assert stats.coverage_at(60) == 1.0
+
+    def test_reaches_past_the_scored_window(self):
+        """60 sequences run to 100, which is enough to draw and far short of the
+        250 needed to compare."""
+        sequences = random_sequences(600, 100, seed=15)
+        sequences = [seq if i < 60 else seq[:30] for i, seq in enumerate(sequences)]
+
+        stats = make_stats(sequences)
+
+        assert stats.end_position == 100
+        assert stats.scored_end_position == 30
 
     def test_explicit_end_position_is_capped_at_the_longest_sequence(self):
         stats = make_stats(random_sequences(20, 30, seed=12), end_position=500)
@@ -276,22 +406,87 @@ class TestEndPositionWindow:
 
         assert stats.end_position == 10
 
-    def test_thin_explicit_end_position_warns(self, caplog):
-        # Only one sequence in ten reaches position 100.
-        sequences = ['A' * 100] + ['A' * 10] * 9
+    def test_an_explicit_window_shorter_than_the_scored_one_clamps_scoring(self):
+        """A position that is not drawn has nothing to flag."""
+        stats = make_stats(['A' * 100] * 600, end_position=10)
 
-        with caplog.at_level('WARNING'):
-            make_stats(sequences, end_position=100)
+        assert stats.end_position == 10
+        assert stats.scored_end_position == 10
 
-        assert any('reach position 100' in record.message for record in caplog.records)
+    def test_an_explicit_window_cannot_widen_what_gets_scored(self):
+        """The required cohort decides that, and no window argument moves it."""
+        sequences = ['A' * 100] * 200 + ['A' * 20] * 400
 
-    def test_default_window_is_logged_at_info(self, caplog):
-        """The auto-chosen window used to be DEBUG-only, invisible at the default level."""
+        default = make_stats(sequences)
+        widened = make_stats(sequences, end_position=100)
+
+        assert widened.end_position == 100
+        assert widened.scored_end_position == default.scored_end_position == 20
+
+    def test_both_windows_are_logged_at_info(self, caplog):
+        """The auto-chosen windows used to be DEBUG-only, invisible at the default level."""
         with caplog.at_level('INFO'):
-            stats = make_stats(random_sequences(20, 45, seed=14))
+            stats = make_stats(random_sequences(600, 45, seed=14))
 
-        assert any(f'end position: {stats.end_position}' in record.message
-                   for record in caplog.records)
+        messages = [record.message for record in caplog.records]
+        assert any(f'checks cover positions 1-{stats.end_position}' in message for message in messages)
+        assert any(f'Positions 1-{stats.scored_end_position} may be flagged' in message
+                   for message in messages)
+
+    def test_the_reported_window_never_stops_before_the_scored_one(self):
+        """A flag on a position no check is named for would have nowhere to go.
+        The scored window asks for far more sequences than the reported one, so
+        this holds by construction - it is pinned because the two floors are set
+        apart."""
+        for count in (MIN_SEQUENCES_PER_CLASS, 300, 600, 2000):
+            sequences = random_sequences(count, 100, seed=40)
+            sequences = [seq[:20] if i % 4 == 0 else seq for i, seq in enumerate(sequences)]
+
+            stats = make_stats(sequences)
+
+            assert stats.end_position >= stats.scored_end_position, count
+
+
+class TestTheTailIsReportedButNotScored:
+    def test_positions_past_the_scored_window_are_unknown(self):
+        sequences = random_sequences(300, 40, seed=30)
+
+        results, _ = _score_position_features(
+            sequences, sequences, ['A'],
+            'Per position nucleotide content', end_position=40,
+            scored_end_position=20,
+        )
+
+        assert results['Per position nucleotide content - A position 20']['Flag'] != 'Unknown'
+        assert results['Per position nucleotide content - A position 21']['Flag'] == 'Unknown'
+        assert np.isnan(results['Per position nucleotide content - A position 40']['AU-ROC'])
+
+    def test_the_tail_cannot_change_a_check_verdict(self):
+        """The property the split rests on: widening the reported range moves no
+        flag.
+
+        The scored window, the number of tests the threshold corrects for, and
+        every verdict inside the window have to come out the same whether the
+        checks stop at the scored window or run to the end of the sequences.
+        """
+        sequences_1 = ['A' + seq[1:] for seq in random_sequences(300, 60, seed=31)]
+        sequences_2 = ['C' + seq[1:] for seq in random_sequences(300, 60, seed=32)]
+        sequences_2 = [seq if i % 3 else seq[:20] for i, seq in enumerate(sequences_2)]
+
+        narrow, narrow_aggregate = _score_position_features(
+            sequences_1, sequences_2, ['A', 'C', 'G', 'T'],
+            'Per position nucleotide content', end_position=20, scored_end_position=20,
+        )
+        wide, wide_aggregate = _score_position_features(
+            sequences_1, sequences_2, ['A', 'C', 'G', 'T'],
+            'Per position nucleotide content', end_position=60, scored_end_position=20,
+        )
+
+        assert len(wide) > len(narrow)
+        for name, metrics in narrow.items():
+            assert wide[name] == pytest.approx(metrics, nan_ok=True), name
+        for base, aggregate in narrow_aggregate.items():
+            assert wide_aggregate[base] == pytest.approx(aggregate, nan_ok=True), base
 
 
 class TestCoverageAt:
