@@ -1,5 +1,7 @@
 # Outputs of running example dataset evaluation
 
+1,200 miRNA-mRNA pairs sampled from `AGO2_CLASH_Hejret2023` in [miRBench](https://github.com/katarinagresova/miRBench). Both sequence columns repeat sequences within and between classes, so this is the example where the duplication checks fail while the statistical checks pass.
+
 ```bash
 gb-qc evaluate-classes \
   --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \

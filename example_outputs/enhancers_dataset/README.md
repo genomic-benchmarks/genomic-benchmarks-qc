@@ -1,5 +1,7 @@
 # Outputs of running example dataset evaluation
 
+1,200 training and 600 test sequences sampled from `human_enhancers_ensembl` in [Genomic Benchmarks](https://github.com/ML-Bioinfo-CEITEC/genomic_benchmarks). Their lengths run from 4 to 568 nt, so the per-position window stops well short of the longest sequences, and a little real train-test leakage survives into the split report.
+
 ## evaluate-classes
 
 Compare sequence characteristics between train and test sets. Files are pooled and classes inferred from the label column.
