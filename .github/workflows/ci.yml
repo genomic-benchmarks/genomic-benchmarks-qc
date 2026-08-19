@@ -77,11 +77,14 @@ jobs:
       - name: evaluate-classes (FASTA, one file per class)
         run: |
           gb-qc evaluate-classes \
-            --input example_datasets/G4_positives.fasta \
-            --input example_datasets/G4_negatives.fasta \
-            --out-folder ci_out/G4
-          test -f "ci_out/G4/class/sequence/g4_negatives_vs_g4_positives/report.csv"
-          test -f "ci_out/G4/class/sequence/g4_negatives_vs_g4_positives/report.html"
+            --input example_datasets/coding_seqs.fasta \
+            --input example_datasets/intergenomic_seqs.fasta \
+            --out-folder ci_out/coding
+          out="ci_out/coding/class/sequence/coding_seqs_vs_intergenomic_seqs"
+          test -f "$out/report.csv"
+          test -f "$out/report.html"
+          test -f "$out/plots/per_sequence_nucleotide_content.png"
+          test -f "$out/plots/per_position_nucleotide_content.png"
 
       - name: evaluate-classes (multiple CSV files, label column)
         run: |

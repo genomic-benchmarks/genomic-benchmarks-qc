@@ -15,7 +15,7 @@ from itertools import combinations
 from typing import Optional
 import pandas as pd
 
-from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
+from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics, DEFAULT_MIN_COVERAGE
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 from genomic_benchmarks_qc.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
 from genomic_benchmarks_qc.utils.input_utils import (
@@ -102,7 +102,6 @@ def run_analysis(input_statistics, report_dir, report_types, plot_type):
                 stat1, stat2,
                 comparison_dir / HTML_REPORT_FILE,
                 plots_path=comparison_dir / PLOTS_DIR,
-                end_position=min(stat1.end_position, stat2.end_position),
                 plot_type=plot_type,
                 results=results_df,
                 failed_by_feature=failed_by_feature
@@ -186,7 +185,7 @@ def _resolve_labels(df, label_column, label_list, regression):
     return df, list(dict.fromkeys(str(label) for label in label_list))
 
 
-def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_position):
+def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_position, min_coverage):
     """Evaluate classes given as one FASTA file per class."""
     # Each file is one class, named after its stem. Stems can repeat across
     # directories, so the parent directory disambiguates the report paths.
@@ -210,7 +209,8 @@ def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_posi
             raise ValueError(f"No sequences found in FASTA file '{input_file}'.")
         logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
         seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                         label=label, slug=slug, end_position=end_position)]
+                                         label=label, slug=slug, end_position=end_position,
+                                         min_coverage=min_coverage)]
 
     run_analysis(
         input_statistics=seq_stats,
@@ -221,7 +221,7 @@ def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_posi
 
 
 def _evaluate_table_classes(input, format, out_folder, sequence_column, label_column, label_list,
-                            regression, report_types, plot_type, end_position):
+                            regression, report_types, plot_type, end_position, min_coverage):
     """Evaluate classes given as a label column of one or more CSV/TSV files."""
     # read all files into one dataframe (single file wrapped in list)
     if len(input) > 1:
@@ -258,7 +258,7 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
             logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{reported_column}'.")
             seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
                                              slug=label_slugs[label], seq_column=reported_column,
-                                             end_position=end_position)]
+                                             end_position=end_position, min_coverage=min_coverage)]
         return seq_stats
 
     # loop over individual sequence columns
@@ -289,6 +289,7 @@ def run(input,
         regression: Optional[bool] = False,
         report_types: Optional[list[str]] = None,
         end_position: Optional[int] = None,
+        min_coverage: float = DEFAULT_MIN_COVERAGE,
         plot_type: Optional[str] = 'boxen',
         log_level: Optional[str] = 'INFO',
         log_file: Optional[str] = None
@@ -315,8 +316,21 @@ def run(input,
     @param regression: If True, label column is considered as a regression target and values are split into 2 classes
                        at the median. Raises ValueError if that does not produce two non-empty classes.
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param end_position: End position of the sequences to consider in per position statistics. 
-                         If not provided, 75th percentile of sequence lengths will be used. Default: None.
+    @param end_position: Last position of the sequences the per-position checks
+                         reach, 1-based and inclusive. If not provided, the last
+                         position that at least 50 of each class's sequences reach is
+                         used; the smaller of the two classes' values applies to the
+                         comparison. It does not decide which positions are flagged,
+                         and it is not what the figures draw - they draw the
+                         flagged window. Default: None.
+    @param min_coverage: Fraction of each class's sequences that must reach a position
+                         before it may be flagged, on top of the
+                         MIN_SEQUENCES_PER_CLASS sequences every compared position
+                         needs. This window is what the per-position figures draw.
+                         Positions past it are reported as Unknown and not drawn,
+                         because they are reached by too few of each class for a
+                         difference there to be a difference between the classes
+                         rather than between their longest sequences. Default: 0.25.
     @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is recommended. Default: 'boxen'.
     @param log_level: Logging level, default to INFO.
     @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
@@ -338,10 +352,12 @@ def run(input,
     with log_failures("Classes evaluation"):
         # we have multiple fasta files with one label each
         if format.startswith('fa'):
-            _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_position)
+            _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_position,
+                                    min_coverage)
         # we have CSV/TSV
         else:
             _evaluate_table_classes(input, format, out_folder, sequence_column, label_column,
-                                    label_list, regression, report_types, plot_type, end_position)
+                                    label_list, regression, report_types, plot_type, end_position,
+                                    min_coverage)
 
     logging.info("Classes evaluation successfully completed.")

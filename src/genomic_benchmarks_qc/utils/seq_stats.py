@@ -14,6 +14,63 @@ import numpy as np
 import pandas as pd
 
 from genomic_benchmarks_qc.utils.naming import slugify
+from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
+
+# Two windows govern the per-position features, and they answer different
+# questions.
+#
+# The scored window is where the flags may be set. Per-position statistics
+# compare only the sequences long enough to reach a position, so a position needs
+# a cohort that is both large enough to measure and representative enough to
+# speak for the class: at least `MIN_SEQUENCES_PER_CLASS` sequences, and at least
+# `DEFAULT_MIN_COVERAGE` of the class. The count is what binds on small and
+# mid-sized classes; the fraction binds on large ones, where a tail cohort can
+# clear the count many times over and still be nothing but the class's longest
+# sequences.
+#
+# The reported window is how far the per-position checks are named at all, and
+# it reaches much further. Past the scored window they can only say Unknown, and
+# saying it is the point: a report that stopped at the scored window would not
+# distinguish a dataset whose sequences end there from one whose tail was too
+# thin to compare. It stops where cohorts fall below
+# `MIN_SEQUENCES_PER_REPORTED_POSITION`, past which a position is reached by so
+# few sequences that there is nothing left to report about it either.
+#
+# The figures draw the scored window and stop there. The tail is described in
+# the report's prose instead of drawn, because a curve is read as a measurement
+# and nothing out there was measured. The exception is a comparison with no
+# scored window at all: there the figures draw the reported one, every position
+# Unknown, which is what the rest of the report does with a comparison too small
+# to score - plot it, flag nothing.
+DEFAULT_MIN_COVERAGE = 0.25
+MIN_SEQUENCES_PER_REPORTED_POSITION = 50
+
+def cohort_floor(stats1, stats2) -> float:
+    """The cohort floor a comparison of two classes runs under.
+
+    Each class requires its own number of sequences behind a position - the
+    larger of `MIN_SEQUENCES_PER_CLASS` and `min_coverage` of the class - so as a
+    share of a class the floor differs between the two, and the binding one is
+    the larger share: a position has to clear the floor in both classes.
+
+    Not drawn. It sets the compared window, and the window is what the figures
+    show: they stop where the floor stops them. Saying it a second time as a line
+    across the coverage panel only added a rule to a panel that already carries
+    two curves, so what the floor is gets said once, in the section's `?`
+    explanation.
+
+    Returns:
+        Fraction of a class, or 0.0 when neither class has a floor worth drawing.
+    """
+    binding = 0.0
+    for stats in (stats1, stats2):
+        count = stats.stats['Number of sequences']
+        if not count:
+            continue
+        needed = stats._required_cohort(count)
+        binding = max(binding, needed / count)
+    return binding
+
 
 class SequenceStatistics:
     """The sequences of one class, and the statistics computed from them.
@@ -22,7 +79,7 @@ class SequenceStatistics:
     cached in `stats`.
     """
 
-    def __init__(self, sequences: list[str], filename: str, filepath: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None, slug: Optional[str] = None):
+    def __init__(self, sequences: list[str], filename: str, filepath: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None, slug: Optional[str] = None, min_coverage: float = DEFAULT_MIN_COVERAGE):
         """Hold one class's sequences together with how to identify it.
 
         @param sequences: The sequences of this class, uppercased by the reader.
@@ -30,11 +87,21 @@ class SequenceStatistics:
         @param filepath: Full path they came from, shown in the report.
         @param label: The class name, shown verbatim in reports and plots.
         @param seq_column: Sequence column they came from, or None for FASTA.
-        @param end_position: Last position included in per-position statistics.
-                             Defaults to the 75th percentile of the lengths.
+        @param end_position: Last position the per-position checks reach,
+                             1-based and inclusive. Defaults to the last
+                             position at least
+                             `MIN_SEQUENCES_PER_REPORTED_POSITION` of these
+                             sequences reach. It does not decide which positions
+                             may be flagged - the scored window does - and it is
+                             not what the figures draw, which is the scored
+                             window.
         @param slug: Path form of `label`; derived from it when not given, but
                      normally passed in by the caller, which is the only place
                      that can tell whether it collides with another class.
+        @param min_coverage: Fraction of these sequences that must reach a
+                             position before it may set a flag, on top of the
+                             `MIN_SEQUENCES_PER_CLASS` sequences every scored
+                             position needs. 0 leaves only that count.
         """
         self.filename = filename
         self.filepath = filepath
@@ -45,14 +112,17 @@ class SequenceStatistics:
         self.seq_column = seq_column
         self.sequences = sequences
         self.end_position = end_position
+        self.min_coverage = min_coverage
+        # Resolved by `compute`, alongside `end_position`.
+        self.scored_end_position = None
         self.stats = {}
 
     def compute(self):
         """
         Compute various statistics from the given list of sequences.
 
-        Results are also cached on `self.stats`, and `self.end_position` is
-        resolved here if it was not given.
+        Results are also cached on `self.stats`, and the per-position windows
+        (`self.end_position`, `self.scored_end_position`) are resolved here.
 
         @return: A tuple (statistics, end_position), where statistics is a
             dictionary containing:
@@ -92,42 +162,150 @@ class SequenceStatistics:
         self._compute_per_sequence_statistics()
         self._compute_sequence_duplication_levels()
 
-        self._adjust_end_position()
+        self._resolve_position_windows()
 
         return self.stats, self.end_position
 
-    def _adjust_end_position(self):
-        """Resolve `end_position`, defaulting it and capping it at the longest sequence.
+    def _resolve_position_windows(self):
+        """Resolve the reported window and the scored window from the lengths.
 
-        Per-position statistics get noisier the further out they go, because
-        fewer and fewer sequences reach that far. Defaulting to the 75th
-        percentile of the lengths keeps at least a quarter of the sequences
-        behind every plotted position.
+        `end_position` bounds the positions the per-position checks are named for;
+        `scored_end_position` bounds the positions allowed to set a flag, and is
+        the window the figures draw. The module comment says why those are two
+        different numbers. Both are 1-based and inclusive, and both are 0 when
+        there is nothing to report or nothing to score.
+
+        An explicit `end_position` is honoured as given, capped at the longest
+        sequence. It cannot widen what gets flagged - the required cohort decides
+        that - so an explicit window only ever drops positions off the tail of the
+        results table, and drops them from the figures only where it cuts into the
+        scored window.
         """
 
         col_info = f" for {self.seq_column} comparison" if self.seq_column is not None else ""
 
         lengths = self.stats['Sequence lengths'].values.flatten()
 
+        if len(lengths) == 0:
+            # No sequences means no positions at all. Guard here rather than
+            # letting max() raise on the empty array, so the rest of the report
+            # still gets written for a degenerate class.
+            self.end_position = 0
+            self.scored_end_position = 0
+            logging.warning(
+                f"No sequences{col_info}, so no positions are analysed in per-position statistics."
+            )
+            return
+
+        scored_window = self._scored_window(lengths)
+
         if self.end_position is None:
-
-            # get second end position - where one of the stats contains less then 75% values
-            lengths_75th = np.percentile(lengths, 75)
-            # round to nearest integer
-            self.end_position = int(np.round(lengths_75th))
-
-            logging.debug(
-                f"End position argument not provided. Using end position: {self.end_position}{col_info}. "
-                 "This is the 75th percentile of sequence lengths."
+            # The scored window asks for a much larger cohort than the reported
+            # one, so the checks always reach at least as far as the flags. The
+            # max is belt and braces for a class small enough to fall back on its
+            # longest sequence: a position that sets a flag has to be reported.
+            self.end_position = max(self._reported_window(lengths), scored_window)
+            logging.info(
+                f"End position argument not provided. Per-position checks cover positions "
+                f"1-{self.end_position}{col_info}, which is as far as at least "
+                f"{MIN_SEQUENCES_PER_REPORTED_POSITION} sequences reach."
             )
         else:
-            # Ensure end_position is not greater than the maximum sequence length
             max_length = int(max(lengths))
             if self.end_position > max_length:
                 logging.warning(f"end_position {self.end_position} is greater than the maximum sequence length {max_length}. Setting end_position to {max_length}.")
                 self.end_position = max_length
 
             logging.info(f"Using end position: {self.end_position}{col_info}.")
+
+        # Never past the reported window: a position no check is named for has
+        # nothing to flag, so trimming the checks with an explicit `end_position`
+        # trims the scoring too. Left to itself it is never the binding
+        # constraint.
+        self.scored_end_position = min(scored_window, self.end_position)
+
+        required = self._required_cohort(len(lengths))
+        if self.scored_end_position < 1:
+            logging.warning(
+                f"Not enough sequences{col_info} for per-position statistics: a position is "
+                f"compared only where {required:,} of them reach it, and none does, so every "
+                "position is reported as Unknown. The figures are still drawn, over the whole "
+                "reported window, with no flag on any position."
+            )
+            return
+
+        floor = (f"{required:,} sequences, which is {self.min_coverage:.0%} of this class"
+                 if required > MIN_SEQUENCES_PER_CLASS
+                 else f"{required:,} sequences")
+        logging.info(
+            f"Positions 1-{self.scored_end_position}{col_info} may be flagged, which is as far "
+            f"as {floor} reach."
+        )
+        if self.end_position > self.scored_end_position:
+            logging.info(
+                f"Positions {self.scored_end_position + 1}-{self.end_position}{col_info} are "
+                "reported as Unknown and are not drawn: too few sequences reach them to say "
+                "whether a difference there is a difference between the classes or between their "
+                "longest sequences."
+            )
+
+    def _reported_window(self, lengths) -> int:
+        """Last position `MIN_SEQUENCES_PER_REPORTED_POSITION` sequences reach.
+
+        Counted from the long end: a position is reached by at least k sequences
+        exactly when it is no further out than the kth longest sequence. Past
+        that a position belongs to a handful of sequences, and naming a check
+        after it says more about those sequences than about the class.
+
+        A class holding fewer sequences than the floor has no position that
+        clears it, and stopping at 0 would leave it with no per-position checks at
+        all. It falls back to its longest sequence: nothing there can be scored at
+        that size anyway, so Unknown for every position is all it has to say.
+
+        This floor is far below the one the scored window uses, so the reported
+        window reaches past the flags rather than stopping short of them.
+        """
+        if len(lengths) < MIN_SEQUENCES_PER_REPORTED_POSITION:
+            return int(max(lengths))
+        return int(np.sort(lengths)[-MIN_SEQUENCES_PER_REPORTED_POSITION])
+
+    def _required_cohort(self, count: int) -> int:
+        """Sequences a position needs behind it before it may be flagged.
+
+        The two floors are one number: a cohort has to be large enough to measure
+        a difference and large enough to stand for the class, so it has to clear
+        both `MIN_SEQUENCES_PER_CLASS` and `min_coverage` of the class. Rounded up,
+        because a fraction of a sequence is not a sequence.
+        """
+        return max(MIN_SEQUENCES_PER_CLASS, int(np.ceil(self.min_coverage * count)))
+
+    def _scored_window(self, lengths) -> int:
+        """Last position the required cohort still reaches.
+
+        Counted from the long end: a position is reached by at least k sequences
+        exactly when it is no further out than the kth longest sequence. Because
+        cohorts only shrink with position, this one number bounds the whole scored
+        window and not just its final position.
+
+        A class holding fewer sequences than it requires has no scorable position
+        at all, and neither does one whose kth longest sequence is empty.
+        """
+        required = self._required_cohort(len(lengths))
+        if len(lengths) < required:
+            return 0
+        return int(np.sort(lengths)[-required])
+
+    def coverage_at(self, position: int) -> float:
+        """Fraction of this class's sequences that reach `position` (1-based).
+
+        This is the denominator behind every per-position statistic at that
+        position, and it is what the report shows so a reader can tell how much
+        data stands behind the far end of the per-position plots.
+        """
+        lengths = self.stats['Sequence lengths'].values.flatten()
+        if len(lengths) == 0:
+            return 0.0
+        return float(np.mean(lengths >= position))
 
     def _compute_basic_statistics(self):
         """Compute the whole-class counts shown in the report header."""

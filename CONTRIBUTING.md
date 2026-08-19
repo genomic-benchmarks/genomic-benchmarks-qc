@@ -92,13 +92,23 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     Coverage is opt-in so that running a single test file does not trip the threshold. New code
     should come with tests, and the threshold should be raised as coverage improves.
 
-6.  Commit your changes and push your branch to GitHub:
+6.  If you changed the report's styling or behaviour, the stylesheets and scripts live in
+    `src/genomic_benchmarks_qc/report/assets/` and are inlined into the generated HTML. They are
+    real files so they can be checked without generating a report:
+
+        $ for f in src/genomic_benchmarks_qc/report/assets/*.js; do node --check "$f" || break; done
+
+    Every asset has to be declared as package data in `pyproject.toml`, otherwise it works from a
+    checkout and is missing from the installed package. `tests/test_report_assets.py` fails when a
+    new one is not.
+
+7.  Commit your changes and push your branch to GitHub:
 
         $ git add .
         $ git commit -m "Your detailed description of your changes."
         $ git push origin name-of-your-bugfix-or-feature
 
-7.  Submit a pull request through the GitHub website.
+8.  Submit a pull request through the GitHub website.
 
 ## Pull Request Guidelines
 

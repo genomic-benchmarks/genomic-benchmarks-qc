@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import pandas as pd
 import logging
+from genomic_benchmarks_qc.report.colors import CLASS_COLORS
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
@@ -293,8 +294,17 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
 
     return fig
 
+
 def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', failed_positions=None):
     """Plot per-base sequence comparison with optional failure shading.
+
+    The curves run to `end_position`, which callers set to the compared window:
+    every position drawn is a position that was scored, so an unflagged stretch
+    reads as a stretch that passed. The one exception is a comparison that scored
+    nothing, where the caller passes the reported window instead and no position
+    is flagged at all. The coverage panel below says how much data stands behind
+    each position; where the window ends is said in words in the report, not as a
+    line across that panel.
 
     Args:
         stats1, stats2: Statistics objects for two datasets.
@@ -354,22 +364,37 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         if title and index == 0:
             axs[index].set_title(f'{title}', fontsize=16)
 
-    seq_lengths = list(stats1.stats['Sequence lengths'].values.flatten()) + list(stats2.stats['Sequence lengths'].values.flatten())
-    # Plot the number of sequences with length at least that position
-    length_counts = [sum(1 for length in seq_lengths if length >= pos) for pos in range(end_position)]
-    # normalize length_counts to [0, 1]
-    if length_counts:
-        length_counts = [count / max(length_counts) for count in length_counts]
+    # The proportion of sequences reaching each position is the denominator behind
+    # the curves above, since a position is scored only on the sequences that have
+    # it. One curve per class rather than one pooled curve: a position is compared
+    # only where *both* classes clear the coverage floor, so the class that runs
+    # out first is what ends the compared window, and pooling hides it. Positions
+    # are 1-based here to line up with the x axis of the panels above; counting
+    # from 0 would shift the whole curve one position right and start it at a
+    # trivial 100%.
+    positions = list(range(1, end_position + 1))
+    coverage = []
+    for stats in (stats1, stats2):
+        # Normalized against every sequence in the class, not against the first
+        # plotted position, so the axis reads as a proportion of the class even
+        # when sequences are empty.
+        lengths = list(stats.stats['Sequence lengths'].values.flatten())
+        coverage.append([sum(1 for length in lengths if length >= pos) / len(lengths)
+                         if lengths else 0.0
+                         for pos in positions])
+    # The cohort a comparison at a position actually has is the smaller of the two.
+    binding = [min(pair) for pair in zip(*coverage)]
 
-    # plot length counts in the last subplot
+    # plot coverage in the last subplot
     last_index = len(nucleotides)
-    axs[last_index].fill_between(range(1, end_position + 1), length_counts, color='lightgray', alpha=0.5)
-    axs[last_index].plot(range(1, end_position + 1), length_counts, color='lightgray', linewidth=2)
+    axs[last_index].fill_between(positions, binding, color='lightgray', alpha=0.5)
+    axs[last_index].plot(positions, coverage[0], color=HuePalette()[0], alpha=0.7, linewidth=2)
+    axs[last_index].plot(positions, coverage[1], color=HuePalette()[1], alpha=0.7, linewidth=2)
     axs[last_index].set_xlabel(f"{x_label}", fontsize=14)
-    axs[last_index].set_ylabel('Proportion of\nsequences', fontsize=14)
+    axs[last_index].set_ylabel('Proportion of\neach class\nreaching position', fontsize=14)
     axs[last_index].yaxis.set_label_position("right")
     axs[last_index].yaxis.tick_right()
-    axs[last_index].set_ylim(0, max(length_counts) * 1.1)  
+    axs[last_index].set_ylim(0, 1.1)
     axs[last_index].set_yticks([0, 0.5, 1])
     axs[last_index].set_yticklabels(['0', '0.5', '1'], fontsize=12)
     axs[last_index].tick_params(axis='x', labelsize=12)
@@ -530,7 +555,10 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_la
     ax.legend(
         handles = legend_handles,
         labels = legend_labels,
-        fontsize='12',
+        # A number, not a string: matplotlib takes either a point size or one of
+        # its size keywords here, so a quoted '12' is silently dropped and every
+        # legend falls back to the 10pt rcParams default.
+        fontsize=12,
         loc='upper center', 
         bbox_to_anchor=box_to_anchor, 
         ncol=3,
@@ -549,7 +577,7 @@ class HuePalette:
     def __new__(palette):
         """Return the shared palette, building it on first use."""
         if palette._palette is None:
-            palette._palette = sns.color_palette(['#003D99', '#66A3FF'])
+            palette._palette = sns.color_palette(list(CLASS_COLORS))
 
         return palette._palette
                 

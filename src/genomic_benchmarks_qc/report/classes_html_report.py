@@ -6,8 +6,11 @@ anywhere without losing anything.
 """
 
 from datetime import datetime
+from genomic_benchmarks_qc import __version__
+from genomic_benchmarks_qc.report import assets
+from genomic_benchmarks_qc.report.per_position_payload import viewer_html
 from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
-import importlib.metadata
+from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, position_windows
 
 
 def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
@@ -54,7 +57,7 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
                 status_class = 'status-fail'
                 symbol = '✖'
             else:
-                status_class = 'status-pass'
+                status_class = 'status-unknown'
                 symbol = '?'
         
         flags_html += f'''<div class="nucleotide-flag-item">
@@ -104,6 +107,8 @@ HTML_TEMPLATE = """
 
             <!-- Report header: logo, short description and generated-on/data source info -->
             {{report_header}}
+
+            {{not_scored_note}}
 
             <section id="basic-descriptive-statistics" class="table-section">
                 <div class="section-header">
@@ -234,7 +239,7 @@ HTML_TEMPLATE = """
                 </div>
 
                 <!-- This will be populated with png plot --->
-                <img src="data:image/png;base64, {{sequence_length_plot_base64}}" alt="Sequence Lengths Plot" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+                <img src="data:image/png;base64, {{sequence_length_plot_base64}}" alt="Sequence Lengths Plot" class="plot-half">
             </section>
 
             <section id="per-sequence-gc-content">
@@ -248,7 +253,7 @@ HTML_TEMPLATE = """
                 <div id="gc-explanation" class="explanation-text">
                     <strong>Per Sequence GC Content</strong> shows the distribution of GC% (percentage of G and C bases) across all sequences in each label. GC content affects DNA structure and stability. Significant differences in GC distribution between labels may indicate sequence composition bias that could impact model training.
                 </div>
-                <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" style="max-width: 50%; height: auto; display: block; margin: 0 auto;">
+                <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" class="plot-half">
             </section>
 
             <section id="per-sequence-nucleotide-content">
@@ -288,7 +293,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-explanation" class="explanation-text">
-                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of sequences extend to each position.
+                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position: the compared window ends where the lower curve falls below the coverage a position needs before it can be compared.
+                    {{position_window_note}}
                 </div>
                 {{per-position-nucleotide-content}}
             </section>
@@ -302,48 +308,166 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
-                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction). This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data.
+                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, and the window ends where the lower curve falls below the coverage a position needs before it can be compared.
+                    {{position_window_note_reversed}}
                 </div>
                 {{per-position-reversed-nucleotide-content}}
             </section>
         </div>
     </div>
 
-    <script>
-        var sequenceDuplicationLevels = {{sequence_duplication_levels_seqs}};
-
-        // Populate table for sequence duplication levels
-        var tableBody = document.querySelector("#sequence-duplication-levels tbody");
-        for (var i = 0; i < sequenceDuplicationLevels.length; i++) {
-            var sequence = sequenceDuplicationLevels[i];
-
-            var row = document.createElement("tr");
-            var sequenceCell = document.createElement("td");
-
-            sequenceCell.textContent = sequence;
-            sequenceCell.className = "sequence_column";
-
-            row.appendChild(sequenceCell);
-            tableBody.appendChild(row);
-        }
-        
-        // Toggle explanation visibility
-        function toggleExplanation(elementId) {
-            var element = document.getElementById(elementId);
-            if (element.classList.contains('visible')) {
-                element.classList.remove('visible');
-            } else {
-                element.classList.add('visible');
-            }
-        }
-    </script>
+{{report_scripts}}
 
 </body>
 </html>
 """
 
+def generate_not_scored_html(stats1, stats2, summary_statuses):
+    """Explain, at the top of the report, any check that was not scored.
+
+    A grey "?" in the sidebar is easy to read as a pass, and the difference is
+    the whole point: Unknown means the comparison was not made, because there
+    were not enough sequences behind it for its result to mean anything. Saying
+    so once, in full, is what lets a reader trust the flags that are there.
+
+    Returns an empty string when every check was scored, so the note costs
+    nothing on a normally sized dataset.
+    """
+    if not summary_statuses:
+        return ''
+
+    # Only the top-level checks; the per-base and per-position detail rows carry
+    # their own Unknowns and would bury the message.
+    unscored = [name for name, flag in summary_statuses.items()
+                if ' - ' not in name and str(flag).strip().lower() == 'unknown']
+    if not unscored:
+        return ''
+
+    positional = [name for name in unscored if 'position' in name.lower()]
+    per_sequence = [name for name in unscored if name not in positional]
+
+    def names(items):
+        return ', '.join(f'<em>{name}</em>' for name in items)
+
+    reasons = []
+    if per_sequence:
+        smaller = min(stats1.stats['Number of sequences'], stats2.stats['Number of sequences'])
+        reasons.append(
+            f'{names(per_sequence)} &mdash; the smaller class holds {smaller:,} sequences, and below '
+            f'{MIN_SEQUENCES_PER_CLASS} these checks report a difference on sampling noise alone too '
+            'often for a flag to be informative.'
+        )
+    if positional:
+        reasons.append(
+            f'{names(positional)} &mdash; every position is compared on the sequences long enough to '
+            f'reach it, and no scored position has {MIN_SEQUENCES_PER_CLASS} sequences in both '
+            'classes.'
+        )
+
+    items = ''.join(f'<li>{reason}</li>' for reason in reasons)
+    return (
+        '<div class="not-scored-note">'
+        f'<strong>{len(unscored)} check(s) were not scored.</strong> They are marked '
+        '<span class="status-icon status-unknown">?</span> rather than passed, because not enough '
+        'data stands behind them to tell a real difference from sampling noise &mdash; which is not '
+        'the same as having found no difference.'
+        f'<ul>{items}</ul>'
+        'The plots and the descriptive statistics below are computed from all the data and are '
+        'unaffected, so the distributions can still be compared by eye.'
+        '</div>'
+    )
+
+
+def generate_position_window_html(stats1, stats2):
+    """Describe the per-position window and how well it is covered.
+
+    The figure stops where the comparison did, so nothing in it has to be read
+    with a caveat - and the caveat itself, that there are later positions the
+    report saw and could not compare, still has to be said somewhere or the
+    figure quietly stands in for the whole sequence. It is said here. The one
+    comparison whose figure does carry a caveat is the one where nothing could be
+    compared at all: there the panels fall back to the reported window, as the
+    rest of the report's plots do when a comparison is underpowered, and the
+    caveat covers all of it.
+
+    It goes inside the section's ? explanation rather than above the figure: it is
+    background for reading the plot, not a finding, and on its own above the
+    figure it read as a second explanation of the same check.
+    """
+    end_position, scored_end_position = position_windows(stats1, stats2)
+
+    if end_position < 1:
+        return ('<p>Sequences are too short for per-position '
+                'statistics, so no positions were analysed.</p>')
+
+    def coverage_at(position):
+        parts = []
+        for stats in (stats1, stats2):
+            label = stats.label if stats.label is not None else stats.filename
+            coverage = stats.coverage_at(position)
+            count = int(round(coverage * stats.stats['Number of sequences']))
+            parts.append(f"{label}: {coverage:.1%} ({count:,} sequences)")
+        return f'{parts[0]} and {parts[1]}'
+
+    def required_cohorts():
+        """What each class needed behind a position, in its own terms.
+
+        Collapsed to one phrase when both classes require the same number, which
+        is the common case and reads as padding spelled out twice.
+        """
+        needed = []
+        for stats in (stats1, stats2):
+            count = stats.stats['Number of sequences']
+            needed.append(stats._required_cohort(count) if count else 0)
+        if needed[0] == needed[1]:
+            return f'{needed[0]:,} sequences in each class'
+        parts = []
+        for stats, count in zip((stats1, stats2), needed):
+            label = stats.label if stats.label is not None else stats.filename
+            parts.append(f'{label}: {count:,}')
+        return f'{parts[0]} and {parts[1]} sequences'
+
+    if scored_end_position < 1:
+        return (f'<p>No position could be compared. A position is compared only where '
+                f'{required_cohorts()} reach it, and none does, so all {end_position} positions '
+                f'the report covers are reported as Unknown rather than compared. The figure is '
+                f'still drawn, over all {end_position} of them, because the frequencies are worth '
+                f'looking at whether or not they were scored - but nothing in it carries a flag, '
+                f'and a difference visible in it is not a difference this report is standing '
+                f'behind. {coverage_at(end_position)} reach the last position drawn.</p>')
+
+    # The share each class was asked for, not the share that turned out to be
+    # binding: on most datasets the latter is the sequence count restated as a
+    # percentage, which explains nothing. The counts themselves come from the
+    # boundary position below, where the binding class sits exactly on its floor.
+    requested = min(stats1.min_coverage, stats2.min_coverage)
+    parts = [f'<p>Positions 1&ndash;{scored_end_position} were compared, and those are the '
+             f'positions the figure draws: everything in it was scored, so a stretch with no '
+             f'flag on it is a stretch that passed. '
+             f'Each position is compared on the sequences that reach it, and only where enough of '
+             f'them do: the larger of {MIN_SEQUENCES_PER_CLASS} sequences &mdash; below which a '
+             'difference this size turns up on sampling noise alone &mdash; and '
+             f'{requested:.0%} of the class, below which a cohort can be large and still describe '
+             f'only the longest sequences. Position {scored_end_position} is the last that clears '
+             f'both: {coverage_at(scored_end_position)}.</p>']
+
+    if end_position > scored_end_position:
+        parts.append(
+            f'<p>The sequences run further, to position {end_position}, where '
+            f'{coverage_at(end_position)} remain. Those later positions are not drawn and are '
+            'reported as Unknown rather than compared: they are reached by too few of each class '
+            'for a difference there to be a difference between the classes rather than between '
+            'their longest sequences. So the figure ends before the sequences do, and says '
+            'nothing either way about what happens past its right-hand edge. The panel at the '
+            'bottom shows how the number of sequences behind each class falls along the window: '
+            'the window ends where the lower of the two curves falls below the cohort a position '
+            'has to have behind it.</p>')
+
+    return ''.join(parts)
+
+
 def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, duplicate_seqs, duplicate_seqs_file=None,
-                             tool_description=None):
+                             tool_description=None, per_position_payloads=None):
     """
     Returns the HTML template for the report.
 
@@ -354,6 +478,10 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         duplicate_seqs: list of duplicate sequences.
         duplicate_seqs_file: path to file with duplicate sequences (optional).
         tool_description: short description of the tool to include in the header (optional).
+        per_position_payloads: dict keyed 'forward'/'reversed' with the data for
+            the interactive per-position figures, as built by
+            per_position_payload.build_payload. A direction that is absent or
+            None renders the no-plot message instead.
 
     `summary_statuses` must contain the 'Sequence Duplications within Labels' flag,
     which selects between the duplication plot and the "no duplicates" message.
@@ -361,7 +489,8 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = HTML_TEMPLATE
 
     # insert shared CSS and header fragment
-    html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
+    html_template = put_data(html_template, "{{common_css}}",
+                             COMMON_CSS + assets.stylesheet('per_position_viewer.css'))
     html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
 
     # insert logo
@@ -383,7 +512,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
-    html_template = put_data(html_template, "{{version}}", importlib.metadata.version("genomic-benchmarks-qc"))
+    html_template = put_data(html_template, "{{version}}", __version__)
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
@@ -417,7 +546,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     else:
         # insert plot showing duplicate sequences
         html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", 
-                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">')
+                                 f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" class="plot-wide">')
     html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
                              encode_image_to_base64(plots_path['Sequence lengths']))
     html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
@@ -429,20 +558,35 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
                               'cannot be plotted.')
     html_template = put_data(html_template, "{{per-sequence-nucleotide-content}}",
                              image_or_message(plots_path['Per sequence nucleotide content'],
-                                              'Per Sequence Nucleotide Content', 'max-width: 100%; height: auto;',
+                                              'Per Sequence Nucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
     html_template = put_data(html_template, "{{per-sequence-dinucleotide-content}}",
                              image_or_message(plots_path['Per sequence dinucleotide content'],
-                                              'Per Sequence Dinucleotide Content', 'max-width: 100%; height: auto;',
+                                              'Per Sequence Dinucleotide Content', 'plot-wide',
                                               disjoint_bases_message))
-    html_template = put_data(html_template, "{{per-position-nucleotide-content}}",
-                             image_or_message(plots_path['Per position nucleotide content'],
-                                              'Per Position Nucleotide Content', 'max-width: 108%; height: auto;',
-                                              disjoint_bases_message))
-    html_template = put_data(html_template, "{{per-position-reversed-nucleotide-content}}",
-                             image_or_message(plots_path['Per position reversed nucleotide content'],
-                                              'Per Position Reversed Nucleotide Content', 'max-width: 108%; height: auto;',
-                                              disjoint_bases_message))
+    html_template = put_data(html_template, "{{not_scored_note}}",
+                             generate_not_scored_html(stats1, stats2, summary_statuses))
+    position_window_note = generate_position_window_html(stats1, stats2)
+    html_template = put_data(html_template, "{{position_window_note}}", position_window_note)
+    html_template = put_data(html_template, "{{position_window_note_reversed}}", position_window_note)
+    # The per-position panels are drawn in the browser from the numbers behind
+    # them, not embedded as a picture: a flagged position is one pixel wide in a
+    # 400-position window, which is what the zoom exists for. The same figure is
+    # still written to the plots directory as a PNG, it is just not what the page
+    # shows.
+    per_position_payloads = per_position_payloads or {}
+    for placeholder, direction, dom_id, name in (
+        ("{{per-position-nucleotide-content}}", 'forward', 'ppv-fwd',
+         'Per Position Nucleotide Content'),
+        ("{{per-position-reversed-nucleotide-content}}", 'reversed', 'ppv-rev',
+         'Per Position Reversed Nucleotide Content'),
+    ):
+        payload = per_position_payloads.get(direction)
+        if payload is None:
+            html_template = put_data(html_template, placeholder,
+                                     f'<p class="no-plot-message">{disjoint_bases_message}</p>')
+        else:
+            html_template = put_data(html_template, placeholder, viewer_html(payload, dom_id))
 
     # Populate sidebar icon placeholders (if provided). summary_statuses may contain
     # simple status keywords ('pass', 'warn', 'fail') or an HTML snippet. This helper
@@ -454,7 +598,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{icon_per_sequence_nucleotide_content}}", icon_html(summary_statuses, 'Per sequence nucleotide content'))
     html_template = put_data(html_template, "{{icon_per_sequence_dinucleotide_content}}", icon_html(summary_statuses, 'Per sequence dinucleotide content'))
     html_template = put_data(html_template, "{{icon_per_position_nucleotide_content}}", icon_html(summary_statuses, 'Per position nucleotide content'))
-    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", icon_html(summary_statuses, 'Per reverse position nucleotide content'))
+    html_template = put_data(html_template, "{{icon_per_position_reversed_nucleotide_content}}", icon_html(summary_statuses, 'Per position reversed nucleotide content'))
     html_template = put_data(html_template, "{{icon_per_sequence_gc_content}}", icon_html(summary_statuses, 'Per sequence GC content'))
 
     if duplicate_seqs == []:
@@ -463,8 +607,6 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         <p>No duplicate sequences were found between classes.</p>
         """
         html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_message)
-        # set empty list for JS population
-        html_template = put_data(html_template, "{{sequence_duplication_levels_seqs}}", "[]")
     else:
         # insert table showing duplicate sequences
         duplication_table = """
@@ -482,11 +624,14 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
                     <p>{{sequence_duplication_levels_rest}} {{sequence_duplication_levels_file}}</p>
                 </div>
         """
-        html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_table)
-        # pass list of duplicate sequences for JS population
+        # The sequences go in as JSON data rather than as a JavaScript literal, so
+        # report_ui.js stays a file that can be linted and a sequence cannot
+        # break out of the script element. Escaped for the same reason as the
+        # per-position payload.
         escaped_seqs = [escape_str(seq) for seq in duplicate_seqs[:10]]
-        html_template = put_data(html_template, "{{sequence_duplication_levels_seqs}}",
-                                 '[' + ', '.join(f'{seq}' for seq in escaped_seqs) + ']')
+        duplication_table += ('\n<script type="application/json" id="duplicate-sequences">['
+                              + ', '.join(escaped_seqs) + ']</script>')
+        html_template = put_data(html_template, "{{sequence_duplication_levels}}", duplication_table)
         if len(duplicate_seqs) > 10:
             # If there are more than 10 sequences, we show how many more there are
             # and set the rest to a placeholder
@@ -498,6 +643,17 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All {len(duplicate_seqs)} duplicate sequences saved to {duplicate_seqs_file}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
+
+    # The behaviour goes in at the end of the body so it runs against a complete
+    # page: the viewer measures the width of the box it is drawn into, which is
+    # only known once the layout exists. The viewer and its data are left out
+    # entirely when there is nothing to draw.
+    scripts = ''
+    if any(payload is not None for payload in per_position_payloads.values()):
+        scripts += assets.script('per_position_viewer.js')
+        scripts += '\n<script>initPerPositionViewers();</script>\n'
+    scripts += assets.script('report_ui.js')
+    html_template = put_data(html_template, "{{report_scripts}}", scripts)
 
     # Generate unique bases flags
     unique_bases_flags = generate_nucleotide_flags_html(summary_statuses, 'Unique bases')

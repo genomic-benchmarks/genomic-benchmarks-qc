@@ -32,6 +32,7 @@ class TestArgumentPassing:
             'regression': False,
             'report_types': ['html', 'simple'],
             'end_position': None,
+            'min_coverage': 0.25,
             'plot_type': 'boxen',
             'log_level': 'INFO',
             'log_file': None,
@@ -54,6 +55,7 @@ class TestArgumentPassing:
             "--out-folder", out,
             "--report-types", "json",
             "--end-position", "200",
+            "--min-coverage", "0.5",
             "--plot-type", "violin",
             "--log-level", "DEBUG",
             "--log-file", log,
@@ -71,6 +73,7 @@ class TestArgumentPassing:
             'regression': True,
             'report_types': ['json'],
             'end_position': 200,
+            'min_coverage': 0.5,
             'plot_type': 'violin',
             'log_level': 'DEBUG',
             'log_file': log,
@@ -316,6 +319,34 @@ class TestValidation:
         csv = make_file("train.csv")
 
         result = invoke(runner, "--input", csv, "--end-position", "abc")
+
+        assert result.exit_code == 2
+        assert not classes_run.called
+
+    @pytest.mark.parametrize("min_coverage", ["-0.1", "1.5"])
+    def test_min_coverage_outside_zero_to_one_is_rejected(self, runner, make_file, classes_run, min_coverage):
+        csv = make_file("train.csv")
+
+        result = invoke(runner, "--input", csv, "--min-coverage", min_coverage)
+
+        assert result.exit_code == 1
+        assert "min_coverage must be a fraction between 0 and 1" in result.stderr
+        assert not classes_run.called
+
+    @pytest.mark.parametrize("min_coverage", ["0", "0.5", "1"])
+    def test_min_coverage_within_zero_to_one_is_accepted(self, runner, make_file, classes_run, min_coverage):
+        """0 scores every plotted position; 1 scores only what every sequence reaches."""
+        csv = make_file("train.csv")
+
+        result = invoke(runner, "--input", csv, "--min-coverage", min_coverage)
+
+        assert result.exit_code == 0
+        assert classes_run.kwargs['min_coverage'] == float(min_coverage)
+
+    def test_non_numeric_min_coverage_is_a_usage_error(self, runner, make_file, classes_run):
+        csv = make_file("train.csv")
+
+        result = invoke(runner, "--input", csv, "--min-coverage", "most")
 
         assert result.exit_code == 2
         assert not classes_run.called

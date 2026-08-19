@@ -3,13 +3,59 @@ Testing utilities for Genomic Benchmarks QC.
 
 This module provides functions to compute quality metrics (AU-ROC, AU-PR, Accuracy)
 and generate flags for comparing two datasets.
+
+Every check here asks the same question: can a single feature tell the two
+classes apart? The answer is an AU-ROC, and a fixed boundary on it decides the
+flag. That boundary only means what it says when there are enough sequences
+behind it, and when those sequences are the class rather than a corner of it, so
+two guards sit in front of the scoring:
+
+- Nothing is scored on fewer than `MIN_SEQUENCES_PER_CLASS` sequences. For the
+  per-sequence checks that is a floor on the smaller class; for the per-position
+  checks it is a floor on the cohort reaching each position, since a position is
+  compared only on the sequences long enough to have it.
+- The per-position checks additionally stop where the cohort reaching a position
+  falls below `seq_stats.DEFAULT_MIN_COVERAGE` of its class, well before the
+  plots stop drawing it. A cohort far out along the sequence can be large and
+  still not stand for the class - it is all of the class's long sequences, and a
+  difference there can be a difference between those subsets rather than between
+  the classes. Size does not bound that; only stopping does.
+
+Together the two put the same requirement on every comparison: at least
+`MIN_SEQUENCES_PER_CLASS` sequences, and at least `DEFAULT_MIN_COVERAGE` of the
+class. The count binds on small and mid-sized classes, where sampling noise is
+the risk; the fraction binds on large ones, where a tail cohort can clear the
+count many times over and still describe only the longest sequences.
+
+The size floor was chosen by simulation against the class comparisons this tool
+was built for; the study is in `analyses/`. The coverage floor is not a question
+about power and was not simulated - no sample size makes a subset of the class
+stand for the class.
+
+An underpowered comparison reports Unknown rather than Pass: no evidence of a
+difference is not evidence of no difference.
 """
+
+import logging
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
+
+# Sequences a comparison needs before it is made at all: in the smaller class
+# for the per-sequence checks, and in each position's cohort for the per-position
+# ones. Below it a check reports Unknown.
+#
+# Under a null - two classes drawn from the same process - the worst per-sequence
+# check, dinucleotide content, crosses the 0.6 Warning boundary in 70.2% of
+# replicates at 50 sequences per class and 19.4% at 100, against 0.2% at 250 and
+# 0.9% at 200. The per-position checks reach 0.0% at 250 across every class size
+# simulated, which is what lets them share one fixed boundary with the
+# per-sequence checks instead of correcting for the hundreds of tests they
+# aggregate. `analyses/` holds both studies.
+MIN_SEQUENCES_PER_CLASS = 250
 
 def _compute_best_threshold_accuracy(labels: np.ndarray, scores: np.ndarray) -> float:
     """Find the threshold that maximizes accuracy on given labels/scores.
@@ -74,12 +120,7 @@ def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> 
 
     # Single unique value case
     if np.unique(combined).size < 2:
-        prevalence = values_1.size / (values_1.size + values_2.size)
-        return {
-            'AU-ROC': 0.5,
-            'AU-PR': prevalence,
-            'Accuracy': max(prevalence, 1 - prevalence),
-        }
+        return _chance_metrics(values_1.size, values_2.size)
 
     labels = np.concatenate([
         np.ones(values_1.size, dtype=int),
@@ -105,6 +146,41 @@ def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> 
     }
 
 
+def _chance_metrics(size_1: int, size_2: int) -> dict:
+    """Metrics for a feature that says nothing about which class a sequence is in.
+
+    The values a perfectly uninformative feature would produce: chance AU-ROC,
+    an AU-PR at the prevalence, and the accuracy of always guessing the larger
+    class. Used for a feature that takes one value across both classes, where the
+    honest summary is "no information" rather than whatever the degenerate ROC
+    computation would return.
+
+    Args:
+        size_1: Number of values from dataset 1.
+        size_2: Number of values from dataset 2.
+
+    Returns:
+        Dictionary with AU-ROC, AU-PR, and Accuracy.
+    """
+    prevalence = size_1 / (size_1 + size_2)
+    return {
+        'AU-ROC': 0.5,
+        'AU-PR': prevalence,
+        'Accuracy': max(prevalence, 1 - prevalence),
+    }
+
+
+def _unknown_metrics() -> dict:
+    """Metrics for a comparison that was not made, which flag as Unknown."""
+    return {metric: np.nan for metric in METRICS_TO_COMPUTE}
+
+
+def _flag_metrics(metrics: dict) -> dict:
+    """Add the 'Flag' key implied by a metrics dict's AU-ROC, in place."""
+    metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
+    return metrics
+
+
 def _compute_flagged_metrics(values_1: np.ndarray, values_2: np.ndarray) -> dict:
     """Compute metrics and add flag based on AU-ROC.
 
@@ -115,9 +191,7 @@ def _compute_flagged_metrics(values_1: np.ndarray, values_2: np.ndarray) -> dict
     Returns:
         Metrics dictionary with added 'Flag' key.
     """
-    metrics = _compute_metrics_from_arrays(values_1, values_2)
-    metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
-    return metrics
+    return _flag_metrics(_compute_metrics_from_arrays(values_1, values_2))
 
 
 def _aggregate_worst_case_metrics(metric_dicts: list[dict]) -> dict:
@@ -144,6 +218,20 @@ def _aggregate_worst_case_metrics(metric_dicts: list[dict]) -> dict:
 def _compute_position_binary_scores(sequences: list[str], base: str, position: int, reverse: bool) -> np.ndarray:
     """Compute binary scores for a specific base at a position across sequences.
 
+    Only the sequences long enough to have this position contribute: a sequence
+    that ends before it is left out rather than scored as "not this base". That
+    keeps the comparison a question about composition -- P(base at position |
+    the sequence reaches the position) -- instead of one that also answers
+    itself from sequence length, which `Sequence lengths` already scores as a
+    feature of its own. It is also the definition the per-position plots use,
+    since `SequenceStatistics._normalize_per_position` normalizes each position
+    by its own total.
+
+    The returned array is therefore shorter than `sequences` wherever some
+    sequences stop before `position`, and how much shorter is what decides
+    whether the position can be scored at all and how large a difference it has
+    to show; `_score_position_features` applies both rules.
+
     Args:
         sequences: List of DNA/protein sequences.
         base: Nucleotide/amino acid to check for.
@@ -151,19 +239,48 @@ def _compute_position_binary_scores(sequences: list[str], base: str, position: i
         reverse: If True, count from end of sequence.
 
     Returns:
-        Array of 1.0 where base matches at position, 0.0 otherwise.
+        Array holding 1.0 where the base matches and 0.0 where it does not, with
+        one entry per sequence that reaches `position`.
     """
-    values = np.zeros(len(sequences), dtype=float)
+    values = []
 
-    for i, seq in enumerate(sequences):
-        if reverse:
-            index = len(seq) - 1 - position
-            if index >= 0 and index < len(seq) and seq[index] == base:
-                values[i] = 1.0
-        elif position < len(seq) and seq[position] == base:
-            values[i] = 1.0
+    for seq in sequences:
+        # Reading from either end, a sequence has this position exactly when it
+        # is longer than the 0-based index.
+        if len(seq) <= position:
+            continue
+        index = len(seq) - 1 - position if reverse else position
+        values.append(1.0 if seq[index] == base else 0.0)
 
-    return values
+    return np.asarray(values, dtype=float)
+
+
+def _position_cohorts(sequences: list[str], end_position: int) -> np.ndarray:
+    """Number of sequences reaching each 0-based position below `end_position`.
+
+    A sequence has a position, read from either end, exactly when it is longer
+    than the 0-based index, so one array of lengths answers this for the forward
+    and the reverse pass alike.
+    """
+    lengths = np.fromiter((len(seq) for seq in sequences), dtype=int, count=len(sequences))
+    return np.array([int(np.sum(lengths > position)) for position in range(end_position)])
+
+
+def position_windows(stats1, stats2) -> tuple[int, int]:
+    """The per-position windows a comparison of two classes runs in.
+
+    Each class resolves its own windows from its own sequence lengths, and a
+    position belongs to a window only where it belongs to it in both: a position
+    that half of one class does not reach cannot be flagged on the strength of
+    the other class reaching it.
+
+    Returns:
+        Tuple of (end_position, scored_end_position), 1-based and inclusive - the
+        last position reported on and the last position allowed to set a flag,
+        which is also the last position drawn.
+    """
+    return (min(stats1.end_position, stats2.end_position),
+            min(stats1.scored_end_position, stats2.scored_end_position))
 
 
 def _score_position_features(
@@ -171,18 +288,38 @@ def _score_position_features(
     sequences_2: list[str],
     bases: list[str],
     prefix: str,
+    end_position: int,
+    scored_end_position: int,
     reverse: bool = False,
-    end_position: int | None = None,
+    min_cohort: int = MIN_SEQUENCES_PER_CLASS,
 ) -> tuple[dict, dict]:
     """Compute per-position metrics for all bases.
+
+    Every position up to `end_position` gets a row, because a position the
+    report is silent about is indistinguishable from one the sequences never
+    reach, but only the positions up to `scored_end_position` are compared: past
+    it too small a fraction of each class reaches the position for a difference
+    there to be about the position rather than about the longest sequences, and
+    the rows say Unknown.
+
+    A position whose cohort has fallen below `min_cohort` in either class is
+    reported as Unknown as well. `SequenceStatistics` already ends the scored
+    window where that happens, so within a window it derived this is a redundant
+    guard; it matters when the window was narrowed by hand, and it keeps the
+    function honest on its own terms.
 
     Args:
         sequences_1: Sequences from dataset 1.
         sequences_2: Sequences from dataset 2.
         bases: Bases to analyze.
         prefix: Name prefix for result keys.
+        end_position: Last position to report on, 1-based and inclusive. Chosen
+            by `SequenceStatistics._reported_window`.
+        scored_end_position: Last position allowed to set a flag, 1-based and
+            inclusive. Chosen by `SequenceStatistics._scored_window`, and the
+            window the per-position figures draw.
         reverse: If True, analyze from end of sequences.
-        end_position: Max position to analyze (None = auto-detect).
+        min_cohort: Sequences a position needs in both classes to be scored.
 
     Returns:
         Tuple of (detailed results dict, per-base aggregates dict).
@@ -190,20 +327,24 @@ def _score_position_features(
     results = {}
     per_base_aggregates = {}
 
-    if end_position is None:
-        if not sequences_1 or not sequences_2:
-            return results, per_base_aggregates
-        end_position = min(
-            max(len(s) for s in sequences_1),
-            max(len(s) for s in sequences_2),
-        )
+    # Which positions can be scored at all depends only on how many sequences
+    # reach them, not on the base, so this is settled once. Both gates are
+    # monotone in the position, so the scorable positions are always a prefix of
+    # the plotted ones.
+    cohorts_1 = _position_cohorts(sequences_1, end_position)
+    cohorts_2 = _position_cohorts(sequences_2, end_position)
+    within_window = np.arange(end_position) < scored_end_position
+    scorable = within_window & (np.minimum(cohorts_1, cohorts_2) >= max(min_cohort, 1))
 
     for base in bases:
         pos_metrics_list = []
         for position in range(end_position):
-            vals1 = _compute_position_binary_scores(sequences_1, base, position, reverse)
-            vals2 = _compute_position_binary_scores(sequences_2, base, position, reverse)
-            metrics = _compute_metrics_from_arrays(vals1, vals2)
+            if not scorable[position]:
+                metrics = _unknown_metrics()
+            else:
+                vals1 = _compute_position_binary_scores(sequences_1, base, position, reverse)
+                vals2 = _compute_position_binary_scores(sequences_2, base, position, reverse)
+                metrics = _compute_metrics_from_arrays(vals1, vals2)
             metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
             result_name = f'{prefix} - {base} position {position + 1}'
             results[result_name] = metrics
@@ -213,7 +354,7 @@ def _score_position_features(
         if pos_metrics_list:
             agg = _aggregate_worst_case_metrics(pos_metrics_list)
         else:
-            agg = {metric: np.nan for metric in METRICS_TO_COMPUTE}
+            agg = _unknown_metrics()
             agg['Flag'] = _flag_on_score(np.nan)
 
         results[f'{prefix} - {base}'] = agg
@@ -227,6 +368,7 @@ def _score_scalar_feature(
     column_name: str,
     indices_1: np.ndarray,
     indices_2: np.ndarray,
+    min_class_size: int = MIN_SEQUENCES_PER_CLASS,
 ) -> dict:
     """Score a single scalar feature column between two datasets.
 
@@ -236,10 +378,15 @@ def _score_scalar_feature(
         column_name: Column to score.
         indices_1: Row indices for dataset 1.
         indices_2: Row indices for dataset 2.
+        min_class_size: Sequences the smaller class needs before the comparison
+            is made at all; below it the feature reports Unknown. Pass 0 to score
+            regardless of size.
 
     Returns:
         Flagged metrics dictionary.
     """
+    if min(len(indices_1), len(indices_2)) < min_class_size:
+        return _flag_metrics(_unknown_metrics())
     values_1 = frame_1.iloc[indices_1][column_name].fillna(0).to_numpy(dtype=float)
     values_2 = frame_2.iloc[indices_2][column_name].fillna(0).to_numpy(dtype=float)
     return _compute_flagged_metrics(values_1, values_2)
@@ -251,6 +398,7 @@ def _score_dataframe_features(
     prefix: str,
     indices_1: np.ndarray,
     indices_2: np.ndarray,
+    min_class_size: int = MIN_SEQUENCES_PER_CLASS,
 ) -> dict:
     """Score all numeric columns in dataframes.
 
@@ -260,12 +408,25 @@ def _score_dataframe_features(
         prefix: Name prefix for result keys.
         indices_1: Row indices for dataset 1.
         indices_2: Row indices for dataset 2.
+        min_class_size: Sequences the smaller class needs before the comparison
+            is made at all; below it every column, and the aggregate over them,
+            reports Unknown. Pass 0 to score regardless of size.
 
     Returns:
         Dictionary with per-column and aggregate metrics.
     """
     results = {}
     columns = sorted(set(frame_1.columns) | set(frame_2.columns))
+
+    # The worst case over several columns is more exposed to sampling noise than
+    # any one of them, so a class too small for one column is too small for the
+    # aggregate as well: the whole check reports Unknown together.
+    if min(len(indices_1), len(indices_2)) < min_class_size:
+        for column in columns:
+            results[f'{prefix} - {column}'] = _flag_metrics(_unknown_metrics())
+        if columns:
+            results[prefix] = _flag_metrics(_unknown_metrics())
+        return results
 
     for column in columns:
         if column in frame_1.columns:
@@ -337,12 +498,13 @@ def direct_feature_model(stats1, stats2):
 
     # Position features (forward)
     bases = sorted(set(stats1.stats['Unique bases']) | set(stats2.stats['Unique bases']))
-    end_position = min(stats1.end_position, stats2.end_position)
+    end_position, scored_end_position = position_windows(stats1, stats2)
 
     pos_results, per_base_agg = _score_position_features(
         stats1.sequences, stats2.sequences, bases,
         'Per position nucleotide content',
-        reverse=False, end_position=end_position,
+        end_position=end_position, scored_end_position=scored_end_position,
+        reverse=False,
     )
     results.update(pos_results)
     if per_base_agg:
@@ -351,12 +513,13 @@ def direct_feature_model(stats1, stats2):
     # Position features (reverse)
     pos_results_rev, per_base_agg_rev = _score_position_features(
         stats1.sequences, stats2.sequences, bases,
-        'Per reverse position nucleotide content',
-        reverse=True, end_position=end_position,
+        'Per position reversed nucleotide content',
+        end_position=end_position, scored_end_position=scored_end_position,
+        reverse=True,
     )
     results.update(pos_results_rev)
     if per_base_agg_rev:
-        results['Per reverse position nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg_rev.values())
+        results['Per position reversed nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg_rev.values())
 
     return results
 
@@ -376,7 +539,7 @@ def flag_significant_differences(stats1, stats2):
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
             'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per reverse position nucleotide content': {...}
+            'Per position reversed nucleotide content': {...}
           }
     """
     results = {}
@@ -390,7 +553,7 @@ def flag_significant_differences(stats1, stats2):
         'Per sequence nucleotide content',
         'Per sequence dinucleotide content',
         'Per position nucleotide content',
-        'Per reverse position nucleotide content',
+        'Per position reversed nucleotide content',
     ]
 
     all_results = {}
@@ -403,6 +566,8 @@ def flag_significant_differences(stats1, stats2):
 
     model_results = direct_feature_model(stats1, stats2)
     all_results.update(model_results)
+
+    _warn_about_unscored_checks(stats1, stats2, all_results, ordered_stats)
 
     # Order: aggregates first, then details
     for stat_name in ordered_stats:
@@ -420,6 +585,56 @@ def flag_significant_differences(stats1, stats2):
     return results, failed_by_feature
 
 
+def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: list[str]):
+    """Say on the terminal which checks were not scored, and why.
+
+    A check that reports Unknown looks much like one that reports Pass in a
+    sidebar full of icons, and the difference matters: Unknown means the
+    comparison was not made, not that it came out clean. Anyone running the tool
+    on a small dataset should hear that from the terminal rather than having to
+    infer it from the report.
+
+    Args:
+        stats1, stats2: SequenceStatistics objects for the two classes.
+        all_results: Every computed check, keyed by name.
+        check_names: The top-level check names, in report order.
+    """
+    unknown = [name for name in check_names
+               if isinstance(all_results.get(name), dict)
+               and all_results[name].get('Flag') == 'Unknown']
+    if not unknown:
+        return
+
+    positional = [name for name in unknown if 'position' in name.lower()]
+    per_sequence = [name for name in unknown if name not in positional]
+
+    label_1 = stats1.label if stats1.label is not None else stats1.filename
+    label_2 = stats2.label if stats2.label is not None else stats2.filename
+    size_1 = stats1.stats['Number of sequences']
+    size_2 = stats2.stats['Number of sequences']
+
+    if per_sequence:
+        logging.warning(
+            f"Not enough sequences to score {len(per_sequence)} check(s): "
+            f"{', '.join(per_sequence)}. '{label_1}' has {size_1:,} sequences and "
+            f"'{label_2}' has {size_2:,}, and below {MIN_SEQUENCES_PER_CLASS} in the "
+            "smaller class these checks flag a difference on sampling noise alone too "
+            "often to be trusted, so they are reported as Unknown rather than Pass. "
+            "The plots and the descriptive statistics are still produced, so the "
+            "distributions can be compared by eye."
+        )
+
+    if positional:
+        logging.warning(
+            f"Not enough sequences to score {len(positional)} check(s): "
+            f"{', '.join(positional)}. Each position is compared on the sequences long "
+            f"enough to reach it, and no position has at least "
+            f"{MIN_SEQUENCES_PER_CLASS} sequences in both classes. The figures are still "
+            "drawn, over every position the checks are named for, so the frequencies can "
+            "be compared by eye - but nothing in them carries a flag."
+        )
+
+
 def _extract_failed_features(all_results: dict) -> dict:
     """Extract failure information organized by feature type for plotting.
 
@@ -432,14 +647,14 @@ def _extract_failed_features(all_results: dict) -> dict:
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
             'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per reverse position nucleotide content': {'A': {10: 'Fail'}, ...},
+            'Per position reversed nucleotide content': {'A': {10: 'Fail'}, ...},
         }
     """
     failed_by_feature = {
         'Per sequence nucleotide content': {},
         'Per sequence dinucleotide content': {},
         'Per position nucleotide content': {},
-        'Per reverse position nucleotide content': {},
+        'Per position reversed nucleotide content': {},
     }
 
     for key, value in all_results.items():
@@ -463,27 +678,31 @@ def _extract_failed_features(all_results: dict) -> dict:
                 base = parts[0].replace('Per position nucleotide content - ', '')
                 try:
                     position = int(parts[1])
-                    if base not in failed_by_feature['Per position nucleotide content']:
-                        failed_by_feature['Per position nucleotide content'][base] = {}
+                    # Only flagged positions go in. An entry per base regardless
+                    # would leave the dict truthy for a comparison with nothing
+                    # to shade, and the report would draw a second, identical
+                    # copy of every per-position plot.
                     if flag in ('Fail', 'Warning'):
-                        failed_by_feature['Per position nucleotide content'][base][position] = flag
+                        failed_by_feature['Per position nucleotide content'].setdefault(base, {})[position] = flag
                 except ValueError:
                     # Not a position entry (e.g., aggregate "Per position nucleotide content - A")
                     pass
 
-        elif key.startswith('Per reverse position nucleotide content - ') and ' position ' in key:
-            # Parse "Per reverse position nucleotide content - G position 52"
+        elif key.startswith('Per position reversed nucleotide content - ') and ' position ' in key:
+            # Parse "Per position reversed nucleotide content - G position 52"
             parts = key.rsplit(' position ', 1)
             if len(parts) == 2:
-                base = parts[0].replace('Per reverse position nucleotide content - ', '')
+                base = parts[0].replace('Per position reversed nucleotide content - ', '')
                 try:
                     position = int(parts[1])
-                    if base not in failed_by_feature['Per reverse position nucleotide content']:
-                        failed_by_feature['Per reverse position nucleotide content'][base] = {}
+                    # Only flagged positions go in. An entry per base regardless
+                    # would leave the dict truthy for a comparison with nothing
+                    # to shade, and the report would draw a second, identical
+                    # copy of every per-position plot.
                     if flag in ('Fail', 'Warning'):
-                        failed_by_feature['Per reverse position nucleotide content'][base][position] = flag
+                        failed_by_feature['Per position reversed nucleotide content'].setdefault(base, {})[position] = flag
                 except ValueError:
-                    # Not a position entry (e.g., aggregate "Per reverse position nucleotide content - A")
+                    # Not a position entry (e.g., aggregate "Per position reversed nucleotide content - A")
                     pass
 
     return failed_by_feature

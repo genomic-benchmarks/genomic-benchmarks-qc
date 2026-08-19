@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genomic-benchmarks-qc"
-version = "0.9.0"
+dynamic = ["version"]
 description = "Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -37,6 +37,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "biopython>=1.86",
     "scikit-learn>=1.7.2",
+    "scipy>=1.14",
     "typer>=0.20",
 ]
 
@@ -53,6 +54,18 @@ gb-qc = "genomic_benchmarks_qc.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Read from the package itself, so the number lives in exactly one place; see
+# the comment in src/genomic_benchmarks_qc/__init__.py.
+[tool.setuptools.dynamic]
+version = {attr = "genomic_benchmarks_qc.__version__"}
+
+# The report's stylesheets and scripts are read at report-generation time and
+# inlined into the HTML, so they have to ship in the wheel. tests/test_report_assets.py
+# loads every one of them through the loader, which is what catches a file added
+# here and forgotten below.
+[tool.setuptools.package-data]
+"genomic_benchmarks_qc.report.assets" = ["*.css", "*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
