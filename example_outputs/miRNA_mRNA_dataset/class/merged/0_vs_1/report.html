@@ -527,29 +527,41 @@ body.qc-attention .sidebar > .sidebar-item[data-state="pass"] { display: none; }
 .ppv-flags > summary:hover { color: var(--accent); }
 .ppv-flags-body { padding: 4px 14px 14px; overflow-x: auto; }
 .ppv-flagtable { width: 100%; table-layout: auto; border-collapse: collapse; font-size: 13.5px; }
+/* Every column is centred, header and body alike. The cells all hold something
+ * of a fixed width - a flag word, a position, one base, a three-decimal
+ * frequency - so there is no ragged edge for a left or right rule to tidy up,
+ * and one alignment throughout keeps each label sitting over its own numbers. */
 .ppv-flagtable th {
-  text-align: right; font-weight: 600; font-size: 11.5px; letter-spacing: .04em;
+  text-align: center; font-weight: 600; font-size: 11.5px; letter-spacing: .04em;
   text-transform: uppercase; color: var(--ink-3); padding: 10px 10px 6px; border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
-/* What the two numeric columns hold, said above the table in the same words the
- * hover card uses. It replaced a header cell spanning those columns, which read
- * as a title for the whole table; as a caption it sits with the table but
- * outside its grid, where a sentence belongs. */
-.ppv-flags-caption { font-size: 12px; color: var(--ink-3); margin: 8px 0 2px; }
-/* Marked with a class, not by position: the columns that hold text, in a header
- * row whose remaining cells are right-aligned numbers. */
-.ppv-flagtable th.ppv-h-left { text-align: left; }
+/* What the two rightmost columns hold, spanning them. Styled as a column header
+ * and not as a caption - it inherits the uppercase, tracked-out `th` rule the
+ * other headers use, so the header row reads as one row of labels rather than a
+ * sentence pasted over its right-hand end.
+ *
+ * Only the sub-header row below carries the rule: a border under the group cell
+ * as well would draw two lines through the header, where every other column has
+ * one. The rowspan cells end their border on that same row, so the whole header
+ * closes on a single line. */
+.ppv-flagtable th.ppv-h-group { border-bottom: 0; padding-bottom: 4px; }
+/* The single-column headers span both header rows, so by default they sit
+ * midway down the pair and the group heading printed a line above them. Aligned
+ * to the top of the cell, every column name in the first row shares one
+ * baseline, and only the class names sit below. */
+.ppv-flagtable thead th { vertical-align: top; }
+.ppv-flagtable th.ppv-h-sub { padding-top: 0; }
 .ppv-flagtable td {
-  padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: right;
+  padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .ppv-flagtable tbody tr { cursor: pointer; }
 .ppv-flagtable tbody tr:hover { background: var(--accent-soft); }
 .ppv-flagtable tbody tr:hover .ppv-go { opacity: 1; }
-.ppv-c-flag { text-align: left !important; white-space: nowrap; color: var(--ink-2); }
-.ppv-c-pos { text-align: left !important; font-family: var(--mono); font-weight: 600; }
-.ppv-c-base { text-align: left !important; font-family: var(--mono); }
+.ppv-c-flag { white-space: nowrap; color: var(--ink-2); }
+.ppv-c-pos { font-family: var(--mono); font-weight: 600; }
+.ppv-c-base { font-family: var(--mono); }
 .ppv-c-num { font-family: var(--mono); color: var(--ink-2); }
 .ppv-c-go { width: 1%; }
 .ppv-sev { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 7px; }
@@ -605,7 +617,7 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
     <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">
             Toolkit for automated quality control of genomic datasets used in machine learning. 
             </div>
-    <div style="font-size: 0.9em; color: #666;">Report generated on 2026-08-19 16:05:46 based on data: example_datasets/miRNA_mRNA_pairs_dataset.tsv</div>
+    <div style="font-size: 0.9em; color: #666;">Report generated on 2026-08-19 18:07:21 based on data: example_datasets/miRNA_mRNA_pairs_dataset.tsv</div>
 </div>
 
 
@@ -798,10 +810,10 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
                     </div>
                 </div>
                 <div id="per-position-explanation" class="explanation-text">
-                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position, with a dashed line at the coverage a position needs before it can be compared: where the lower curve drops through that line is where the compared window ends.
-                    <p>Positions 1&ndash;72 were compared, and those are the positions the figure draws: everything in it was scored, so a stretch with no flag on it is a stretch that passed. Each position is compared on the sequences that reach it, and only where enough of them do: the larger of 250 sequences &mdash; below which a difference this size turns up on sampling noise alone &mdash; and 25% of the class, below which a cohort can be large and still describe only the longest sequences. Position 72 is the last that clears both: 0: 84.3% (506 sequences) and 1: 86.8% (521 sequences).</p><p>The sequences run further, to position 73, where 0: 28.8% (173 sequences) and 1: 27.0% (162 sequences) remain. Those later positions are not drawn and are reported as Unknown rather than compared: they are reached by too few of each class for a difference there to be a difference between the classes rather than between their longest sequences. So the figure ends before the sequences do, and says nothing either way about what happens past its right-hand edge. The panel at the bottom shows how the number of sequences behind each class falls along the window, and marks the floor they have to stay above - the window ends where the lower curve crosses it.</p>
+                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position: the compared window ends where the lower curve falls below the coverage a position needs before it can be compared.
+                    <p>Positions 1&ndash;72 were compared, and those are the positions the figure draws: everything in it was scored, so a stretch with no flag on it is a stretch that passed. Each position is compared on the sequences that reach it, and only where enough of them do: the larger of 250 sequences &mdash; below which a difference this size turns up on sampling noise alone &mdash; and 25% of the class, below which a cohort can be large and still describe only the longest sequences. Position 72 is the last that clears both: 0: 84.3% (506 sequences) and 1: 86.8% (521 sequences).</p><p>The sequences run further, to position 73, where 0: 28.8% (173 sequences) and 1: 27.0% (162 sequences) remain. Those later positions are not drawn and are reported as Unknown rather than compared: they are reached by too few of each class for a difference there to be a difference between the classes rather than between their longest sequences. So the figure ends before the sequences do, and says nothing either way about what happens past its right-hand edge. The panel at the bottom shows how the number of sequences behind each class falls along the window: the window ends where the lower of the two curves falls below the cohort a position has to have behind it.</p>
                 </div>
-                <script type="application/json" id="ppv-fwd-data">{"direction":"forward","endPosition":72,"compared":true,"xLabel":"Position in sequence","labels":["0","1"],"colors":["#003D99","#66A3FF"],"flagColors":{"Fail":"#c62828","Warning":"#f57f17","Pass":"#2e7d32","Unknown":"#8a8983"},"counts":[600,600],"nucleotides":["A","C","G","T"],"freq":{"A":[[0.26,0.253,0.247,0.23,0.245,0.228,0.263,0.267,0.225,0.275,0.295,0.282,0.252,0.26,0.263,0.247,0.272,0.23,0.257,0.22,0.247,0.218,0.218,0.215,0.243,0.238,0.228,0.262,0.218,0.235,0.215,0.207,0.255,0.225,0.225,0.25,0.237,0.262,0.252,0.25,0.223,0.247,0.287,0.268,0.272,0.252,0.263,0.275,0.252,0.292,0.257,0.352,0.32,0.218,0.192,0.12,0.27,0.122,0.205,0.213,0.147,0.158,0.225,0.21,0.11,0.223,0.213,0.147,0.177,0.112,0.165,0.227],[0.25,0.248,0.242,0.248,0.265,0.24,0.247,0.265,0.257,0.247,0.288,0.242,0.262,0.26,0.258,0.275,0.273,0.273,0.23,0.24,0.223,0.247,0.197,0.208,0.247,0.233,0.248,0.235,0.235,0.268,0.235,0.252,0.25,0.253,0.228,0.238,0.228,0.258,0.267,0.242,0.237,0.298,0.272,0.297,0.305,0.273,0.25,0.257,0.247,0.292,0.243,0.353,0.347,0.238,0.195,0.13,0.303,0.147,0.19,0.218,0.145,0.17,0.225,0.195,0.125,0.232,0.21,0.153,0.206,0.109,0.173,0.226]],"C":[[0.263,0.235,0.217,0.237,0.247,0.265,0.275,0.253,0.265,0.253,0.197,0.217,0.243,0.287,0.248,0.24,0.222,0.222,0.27,0.285,0.247,0.287,0.267,0.283,0.278,0.253,0.275,0.24,0.273,0.298,0.265,0.278,0.255,0.305,0.268,0.222,0.28,0.282,0.253,0.273,0.242,0.255,0.265,0.24,0.225,0.273,0.22,0.208,0.257,0.227,0.133,0.272,0.307,0.18,0.175,0.338,0.223,0.417,0.172,0.168,0.222,0.217,0.228,0.302,0.287,0.23,0.308,0.337,0.234,0.243,0.185,0.071],[0.23,0.217,0.25,0.223,0.21,0.262,0.238,0.203,0.243,0.238,0.207,0.24,0.24,0.247,0.255,0.235,0.277,0.24,0.252,0.263,0.282,0.26,0.282,0.247,0.275,0.257,0.285,0.268,0.243,0.245,0.265,0.228,0.257,0.262,0.247,0.233,0.282,0.265,0.227,0.277,0.25,0.24,0.25,0.192,0.233,0.243,0.242,0.28,0.263,0.213,0.122,0.235,0.272,0.16,0.178,0.343,0.202,0.42,0.178,0.177,0.213,0.188,0.227,0.295,0.295,0.212,0.283,0.332,0.238,0.226,0.201,0.098]],"G":[[0.207,0.235,0.263,0.248,0.227,0.217,0.21,0.228,0.242,0.202,0.243,0.267,0.25,0.217,0.253,0.258,0.263,0.288,0.227,0.277,0.26,0.267,0.277,0.275,0.268,0.255,0.265,0.265,0.278,0.237,0.277,0.273,0.273,0.265,0.268,0.267,0.223,0.213,0.21,0.2,0.25,0.247,0.187,0.23,0.262,0.197,0.213,0.21,0.215,0.193,0.055,0.288,0.183,0.46,0.512,0.307,0.288,0.252,0.18,0.337,0.355,0.323,0.293,0.28,0.293,0.25,0.258,0.192,0.331,0.42,0.253,0.243],[0.212,0.235,0.218,0.252,0.24,0.217,0.245,0.258,0.257,0.257,0.235,0.262,0.247,0.232,0.225,0.263,0.243,0.243,0.258,0.25,0.252,0.245,0.272,0.323,0.237,0.255,0.258,0.263,0.265,0.26,0.253,0.268,0.263,0.247,0.257,0.275,0.238,0.232,0.235,0.228,0.207,0.188,0.202,0.25,0.235,0.208,0.248,0.218,0.218,0.182,0.057,0.317,0.172,0.433,0.52,0.295,0.293,0.253,0.192,0.312,0.378,0.325,0.287,0.292,0.298,0.248,0.27,0.192,0.345,0.424,0.261,0.257]],"T":[[0.27,0.277,0.273,0.285,0.282,0.29,0.252,0.252,0.268,0.27,0.265,0.235,0.255,0.237,0.235,0.255,0.243,0.26,0.247,0.218,0.247,0.228,0.238,0.227,0.21,0.253,0.232,0.233,0.23,0.23,0.243,0.242,0.217,0.205,0.238,0.262,0.26,0.243,0.285,0.277,0.285,0.252,0.262,0.262,0.242,0.278,0.303,0.307,0.277,0.288,0.555,0.088,0.19,0.142,0.122,0.235,0.218,0.21,0.443,0.282,0.277,0.302,0.253,0.208,0.31,0.297,0.22,0.324,0.258,0.225,0.397,0.458],[0.308,0.3,0.29,0.277,0.285,0.282,0.27,0.273,0.243,0.258,0.27,0.257,0.252,0.262,0.262,0.227,0.207,0.243,0.26,0.247,0.243,0.248,0.25,0.222,0.242,0.255,0.208,0.233,0.257,0.227,0.247,0.252,0.23,0.238,0.268,0.253,0.252,0.245,0.272,0.253,0.307,0.273,0.277,0.262,0.227,0.275,0.26,0.245,0.272,0.313,0.578,0.095,0.21,0.168,0.107,0.232,0.202,0.18,0.44,0.293,0.263,0.317,0.262,0.218,0.282,0.308,0.237,0.322,0.211,0.241,0.364,0.418]]},"coverage":[[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.988,0.968,0.948,0.843],[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.987,0.967,0.952,0.868]],"coverageFloor":0.4166666666666667,"flags":{"A":{},"C":{},"G":{},"T":{}}}</script>
+                <script type="application/json" id="ppv-fwd-data">{"direction":"forward","endPosition":72,"compared":true,"xLabel":"Position in sequence","labels":["0","1"],"colors":["#003D99","#66A3FF"],"flagColors":{"Fail":"#c62828","Warning":"#f57f17","Unknown":"#8a8983"},"counts":[600,600],"nucleotides":["A","C","G","T"],"freq":{"A":[[0.26,0.253,0.247,0.23,0.245,0.228,0.263,0.267,0.225,0.275,0.295,0.282,0.252,0.26,0.263,0.247,0.272,0.23,0.257,0.22,0.247,0.218,0.218,0.215,0.243,0.238,0.228,0.262,0.218,0.235,0.215,0.207,0.255,0.225,0.225,0.25,0.237,0.262,0.252,0.25,0.223,0.247,0.287,0.268,0.272,0.252,0.263,0.275,0.252,0.292,0.257,0.352,0.32,0.218,0.192,0.12,0.27,0.122,0.205,0.213,0.147,0.158,0.225,0.21,0.11,0.223,0.213,0.147,0.177,0.112,0.165,0.227],[0.25,0.248,0.242,0.248,0.265,0.24,0.247,0.265,0.257,0.247,0.288,0.242,0.262,0.26,0.258,0.275,0.273,0.273,0.23,0.24,0.223,0.247,0.197,0.208,0.247,0.233,0.248,0.235,0.235,0.268,0.235,0.252,0.25,0.253,0.228,0.238,0.228,0.258,0.267,0.242,0.237,0.298,0.272,0.297,0.305,0.273,0.25,0.257,0.247,0.292,0.243,0.353,0.347,0.238,0.195,0.13,0.303,0.147,0.19,0.218,0.145,0.17,0.225,0.195,0.125,0.232,0.21,0.153,0.206,0.109,0.173,0.226]],"C":[[0.263,0.235,0.217,0.237,0.247,0.265,0.275,0.253,0.265,0.253,0.197,0.217,0.243,0.287,0.248,0.24,0.222,0.222,0.27,0.285,0.247,0.287,0.267,0.283,0.278,0.253,0.275,0.24,0.273,0.298,0.265,0.278,0.255,0.305,0.268,0.222,0.28,0.282,0.253,0.273,0.242,0.255,0.265,0.24,0.225,0.273,0.22,0.208,0.257,0.227,0.133,0.272,0.307,0.18,0.175,0.338,0.223,0.417,0.172,0.168,0.222,0.217,0.228,0.302,0.287,0.23,0.308,0.337,0.234,0.243,0.185,0.071],[0.23,0.217,0.25,0.223,0.21,0.262,0.238,0.203,0.243,0.238,0.207,0.24,0.24,0.247,0.255,0.235,0.277,0.24,0.252,0.263,0.282,0.26,0.282,0.247,0.275,0.257,0.285,0.268,0.243,0.245,0.265,0.228,0.257,0.262,0.247,0.233,0.282,0.265,0.227,0.277,0.25,0.24,0.25,0.192,0.233,0.243,0.242,0.28,0.263,0.213,0.122,0.235,0.272,0.16,0.178,0.343,0.202,0.42,0.178,0.177,0.213,0.188,0.227,0.295,0.295,0.212,0.283,0.332,0.238,0.226,0.201,0.098]],"G":[[0.207,0.235,0.263,0.248,0.227,0.217,0.21,0.228,0.242,0.202,0.243,0.267,0.25,0.217,0.253,0.258,0.263,0.288,0.227,0.277,0.26,0.267,0.277,0.275,0.268,0.255,0.265,0.265,0.278,0.237,0.277,0.273,0.273,0.265,0.268,0.267,0.223,0.213,0.21,0.2,0.25,0.247,0.187,0.23,0.262,0.197,0.213,0.21,0.215,0.193,0.055,0.288,0.183,0.46,0.512,0.307,0.288,0.252,0.18,0.337,0.355,0.323,0.293,0.28,0.293,0.25,0.258,0.192,0.331,0.42,0.253,0.243],[0.212,0.235,0.218,0.252,0.24,0.217,0.245,0.258,0.257,0.257,0.235,0.262,0.247,0.232,0.225,0.263,0.243,0.243,0.258,0.25,0.252,0.245,0.272,0.323,0.237,0.255,0.258,0.263,0.265,0.26,0.253,0.268,0.263,0.247,0.257,0.275,0.238,0.232,0.235,0.228,0.207,0.188,0.202,0.25,0.235,0.208,0.248,0.218,0.218,0.182,0.057,0.317,0.172,0.433,0.52,0.295,0.293,0.253,0.192,0.312,0.378,0.325,0.287,0.292,0.298,0.248,0.27,0.192,0.345,0.424,0.261,0.257]],"T":[[0.27,0.277,0.273,0.285,0.282,0.29,0.252,0.252,0.268,0.27,0.265,0.235,0.255,0.237,0.235,0.255,0.243,0.26,0.247,0.218,0.247,0.228,0.238,0.227,0.21,0.253,0.232,0.233,0.23,0.23,0.243,0.242,0.217,0.205,0.238,0.262,0.26,0.243,0.285,0.277,0.285,0.252,0.262,0.262,0.242,0.278,0.303,0.307,0.277,0.288,0.555,0.088,0.19,0.142,0.122,0.235,0.218,0.21,0.443,0.282,0.277,0.302,0.253,0.208,0.31,0.297,0.22,0.324,0.258,0.225,0.397,0.458],[0.308,0.3,0.29,0.277,0.285,0.282,0.27,0.273,0.243,0.258,0.27,0.257,0.252,0.262,0.262,0.227,0.207,0.243,0.26,0.247,0.243,0.248,0.25,0.222,0.242,0.255,0.208,0.233,0.257,0.227,0.247,0.252,0.23,0.238,0.268,0.253,0.252,0.245,0.272,0.253,0.307,0.273,0.277,0.262,0.227,0.275,0.26,0.245,0.272,0.313,0.578,0.095,0.21,0.168,0.107,0.232,0.202,0.18,0.44,0.293,0.263,0.317,0.262,0.218,0.282,0.308,0.237,0.322,0.211,0.241,0.364,0.418]]},"coverage":[[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.988,0.968,0.948,0.843],[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.987,0.967,0.952,0.868]],"flags":{"A":{},"C":{},"G":{},"T":{}}}</script>
 <div class="ppv" id="ppv-fwd" data-payload="ppv-fwd-data">
   <div class="ppv-bar">
     <button type="button" data-action="prev" title="Previous flagged position">&#9664; Prev flag</button>
@@ -836,10 +848,10 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
                     </div>
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
-                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, with a dashed line at the coverage a position needs before it can be compared.
-                    <p>Positions 1&ndash;72 were compared, and those are the positions the figure draws: everything in it was scored, so a stretch with no flag on it is a stretch that passed. Each position is compared on the sequences that reach it, and only where enough of them do: the larger of 250 sequences &mdash; below which a difference this size turns up on sampling noise alone &mdash; and 25% of the class, below which a cohort can be large and still describe only the longest sequences. Position 72 is the last that clears both: 0: 84.3% (506 sequences) and 1: 86.8% (521 sequences).</p><p>The sequences run further, to position 73, where 0: 28.8% (173 sequences) and 1: 27.0% (162 sequences) remain. Those later positions are not drawn and are reported as Unknown rather than compared: they are reached by too few of each class for a difference there to be a difference between the classes rather than between their longest sequences. So the figure ends before the sequences do, and says nothing either way about what happens past its right-hand edge. The panel at the bottom shows how the number of sequences behind each class falls along the window, and marks the floor they have to stay above - the window ends where the lower curve crosses it.</p>
+                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, and the window ends where the lower curve falls below the coverage a position needs before it can be compared.
+                    <p>Positions 1&ndash;72 were compared, and those are the positions the figure draws: everything in it was scored, so a stretch with no flag on it is a stretch that passed. Each position is compared on the sequences that reach it, and only where enough of them do: the larger of 250 sequences &mdash; below which a difference this size turns up on sampling noise alone &mdash; and 25% of the class, below which a cohort can be large and still describe only the longest sequences. Position 72 is the last that clears both: 0: 84.3% (506 sequences) and 1: 86.8% (521 sequences).</p><p>The sequences run further, to position 73, where 0: 28.8% (173 sequences) and 1: 27.0% (162 sequences) remain. Those later positions are not drawn and are reported as Unknown rather than compared: they are reached by too few of each class for a difference there to be a difference between the classes rather than between their longest sequences. So the figure ends before the sequences do, and says nothing either way about what happens past its right-hand edge. The panel at the bottom shows how the number of sequences behind each class falls along the window: the window ends where the lower of the two curves falls below the cohort a position has to have behind it.</p>
                 </div>
-                <script type="application/json" id="ppv-rev-data">{"direction":"reversed","endPosition":72,"compared":true,"xLabel":"Position from sequence end","labels":["0","1"],"colors":["#003D99","#66A3FF"],"flagColors":{"Fail":"#c62828","Warning":"#f57f17","Pass":"#2e7d32","Unknown":"#8a8983"},"counts":[600,600],"nucleotides":["A","C","G","T"],"freq":{"A":[[0.197,0.208,0.095,0.187,0.083,0.238,0.22,0.147,0.205,0.12,0.202,0.137,0.263,0.172,0.175,0.238,0.138,0.217,0.163,0.338,0.358,0.252,0.307,0.243,0.278,0.265,0.253,0.272,0.263,0.28,0.253,0.225,0.25,0.25,0.277,0.25,0.233,0.227,0.217,0.26,0.207,0.202,0.242,0.223,0.243,0.213,0.257,0.235,0.233,0.24,0.222,0.217,0.23,0.247,0.23,0.27,0.247,0.26,0.29,0.237,0.287,0.272,0.272,0.247,0.252,0.252,0.232,0.251,0.236,0.265,0.234,0.249],[0.205,0.207,0.098,0.212,0.093,0.23,0.232,0.153,0.213,0.115,0.205,0.137,0.268,0.15,0.197,0.273,0.165,0.218,0.183,0.36,0.353,0.228,0.303,0.258,0.238,0.255,0.275,0.29,0.327,0.257,0.275,0.27,0.237,0.253,0.297,0.227,0.222,0.235,0.238,0.257,0.243,0.265,0.25,0.242,0.228,0.242,0.255,0.22,0.23,0.215,0.203,0.228,0.237,0.228,0.252,0.288,0.285,0.258,0.237,0.273,0.26,0.277,0.262,0.252,0.283,0.248,0.25,0.241,0.235,0.243,0.235,0.246]],"C":[[0.097,0.163,0.158,0.338,0.285,0.275,0.283,0.247,0.357,0.228,0.212,0.175,0.192,0.173,0.353,0.312,0.325,0.16,0.21,0.242,0.295,0.148,0.245,0.252,0.187,0.252,0.253,0.243,0.223,0.28,0.247,0.252,0.253,0.267,0.252,0.272,0.252,0.268,0.29,0.272,0.265,0.275,0.29,0.273,0.265,0.263,0.235,0.295,0.262,0.275,0.283,0.26,0.28,0.278,0.233,0.208,0.238,0.27,0.232,0.268,0.22,0.23,0.232,0.255,0.272,0.273,0.233,0.26,0.253,0.213,0.253,0.243],[0.108,0.188,0.142,0.338,0.297,0.257,0.253,0.257,0.327,0.247,0.2,0.165,0.182,0.188,0.342,0.293,0.32,0.172,0.205,0.217,0.255,0.173,0.21,0.232,0.287,0.247,0.245,0.233,0.188,0.245,0.258,0.242,0.272,0.245,0.232,0.285,0.242,0.25,0.258,0.253,0.265,0.22,0.273,0.227,0.288,0.258,0.265,0.258,0.252,0.283,0.268,0.273,0.28,0.263,0.235,0.255,0.248,0.262,0.25,0.222,0.245,0.222,0.23,0.213,0.213,0.232,0.242,0.256,0.211,0.234,0.228,0.226]],"G":[[0.275,0.353,0.398,0.273,0.208,0.277,0.225,0.357,0.158,0.368,0.343,0.368,0.288,0.265,0.265,0.157,0.348,0.445,0.502,0.227,0.228,0.145,0.14,0.203,0.232,0.197,0.212,0.247,0.23,0.19,0.24,0.24,0.218,0.215,0.217,0.23,0.262,0.268,0.267,0.255,0.287,0.263,0.243,0.29,0.258,0.272,0.257,0.268,0.273,0.27,0.258,0.273,0.26,0.232,0.277,0.283,0.235,0.26,0.238,0.238,0.25,0.252,0.222,0.23,0.217,0.235,0.217,0.216,0.251,0.248,0.223,0.235],[0.265,0.357,0.413,0.283,0.205,0.29,0.223,0.357,0.182,0.353,0.347,0.393,0.265,0.275,0.287,0.152,0.333,0.448,0.457,0.213,0.243,0.155,0.14,0.227,0.218,0.23,0.215,0.243,0.238,0.225,0.17,0.215,0.225,0.24,0.228,0.232,0.262,0.252,0.263,0.265,0.265,0.255,0.243,0.292,0.247,0.282,0.242,0.255,0.298,0.268,0.262,0.255,0.26,0.237,0.258,0.235,0.257,0.223,0.247,0.248,0.24,0.245,0.263,0.268,0.22,0.247,0.225,0.228,0.269,0.253,0.207,0.232]],"T":[[0.432,0.275,0.348,0.202,0.423,0.21,0.272,0.25,0.28,0.283,0.243,0.32,0.257,0.39,0.207,0.293,0.188,0.178,0.125,0.193,0.118,0.455,0.308,0.302,0.303,0.287,0.282,0.238,0.283,0.25,0.26,0.283,0.278,0.268,0.255,0.248,0.253,0.237,0.227,0.213,0.242,0.26,0.225,0.213,0.233,0.252,0.252,0.202,0.232,0.215,0.237,0.25,0.23,0.243,0.26,0.238,0.28,0.21,0.24,0.257,0.243,0.247,0.275,0.268,0.26,0.24,0.318,0.273,0.26,0.274,0.29,0.273],[0.422,0.248,0.347,0.167,0.405,0.223,0.292,0.233,0.278,0.285,0.248,0.305,0.285,0.387,0.175,0.282,0.182,0.162,0.155,0.21,0.148,0.443,0.347,0.283,0.257,0.268,0.265,0.233,0.247,0.273,0.297,0.273,0.267,0.262,0.243,0.257,0.275,0.263,0.24,0.225,0.227,0.26,0.233,0.24,0.237,0.218,0.238,0.267,0.22,0.233,0.267,0.243,0.223,0.272,0.255,0.222,0.21,0.257,0.267,0.257,0.255,0.257,0.245,0.267,0.283,0.273,0.283,0.275,0.285,0.269,0.331,0.296]]},"coverage":[[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.988,0.968,0.948,0.843],[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.987,0.967,0.952,0.868]],"coverageFloor":0.4166666666666667,"flags":{"A":{},"C":{},"G":{},"T":{}}}</script>
+                <script type="application/json" id="ppv-rev-data">{"direction":"reversed","endPosition":72,"compared":true,"xLabel":"Position from sequence end","labels":["0","1"],"colors":["#003D99","#66A3FF"],"flagColors":{"Fail":"#c62828","Warning":"#f57f17","Unknown":"#8a8983"},"counts":[600,600],"nucleotides":["A","C","G","T"],"freq":{"A":[[0.197,0.208,0.095,0.187,0.083,0.238,0.22,0.147,0.205,0.12,0.202,0.137,0.263,0.172,0.175,0.238,0.138,0.217,0.163,0.338,0.358,0.252,0.307,0.243,0.278,0.265,0.253,0.272,0.263,0.28,0.253,0.225,0.25,0.25,0.277,0.25,0.233,0.227,0.217,0.26,0.207,0.202,0.242,0.223,0.243,0.213,0.257,0.235,0.233,0.24,0.222,0.217,0.23,0.247,0.23,0.27,0.247,0.26,0.29,0.237,0.287,0.272,0.272,0.247,0.252,0.252,0.232,0.251,0.236,0.265,0.234,0.249],[0.205,0.207,0.098,0.212,0.093,0.23,0.232,0.153,0.213,0.115,0.205,0.137,0.268,0.15,0.197,0.273,0.165,0.218,0.183,0.36,0.353,0.228,0.303,0.258,0.238,0.255,0.275,0.29,0.327,0.257,0.275,0.27,0.237,0.253,0.297,0.227,0.222,0.235,0.238,0.257,0.243,0.265,0.25,0.242,0.228,0.242,0.255,0.22,0.23,0.215,0.203,0.228,0.237,0.228,0.252,0.288,0.285,0.258,0.237,0.273,0.26,0.277,0.262,0.252,0.283,0.248,0.25,0.241,0.235,0.243,0.235,0.246]],"C":[[0.097,0.163,0.158,0.338,0.285,0.275,0.283,0.247,0.357,0.228,0.212,0.175,0.192,0.173,0.353,0.312,0.325,0.16,0.21,0.242,0.295,0.148,0.245,0.252,0.187,0.252,0.253,0.243,0.223,0.28,0.247,0.252,0.253,0.267,0.252,0.272,0.252,0.268,0.29,0.272,0.265,0.275,0.29,0.273,0.265,0.263,0.235,0.295,0.262,0.275,0.283,0.26,0.28,0.278,0.233,0.208,0.238,0.27,0.232,0.268,0.22,0.23,0.232,0.255,0.272,0.273,0.233,0.26,0.253,0.213,0.253,0.243],[0.108,0.188,0.142,0.338,0.297,0.257,0.253,0.257,0.327,0.247,0.2,0.165,0.182,0.188,0.342,0.293,0.32,0.172,0.205,0.217,0.255,0.173,0.21,0.232,0.287,0.247,0.245,0.233,0.188,0.245,0.258,0.242,0.272,0.245,0.232,0.285,0.242,0.25,0.258,0.253,0.265,0.22,0.273,0.227,0.288,0.258,0.265,0.258,0.252,0.283,0.268,0.273,0.28,0.263,0.235,0.255,0.248,0.262,0.25,0.222,0.245,0.222,0.23,0.213,0.213,0.232,0.242,0.256,0.211,0.234,0.228,0.226]],"G":[[0.275,0.353,0.398,0.273,0.208,0.277,0.225,0.357,0.158,0.368,0.343,0.368,0.288,0.265,0.265,0.157,0.348,0.445,0.502,0.227,0.228,0.145,0.14,0.203,0.232,0.197,0.212,0.247,0.23,0.19,0.24,0.24,0.218,0.215,0.217,0.23,0.262,0.268,0.267,0.255,0.287,0.263,0.243,0.29,0.258,0.272,0.257,0.268,0.273,0.27,0.258,0.273,0.26,0.232,0.277,0.283,0.235,0.26,0.238,0.238,0.25,0.252,0.222,0.23,0.217,0.235,0.217,0.216,0.251,0.248,0.223,0.235],[0.265,0.357,0.413,0.283,0.205,0.29,0.223,0.357,0.182,0.353,0.347,0.393,0.265,0.275,0.287,0.152,0.333,0.448,0.457,0.213,0.243,0.155,0.14,0.227,0.218,0.23,0.215,0.243,0.238,0.225,0.17,0.215,0.225,0.24,0.228,0.232,0.262,0.252,0.263,0.265,0.265,0.255,0.243,0.292,0.247,0.282,0.242,0.255,0.298,0.268,0.262,0.255,0.26,0.237,0.258,0.235,0.257,0.223,0.247,0.248,0.24,0.245,0.263,0.268,0.22,0.247,0.225,0.228,0.269,0.253,0.207,0.232]],"T":[[0.432,0.275,0.348,0.202,0.423,0.21,0.272,0.25,0.28,0.283,0.243,0.32,0.257,0.39,0.207,0.293,0.188,0.178,0.125,0.193,0.118,0.455,0.308,0.302,0.303,0.287,0.282,0.238,0.283,0.25,0.26,0.283,0.278,0.268,0.255,0.248,0.253,0.237,0.227,0.213,0.242,0.26,0.225,0.213,0.233,0.252,0.252,0.202,0.232,0.215,0.237,0.25,0.23,0.243,0.26,0.238,0.28,0.21,0.24,0.257,0.243,0.247,0.275,0.268,0.26,0.24,0.318,0.273,0.26,0.274,0.29,0.273],[0.422,0.248,0.347,0.167,0.405,0.223,0.292,0.233,0.278,0.285,0.248,0.305,0.285,0.387,0.175,0.282,0.182,0.162,0.155,0.21,0.148,0.443,0.347,0.283,0.257,0.268,0.265,0.233,0.247,0.273,0.297,0.273,0.267,0.262,0.243,0.257,0.275,0.263,0.24,0.225,0.227,0.26,0.233,0.24,0.237,0.218,0.238,0.267,0.22,0.233,0.267,0.243,0.223,0.272,0.255,0.222,0.21,0.257,0.267,0.257,0.255,0.257,0.245,0.267,0.283,0.273,0.283,0.275,0.285,0.269,0.331,0.296]]},"coverage":[[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.988,0.968,0.948,0.843],[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.988,0.987,0.967,0.952,0.868]],"flags":{"A":{},"C":{},"G":{},"T":{}}}</script>
 <div class="ppv" id="ppv-rev" data-payload="ppv-rev-data">
   <div class="ppv-bar">
     <button type="button" data-action="prev" title="Previous flagged position">&#9664; Prev flag</button>
@@ -1036,11 +1048,16 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
 
     /* The flag the report gives this base at this position. Only flagged
      * positions travel in the payload, so a position with no entry of its own is
-     * one that passed - the hover card names it rather than leaving a blank, so
-     * every row there says what the check decided. */
+     * one that passed. */
     function flagAt(nt, pos) {
       return (data.flags[nt] || {})[String(pos)] || 'Pass';
     }
+
+    /* A flag worth a chip. Every position the figure draws was scored, so Pass
+     * is the state of most of them and naming it filled the hover card with
+     * chips that said nothing had happened. Unknown does not reach the drawn
+     * window either, so what is left to mark is a finding. */
+    function isFinding(flag) { return flag === 'Warning' || flag === 'Fail'; }
 
     var fullView = {
       x0: 1 - STYLE.xMarginFrac * (end - 1),
@@ -1316,36 +1333,16 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
       c.restore();
     }
 
-    /* The cohort floor: the sequences that have to reach a position before it
-     * may be flagged, as a share of a class. Drawn across the panel because it is
-     * the rule that ends the figure: the lower curve reaches it at the right-hand
-     * edge, which is what makes that edge read as a limit rather than as the
-     * sequences running out.
-     *
-     * A bare line, with no caption of its own - it used to carry one in italics
-     * inside the panel, which put a sentence on top of the curves it explained.
-     * The section's ? explanation says what the line is, once. */
-    function drawCoverageFloor(c, g, top, h) {
-      var floor = data.coverageFloor;
-      if (!(floor > 0) || floor > STYLE.yMax) return;
-      var y = Math.round(g.yToPx(floor, top, h)) + 0.5;
-      c.save();
-      c.strokeStyle = 'rgba(0,0,0,0.45)';
-      c.lineWidth = 1;
-      c.setLineDash([4, 3]);
-      c.beginPath();
-      c.moveTo(g.left, y);
-      c.lineTo(g.left + g.plotW, y);
-      c.stroke();
-      c.restore();
-    }
-
     /* The bottom panel. One pooled grey curve only said that sequences end
      * somewhere along here; per class, against the floor, it says which class
      * runs out first and why the comparison stops where it does. The grey fill
      * is under the lower of the two curves - the cohort a comparison at that
      * position actually has - and the curves are the two classes in their own
-     * colours, so the legend below covers this panel too. */
+     * colours, so the legend below covers this panel too.
+     *
+     * The floor the window ends at is not drawn. It was a dashed line across
+     * this panel, a third rule in a panel that already carries two curves and a
+     * fill; the section's `?` explanation says where the window stops. */
     function drawCoverage(c, g, ticks) {
       var top = g.covTop, h = g.covH;
       c.save();
@@ -1369,7 +1366,6 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
       c.globalAlpha = 1;
       c.restore();
 
-      drawCoverageFloor(c, g, top, h);
       // Second class first, as in the panels above, so the first label's curve
       // is the one on top wherever they cross.
       drawSeries(c, g, coverage[1] || [], data.colors[1], top, h, STYLE.coveragePt);
@@ -1604,20 +1600,23 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
 
     function showTooltip(clientX, clientY) {
       if (hover == null) { tooltip.hidden = true; return; }
-      /* Every base gets a chip, Pass included. The panels only shade what is
-       * wrong, so without it the card would name a flag on some rows and say
-       * nothing on the others, and silence there reads as missing data rather
-       * than as a position that was checked and passed. */
+      /* The flag column appears only where there is a flag to put in it: at a
+       * position where every base passed, a column of Pass chips restated the
+       * figure's own silence four times, and the chips are what the eye goes to.
+       * Where one base is flagged the column is there for all four rows, so the
+       * flagged base is read against the ones that passed beside it. */
+      var showFlags = nts.some(function (nt) { return isFinding(flagAt(nt, hover)); });
       var rows = nts.map(function (nt) {
         var v0 = data.freq[nt][0][hover - 1];
         var v1 = data.freq[nt][1][hover - 1];
         var fl = flagAt(nt, hover);
-        var chip = '<span class="ppv-chip" style="background:'
-          + data.flagColors[fl] + '">' + fl + '</span>';
+        var chip = isFinding(fl)
+          ? '<span class="ppv-chip" style="background:' + data.flagColors[fl] + '">' + fl + '</span>'
+          : '';
         return '<tr' + (nts[hoverPanel] === nt ? ' class="is-focus"' : '') + '>'
           + '<th>' + nt + '</th>'
           + '<td>' + fmt(v0) + '</td><td>' + fmt(v1) + '</td>'
-          + '<td class="ppv-tt-flag">' + chip + '</td></tr>';
+          + (showFlags ? '<td class="ppv-tt-flag">' + chip + '</td>' : '') + '</tr>';
       }).join('');
       // The two numbers are the share of the sequences reaching this position
       // that carry this base here. Saying so in the card is the only place a
@@ -1628,7 +1627,7 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
         + '<table><thead><tr><th>Base</th>'
         + '<td><span class="ppv-swatch" style="background:' + data.colors[0] + '"></span>' + data.labels[0] + '</td>'
         + '<td><span class="ppv-swatch" style="background:' + data.colors[1] + '"></span>' + data.labels[1] + '</td>'
-        + '<td>Flag</td></tr></thead><tbody>' + rows + '</tbody></table>'
+        + (showFlags ? '<td>Flag</td>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>'
         + reachBlock();
       tooltip.hidden = false;
 
@@ -1824,34 +1823,36 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABbYAAAICCAYAAAATY5sMAAABgWlDQ1BzUk
           + data.flagColors[r.flag] + '"></span>' + r.flag + '</td>'
           + '<td class="ppv-c-pos">' + r.pos + '</td>'
           + '<td class="ppv-c-base">' + r.nt + '</td>'
+          + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td>'
           + '<td class="ppv-c-num">' + data.freq[r.nt][0][r.pos - 1].toFixed(3) + '</td>'
-          + '<td class="ppv-c-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td>'
-          + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td></tr>';
+          + '<td class="ppv-c-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td></tr>';
       }
-      /* One header row, and what the numeric columns hold said above the table
-       * rather than in a cell spanning them. The spanning cell was centred over
-       * two columns and sat a row above the class names, so it read as a
-       * heading for the table and not as a description of those two numbers.
-       * The caption is the hover card's subtitle, in the same words: the card
-       * and the table describe the same measurement.
+      /* Two header rows: what the numbers hold spans the two class columns, and
+       * the class names sit under it as its sub-columns. The two frequencies are
+       * the last columns of the table, so the group heading is at the right-hand
+       * end where it has only its own columns beneath it - a spanning cell in
+       * the middle of the header reads as a title for everything under it. It is
+       * the hover card's subtitle said as a column label, so the card and the
+       * table name the same measurement.
        *
-       * The columns themselves then only need the class names, because the row
-       * already says which base and which position. */
+       * The sub-columns then only need the class names, because the row already
+       * says which base and which position. */
       function swatch(i) {
         return '<span class="ppv-swatch" style="background:' + data.colors[i] + '"></span>';
       }
       var posLabel = data.xLabel || 'Position in sequence';
       function paint(limit) {
         host.innerHTML =
-          '<p class="ppv-flags-caption">Frequency of this base at this position, '
-          + 'per class</p>'
-          + '<table class="ppv-flagtable"><thead>'
-          + '<tr><th class="ppv-h-left">Flag</th>'
-          + '<th class="ppv-h-left">' + posLabel + '</th>'
-          + '<th class="ppv-h-left">Base</th>'
-          + '<th>' + swatch(0) + data.labels[0] + '</th>'
-          + '<th>' + swatch(1) + data.labels[1] + '</th>'
-          + '<th></th></tr></thead><tbody>'
+          '<table class="ppv-flagtable"><thead>'
+          + '<tr><th rowspan="2">Flag</th>'
+          + '<th rowspan="2">' + posLabel + '</th>'
+          + '<th rowspan="2">Base</th>'
+          + '<th rowspan="2"></th>'
+          + '<th class="ppv-h-group" colspan="2">Frequency of base at position, '
+          + 'per class</th></tr>'
+          + '<tr><th class="ppv-h-sub">' + swatch(0) + data.labels[0] + '</th>'
+          + '<th class="ppv-h-sub">' + swatch(1) + data.labels[1] + '</th></tr>'
+          + '</thead><tbody>'
           + rows.slice(0, limit).map(cell).join('')
           + '</tbody></table>'
           + (limit < rows.length

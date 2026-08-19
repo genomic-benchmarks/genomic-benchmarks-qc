@@ -53,9 +53,11 @@ def cohort_floor(stats1, stats2) -> float:
     share of a class the floor differs between the two, and the binding one is
     the larger share: a position has to clear the floor in both classes.
 
-    Drawn as a bare dashed line, with no caption of its own. What it is gets said
-    once, in the section's `?` explanation, rather than in italics inside the
-    figure where it competed with the curves it was there to explain.
+    Not drawn. It sets the compared window, and the window is what the figures
+    show: they stop where the floor stops them. Saying it a second time as a line
+    across the coverage panel only added a rule to a panel that already carries
+    two curves, so what the floor is gets said once, in the section's `?`
+    explanation.
 
     Returns:
         Fraction of a class, or 0.0 when neither class has a floor worth drawing.

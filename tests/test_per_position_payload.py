@@ -21,7 +21,7 @@ from genomic_benchmarks_qc.report.per_position_payload import (
     payload_script,
     viewer_html,
 )
-from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics, cohort_floor
+from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences, position_windows
 
 BASES = ['A', 'C', 'G', 'T']
@@ -83,12 +83,11 @@ class TestShape:
         # whole window.
         assert payload['coverage'] == [[1.0] * payload['endPosition']] * 2
 
-    def test_the_cohort_floor_travels_with_the_curves(self, payload, comparison):
-        """The panel draws the floor as a bare dashed line, so the number travels
-        with the curves and nothing else does: naming it is the explanation's job."""
-        stats1, stats2, _ = comparison
-
-        assert payload['coverageFloor'] == pytest.approx(cohort_floor(stats1, stats2))
+    def test_the_cohort_floor_is_not_drawn(self, payload):
+        """The floor sets the window the figure draws, and the window is what the
+        figure shows: it is not a line across the coverage panel as well, so the
+        number does not travel in the payload."""
+        assert 'coverageFloor' not in payload
         assert 'coverageFloorLabel' not in payload
 
     def test_it_round_trips_through_json(self, payload):
@@ -143,9 +142,11 @@ class TestFlags:
         two frequencies, so it stays in report.csv and out of the page."""
         assert 'auroc' not in payload
 
-    def test_pass_has_a_colour_even_though_it_is_never_a_band(self, payload):
-        """The hover card names the flag on every row, Pass included."""
-        assert set(payload['flagColors']) == {'Fail', 'Warning', 'Pass', 'Unknown'}
+    def test_only_the_flags_the_figure_marks_carry_a_colour(self, payload):
+        """Pass is not marked anywhere - not as a band, which would cover the
+        whole window, and not in the hover card, where a column of Pass chips
+        restated the figure's own silence."""
+        assert set(payload['flagColors']) == {'Fail', 'Warning', 'Unknown'}
 
     def test_a_comparison_that_scored_nothing_still_gets_a_figure(self):
         """An underpowered comparison keeps its plots everywhere else in the

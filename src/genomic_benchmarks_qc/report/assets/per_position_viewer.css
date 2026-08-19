@@ -74,29 +74,41 @@
 .ppv-flags > summary:hover { color: var(--accent); }
 .ppv-flags-body { padding: 4px 14px 14px; overflow-x: auto; }
 .ppv-flagtable { width: 100%; table-layout: auto; border-collapse: collapse; font-size: 13.5px; }
+/* Every column is centred, header and body alike. The cells all hold something
+ * of a fixed width - a flag word, a position, one base, a three-decimal
+ * frequency - so there is no ragged edge for a left or right rule to tidy up,
+ * and one alignment throughout keeps each label sitting over its own numbers. */
 .ppv-flagtable th {
-  text-align: right; font-weight: 600; font-size: 11.5px; letter-spacing: .04em;
+  text-align: center; font-weight: 600; font-size: 11.5px; letter-spacing: .04em;
   text-transform: uppercase; color: var(--ink-3); padding: 10px 10px 6px; border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
-/* What the two numeric columns hold, said above the table in the same words the
- * hover card uses. It replaced a header cell spanning those columns, which read
- * as a title for the whole table; as a caption it sits with the table but
- * outside its grid, where a sentence belongs. */
-.ppv-flags-caption { font-size: 12px; color: var(--ink-3); margin: 8px 0 2px; }
-/* Marked with a class, not by position: the columns that hold text, in a header
- * row whose remaining cells are right-aligned numbers. */
-.ppv-flagtable th.ppv-h-left { text-align: left; }
+/* What the two rightmost columns hold, spanning them. Styled as a column header
+ * and not as a caption - it inherits the uppercase, tracked-out `th` rule the
+ * other headers use, so the header row reads as one row of labels rather than a
+ * sentence pasted over its right-hand end.
+ *
+ * Only the sub-header row below carries the rule: a border under the group cell
+ * as well would draw two lines through the header, where every other column has
+ * one. The rowspan cells end their border on that same row, so the whole header
+ * closes on a single line. */
+.ppv-flagtable th.ppv-h-group { border-bottom: 0; padding-bottom: 4px; }
+/* The single-column headers span both header rows, so by default they sit
+ * midway down the pair and the group heading printed a line above them. Aligned
+ * to the top of the cell, every column name in the first row shares one
+ * baseline, and only the class names sit below. */
+.ppv-flagtable thead th { vertical-align: top; }
+.ppv-flagtable th.ppv-h-sub { padding-top: 0; }
 .ppv-flagtable td {
-  padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: right;
+  padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .ppv-flagtable tbody tr { cursor: pointer; }
 .ppv-flagtable tbody tr:hover { background: var(--accent-soft); }
 .ppv-flagtable tbody tr:hover .ppv-go { opacity: 1; }
-.ppv-c-flag { text-align: left !important; white-space: nowrap; color: var(--ink-2); }
-.ppv-c-pos { text-align: left !important; font-family: var(--mono); font-weight: 600; }
-.ppv-c-base { text-align: left !important; font-family: var(--mono); }
+.ppv-c-flag { white-space: nowrap; color: var(--ink-2); }
+.ppv-c-pos { font-family: var(--mono); font-weight: 600; }
+.ppv-c-base { font-family: var(--mono); }
 .ppv-c-num { font-family: var(--mono); color: var(--ink-2); }
 .ppv-c-go { width: 1%; }
 .ppv-sev { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 7px; }

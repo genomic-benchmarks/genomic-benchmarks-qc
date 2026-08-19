@@ -166,11 +166,16 @@
 
     /* The flag the report gives this base at this position. Only flagged
      * positions travel in the payload, so a position with no entry of its own is
-     * one that passed - the hover card names it rather than leaving a blank, so
-     * every row there says what the check decided. */
+     * one that passed. */
     function flagAt(nt, pos) {
       return (data.flags[nt] || {})[String(pos)] || 'Pass';
     }
+
+    /* A flag worth a chip. Every position the figure draws was scored, so Pass
+     * is the state of most of them and naming it filled the hover card with
+     * chips that said nothing had happened. Unknown does not reach the drawn
+     * window either, so what is left to mark is a finding. */
+    function isFinding(flag) { return flag === 'Warning' || flag === 'Fail'; }
 
     var fullView = {
       x0: 1 - STYLE.xMarginFrac * (end - 1),
@@ -446,36 +451,16 @@
       c.restore();
     }
 
-    /* The cohort floor: the sequences that have to reach a position before it
-     * may be flagged, as a share of a class. Drawn across the panel because it is
-     * the rule that ends the figure: the lower curve reaches it at the right-hand
-     * edge, which is what makes that edge read as a limit rather than as the
-     * sequences running out.
-     *
-     * A bare line, with no caption of its own - it used to carry one in italics
-     * inside the panel, which put a sentence on top of the curves it explained.
-     * The section's ? explanation says what the line is, once. */
-    function drawCoverageFloor(c, g, top, h) {
-      var floor = data.coverageFloor;
-      if (!(floor > 0) || floor > STYLE.yMax) return;
-      var y = Math.round(g.yToPx(floor, top, h)) + 0.5;
-      c.save();
-      c.strokeStyle = 'rgba(0,0,0,0.45)';
-      c.lineWidth = 1;
-      c.setLineDash([4, 3]);
-      c.beginPath();
-      c.moveTo(g.left, y);
-      c.lineTo(g.left + g.plotW, y);
-      c.stroke();
-      c.restore();
-    }
-
     /* The bottom panel. One pooled grey curve only said that sequences end
      * somewhere along here; per class, against the floor, it says which class
      * runs out first and why the comparison stops where it does. The grey fill
      * is under the lower of the two curves - the cohort a comparison at that
      * position actually has - and the curves are the two classes in their own
-     * colours, so the legend below covers this panel too. */
+     * colours, so the legend below covers this panel too.
+     *
+     * The floor the window ends at is not drawn. It was a dashed line across
+     * this panel, a third rule in a panel that already carries two curves and a
+     * fill; the section's `?` explanation says where the window stops. */
     function drawCoverage(c, g, ticks) {
       var top = g.covTop, h = g.covH;
       c.save();
@@ -499,7 +484,6 @@
       c.globalAlpha = 1;
       c.restore();
 
-      drawCoverageFloor(c, g, top, h);
       // Second class first, as in the panels above, so the first label's curve
       // is the one on top wherever they cross.
       drawSeries(c, g, coverage[1] || [], data.colors[1], top, h, STYLE.coveragePt);
@@ -734,20 +718,23 @@
 
     function showTooltip(clientX, clientY) {
       if (hover == null) { tooltip.hidden = true; return; }
-      /* Every base gets a chip, Pass included. The panels only shade what is
-       * wrong, so without it the card would name a flag on some rows and say
-       * nothing on the others, and silence there reads as missing data rather
-       * than as a position that was checked and passed. */
+      /* The flag column appears only where there is a flag to put in it: at a
+       * position where every base passed, a column of Pass chips restated the
+       * figure's own silence four times, and the chips are what the eye goes to.
+       * Where one base is flagged the column is there for all four rows, so the
+       * flagged base is read against the ones that passed beside it. */
+      var showFlags = nts.some(function (nt) { return isFinding(flagAt(nt, hover)); });
       var rows = nts.map(function (nt) {
         var v0 = data.freq[nt][0][hover - 1];
         var v1 = data.freq[nt][1][hover - 1];
         var fl = flagAt(nt, hover);
-        var chip = '<span class="ppv-chip" style="background:'
-          + data.flagColors[fl] + '">' + fl + '</span>';
+        var chip = isFinding(fl)
+          ? '<span class="ppv-chip" style="background:' + data.flagColors[fl] + '">' + fl + '</span>'
+          : '';
         return '<tr' + (nts[hoverPanel] === nt ? ' class="is-focus"' : '') + '>'
           + '<th>' + nt + '</th>'
           + '<td>' + fmt(v0) + '</td><td>' + fmt(v1) + '</td>'
-          + '<td class="ppv-tt-flag">' + chip + '</td></tr>';
+          + (showFlags ? '<td class="ppv-tt-flag">' + chip + '</td>' : '') + '</tr>';
       }).join('');
       // The two numbers are the share of the sequences reaching this position
       // that carry this base here. Saying so in the card is the only place a
@@ -758,7 +745,7 @@
         + '<table><thead><tr><th>Base</th>'
         + '<td><span class="ppv-swatch" style="background:' + data.colors[0] + '"></span>' + data.labels[0] + '</td>'
         + '<td><span class="ppv-swatch" style="background:' + data.colors[1] + '"></span>' + data.labels[1] + '</td>'
-        + '<td>Flag</td></tr></thead><tbody>' + rows + '</tbody></table>'
+        + (showFlags ? '<td>Flag</td>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>'
         + reachBlock();
       tooltip.hidden = false;
 
@@ -954,34 +941,36 @@
           + data.flagColors[r.flag] + '"></span>' + r.flag + '</td>'
           + '<td class="ppv-c-pos">' + r.pos + '</td>'
           + '<td class="ppv-c-base">' + r.nt + '</td>'
+          + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td>'
           + '<td class="ppv-c-num">' + data.freq[r.nt][0][r.pos - 1].toFixed(3) + '</td>'
-          + '<td class="ppv-c-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td>'
-          + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td></tr>';
+          + '<td class="ppv-c-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td></tr>';
       }
-      /* One header row, and what the numeric columns hold said above the table
-       * rather than in a cell spanning them. The spanning cell was centred over
-       * two columns and sat a row above the class names, so it read as a
-       * heading for the table and not as a description of those two numbers.
-       * The caption is the hover card's subtitle, in the same words: the card
-       * and the table describe the same measurement.
+      /* Two header rows: what the numbers hold spans the two class columns, and
+       * the class names sit under it as its sub-columns. The two frequencies are
+       * the last columns of the table, so the group heading is at the right-hand
+       * end where it has only its own columns beneath it - a spanning cell in
+       * the middle of the header reads as a title for everything under it. It is
+       * the hover card's subtitle said as a column label, so the card and the
+       * table name the same measurement.
        *
-       * The columns themselves then only need the class names, because the row
-       * already says which base and which position. */
+       * The sub-columns then only need the class names, because the row already
+       * says which base and which position. */
       function swatch(i) {
         return '<span class="ppv-swatch" style="background:' + data.colors[i] + '"></span>';
       }
       var posLabel = data.xLabel || 'Position in sequence';
       function paint(limit) {
         host.innerHTML =
-          '<p class="ppv-flags-caption">Frequency of this base at this position, '
-          + 'per class</p>'
-          + '<table class="ppv-flagtable"><thead>'
-          + '<tr><th class="ppv-h-left">Flag</th>'
-          + '<th class="ppv-h-left">' + posLabel + '</th>'
-          + '<th class="ppv-h-left">Base</th>'
-          + '<th>' + swatch(0) + data.labels[0] + '</th>'
-          + '<th>' + swatch(1) + data.labels[1] + '</th>'
-          + '<th></th></tr></thead><tbody>'
+          '<table class="ppv-flagtable"><thead>'
+          + '<tr><th rowspan="2">Flag</th>'
+          + '<th rowspan="2">' + posLabel + '</th>'
+          + '<th rowspan="2">Base</th>'
+          + '<th rowspan="2"></th>'
+          + '<th class="ppv-h-group" colspan="2">Frequency of base at position, '
+          + 'per class</th></tr>'
+          + '<tr><th class="ppv-h-sub">' + swatch(0) + data.labels[0] + '</th>'
+          + '<th class="ppv-h-sub">' + swatch(1) + data.labels[1] + '</th></tr>'
+          + '</thead><tbody>'
           + rows.slice(0, limit).map(cell).join('')
           + '</tbody></table>'
           + (limit < rows.length

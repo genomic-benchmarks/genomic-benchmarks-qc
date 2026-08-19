@@ -333,15 +333,15 @@ class TestScoredWindow:
 
 
 class TestCohortFloorForAComparison:
-    """What the plots and the viewer are told to draw as the floor.
+    """The cohort a comparison of two classes has to have behind a position.
 
-    A bare number: the line is drawn without a caption, and what it stands for is
-    said in the section's explanation instead of inside the panel.
+    It is what ends the compared window the figures draw, so it is a number the
+    window is derived from rather than something drawn on top of it.
     """
 
-    def test_the_class_with_the_larger_share_sets_the_line(self):
+    def test_the_class_with_the_larger_share_sets_the_floor(self):
         """The same count is half of a 500-sequence class and a sixteenth of a
-        4000-sequence one, so the smaller class draws the higher line."""
+        4000-sequence one, so the smaller class sets the higher floor."""
         small = make_stats(['A' * 50] * 500, label='small')
         large = make_stats(['A' * 50] * 4000, label='large')
 
@@ -349,13 +349,13 @@ class TestCohortFloorForAComparison:
 
     def test_the_share_binds_once_the_class_is_large_enough(self):
         """Past 1000 sequences a quarter of the class is the larger of the two,
-        so the line stops being the sequence count and grows with the class."""
+        so the floor stops being the sequence count and grows with the class."""
         stats1 = make_stats(['A' * 50] * 4000, label='a')
         stats2 = make_stats(['A' * 50] * 4000, label='b')
 
         assert cohort_floor(stats1, stats2) == pytest.approx(DEFAULT_MIN_COVERAGE)
 
-    def test_an_empty_class_has_no_floor_to_draw(self):
+    def test_an_empty_class_has_no_floor(self):
         empty = make_stats([], label='empty')
 
         assert cohort_floor(empty, empty) == 0.0

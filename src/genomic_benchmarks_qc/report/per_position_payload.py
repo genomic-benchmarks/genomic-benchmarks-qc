@@ -41,12 +41,10 @@ import json
 
 import numpy as np
 
-from genomic_benchmarks_qc.utils.seq_stats import cohort_floor
 from genomic_benchmarks_qc.utils.testing import position_windows
 from genomic_benchmarks_qc.report.colors import (
     CLASS_COLORS,
     FAIL_COLOR,
-    PASS_COLOR,
     UNKNOWN_COLOR,
     WARN_COLOR,
 )
@@ -73,12 +71,13 @@ X_LABELS = {
 # reads as a flat grey wash instead. Inside a compared window Unknown is only
 # reached when the results table is missing a check the window says should be
 # there; the wash covers the whole figure in the one case where nothing could be
-# compared at all. Pass is never drawn as a band - it would cover the whole
-# window - but the hover card names it, so it needs a color.
+# compared at all. Pass has no color here: it is never drawn as a band - it would
+# cover the whole window - and the hover card no longer names it either, because
+# every position the figure draws was scored, so what the card marks is a
+# finding.
 FLAG_COLORS = {
     'Fail': FAIL_COLOR,
     'Warning': WARN_COLOR,
-    'Pass': PASS_COLOR,
     'Unknown': UNKNOWN_COLOR,
 }
 
@@ -189,7 +188,6 @@ def build_payload(stats1, stats2, bases, end_position, results, direction):
     if not bases or end_position < 1:
         return None
 
-    floor = cohort_floor(stats1, stats2)
     frame1 = stats1.stats[FEATURE_NAMES[direction]]
     frame2 = stats2.stats[FEATURE_NAMES[direction]]
     flags = _flags_by_position(results, FEATURE_NAMES[direction], bases, end_position)
@@ -214,13 +212,6 @@ def build_payload(stats1, stats2, bases, end_position, results, direction):
         'freq': {base: [_series(frame1, base, end_position),
                         _series(frame2, base, end_position)] for base in bases},
         'coverage': [_coverage(stats1, end_position), _coverage(stats2, end_position)],
-        # The floor that ends the window the figure draws, as a line across the
-        # coverage panel: the curves reach it at the right-hand edge, which is
-        # what makes the edge legible as a limit rather than as the data ending.
-        # The binding one of the two, as the report's note uses: a position has
-        # to clear the floor in both classes. It travels without a caption - the
-        # section's explanation is where the line is named.
-        'coverageFloor': floor,
         'flags': flags,
     }
 

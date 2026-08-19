@@ -293,7 +293,7 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-explanation" class="explanation-text">
-                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position, with a dashed line at the coverage a position needs before it can be compared: where the lower curve drops through that line is where the compared window ends.
+                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position: the compared window ends where the lower curve falls below the coverage a position needs before it can be compared.
                     {{position_window_note}}
                 </div>
                 {{per-position-nucleotide-content}}
@@ -308,7 +308,7 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
-                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, with a dashed line at the coverage a position needs before it can be compared.
+                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, and the window ends where the lower curve falls below the coverage a position needs before it can be compared.
                     {{position_window_note_reversed}}
                 </div>
                 {{per-position-reversed-nucleotide-content}}
@@ -459,9 +459,9 @@ def generate_position_window_html(stats1, stats2):
             'for a difference there to be a difference between the classes rather than between '
             'their longest sequences. So the figure ends before the sequences do, and says '
             'nothing either way about what happens past its right-hand edge. The panel at the '
-            'bottom shows how the number of sequences behind each class falls along the window, '
-            'and marks the floor they have to stay above - the window ends where the lower curve '
-            'crosses it.</p>')
+            'bottom shows how the number of sequences behind each class falls along the window: '
+            'the window ends where the lower of the two curves falls below the cohort a position '
+            'has to have behind it.</p>')
 
     return ''.join(parts)
 
