@@ -149,19 +149,27 @@ or `--label-list` values in.
 
 **How small is too small.** Each check reports the worst case over its features,
 and the worst case over many weak features crosses a fixed boundary on sampling
-noise alone when the classes are small. Two guards keep a flag meaning what it
-says:
+noise alone when the classes are small. Every comparison therefore has to clear
+the same two floors before it is made at all:
 
-- The per-sequence checks need at least **200 sequences in the smaller class**.
-  Below that they report `Unknown` rather than a verdict, because at 100
-  sequences per class the dinucleotide check flags two classes drawn from the
-  same process 19.4% of the time, against 1.2% at 200.
-- The per-position checks compare each position on the sequences long enough to
-  reach it, so their cohorts shrink along the sequence and one class-wide floor
-  would silence the far end of every variable-length dataset. Instead, the
-  difference a position must show before it counts widens as its own cohort
-  shrinks. On a normally sized dataset this falls below 0.6 and the fixed
-  boundaries above apply unchanged.
+- At least **250 sequences**. For the per-sequence checks that is a floor on the
+  smaller class; for the per-position checks it is a floor on the cohort reaching
+  each position, since a position is compared only on the sequences long enough to
+  have it. Below 250 the comparison reports `Unknown` rather than a verdict: at
+  100 sequences per class the dinucleotide check flags two classes drawn from the
+  same process 19.4% of the time, against 0.2% at 250. The per-position checks
+  reach 0.0% there, which is what lets them use the same fixed boundaries as
+  everything else rather than a threshold that moves with each cohort.
+- At least **25% of the class** (`--min-coverage`), for the per-position checks.
+  A cohort out in the tail can clear 250 many times over and still not stand for
+  the class: it is all of the class's long sequences, and a difference there can
+  be a difference between those subsets rather than between the classes. No
+  sample size fixes that; only stopping does.
+
+The count binds on small and mid-sized classes, where sampling noise is the risk;
+the share binds above 1000 sequences per class, where the tail is long enough for
+a large cohort to be unrepresentative. `analyses/` holds the simulations behind
+both.
 
 `Unknown` is not `Pass`: it says the comparison was not made, not that it came
 out clean. The plots, the per-class statistics and the descriptive tables are
@@ -172,6 +180,19 @@ The vocabulary and duplication checks are exempt from all of this. They ask
 whether something *is present* — a base in one class and not the other, a
 sequence in both classes — rather than whether a model could exploit it, and a
 single occurrence is worth reporting however small the dataset.
+
+**The per-position figures stop where the comparison did.** They are drawn over
+the scored window and no further, so every position in them was compared and an
+unflagged stretch is a stretch that passed, with nothing on the figure to read
+past. Positions the sequences reach but the comparison could not use are still
+reported as `Unknown` — in `report.csv` and in the count of checks that were not
+scored — and the section's explanation says how far they run and why they were
+left out. A comparison where *no* position could be scored is the one exception:
+there the figures fall back to the full reported window, as every other plot in
+an underpowered report is still drawn, with every position `Unknown` and no flag
+on any of them. The panel under each figure shows how many sequences stand behind each
+position and marks the floor they have to stay above: the window ends where the
+lower curve crosses it.
 
 **The per-position figure is interactive.** A flagged position is one pixel wide
 in a plot spanning hundreds of positions, so in the report the per-position
@@ -240,9 +261,22 @@ none are cleaned up later; the path of each is written to the log.
 | `--out-folder` | `.` | Output directory; reports go into `<out-folder>/class/` |
 | `--report-types` | `html simple` | `json`, `html`, `simple` |
 | `--plot-type` | `boxen` | `boxen` or `violin` |
-| `--end-position` | auto | Last position included in per-position stats. Defaults to the last position at least 75% of each class's sequences reach |
+| `--end-position` | auto | Last position the per-position checks reach. Defaults to the last position at least 50 of each class's sequences reach |
+| `--min-coverage` | `0.25` | Fraction of each class that must reach a position before it can be flagged, on top of the 250 sequences every compared position needs |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `--log-file` | none | Path to also write logs to; logs go to the console only when unset |
+
+**The per-position window:** two separate limits, because how far the checks run
+and how far a position can be flagged are different questions. A position is
+flagged only where at least `max(250, --min-coverage x class size)` sequences in
+each class reach it; positions past that are reported as `Unknown` and are not
+drawn. `--min-coverage 0` leaves only the 250, which is the guard against
+sampling noise and cannot be switched off. `--end-position` sets how far the
+per-position checks reach at all, and is worth passing to trim a long
+fixed-length window (where the default trims nothing, because every sequence
+reaches every position), to hold the report and its embedded per-position data to
+a size, or to pin the same window across runs so that two reports line up
+position by position. It can only narrow what gets flagged, never widen it.
 
 **Regression targets:** `--regression` splits the label column at its median into
 `high` and `low` classes. Rows whose value is not numeric are dropped with a
