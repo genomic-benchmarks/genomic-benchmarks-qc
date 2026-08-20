@@ -72,7 +72,7 @@ with a report of its own — [this one](https://genomic-benchmarks.github.io/gen
 example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/
 ├── gb-qc-report.html   ← open this
 ├── gb-qc-report.csv
-├── plots/
+└── plots/
 ```
 
 Both commands can share one `--out-folder`; they write into `class/` and `split/` respectively and never overwrite each other.
