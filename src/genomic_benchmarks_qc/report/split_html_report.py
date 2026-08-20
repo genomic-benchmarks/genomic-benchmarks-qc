@@ -6,6 +6,7 @@ styling, and the top alignments rendered inline as text.
 
 from datetime import datetime
 import html
+import logging
 from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
@@ -283,15 +284,28 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     results_display = results_filt.head(100).copy() # limit to top 100 hits for display in HTML report
 
     rows = []
+    alignment_error_logged = False
 
     for i, row in results_display.iterrows():
-        try: 
+        try:
             alignment_str_color = build_alignment_string(row, color=True)
         except Exception as e:
+            if not alignment_error_logged:
+                alignment_error_logged = True
+                logging.warning(
+                    "Alignment visualisation failed for query=%s target=%s: %s: %s. "
+                    "This is often caused by a conda-installed mmseqs2 build. See the "
+                    "mmseqs2 installation notes in README.md — installing precompiled "
+                    "binaries is recommended over compiling from source. "
+                    "Further alignment errors in this report are not logged.",
+                    row['query'], row['target'], type(e).__name__, e,
+                )
             alignment_str_color = (
                 '<span style="color:red; font-weight:bold;">'
                 'ALIGNMENT VISUALISATION ERROR</span><br>'
-                f'{html.escape(type(e).__name__)}: {html.escape(str(e))}'
+                f'{html.escape(type(e).__name__)}: {html.escape(str(e))}<br>'
+                '<span style="font-weight:normal;">This can happen with a '
+                'conda-installed mmseqs2 — see the installation notes in README.md.</span>'
             )
         rows.append(f"""
     <tr>
