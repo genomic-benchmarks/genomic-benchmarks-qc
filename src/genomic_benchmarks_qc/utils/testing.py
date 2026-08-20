@@ -264,8 +264,11 @@ def _position_cohorts(sequences: list[str], end_position: int) -> np.ndarray:
     than the 0-based index, so one array of lengths answers this for the forward
     and the reverse pass alike.
     """
-    lengths = np.fromiter((len(seq) for seq in sequences), dtype=int, count=len(sequences))
-    return np.array([int(np.sum(lengths > position)) for position in range(end_position)])
+    lengths = np.sort(np.fromiter((len(seq) for seq in sequences), dtype=int, count=len(sequences)))
+    # Sorted lengths turn every count into a boundary lookup: everything past
+    # the last length that stops at or before a position still reaches it.
+    positions = np.arange(end_position)
+    return len(lengths) - np.searchsorted(lengths, positions, side='right')
 
 
 def position_windows(stats1, stats2) -> tuple[int, int]:
