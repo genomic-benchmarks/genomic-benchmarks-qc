@@ -5,8 +5,9 @@ the target; this lays the two full sequences out against each other with that
 region aligned, so a reader can see how much of each sequence the match covers.
 """
 
-from itertools import zip_longest
 import html
+from itertools import zip_longest
+
 
 def _validate_alignment_coords(start, end, sequence_length, label):
     """Check one sequence's 1-based alignment range lies inside the sequence."""
@@ -61,7 +62,7 @@ def _get_midline(qaln, taln):
         " " if (q == "-" or t == "-")
         else "|" if q == t
         else "."
-        for q, t in zip(qaln, taln)
+        for q, t in zip(qaln, taln, strict=True)
     )
 
 
@@ -138,7 +139,7 @@ def build_alignment_string(row, width=80, color=True, validate=True):
 
     t_line, mid_line, q_line = _get_alignment(
         qstart, tstart, qseq, tseq, qaln, taln, tend, qend
-    )    
+    )
 
     blocks = []
     for t, m, q in zip_longest(

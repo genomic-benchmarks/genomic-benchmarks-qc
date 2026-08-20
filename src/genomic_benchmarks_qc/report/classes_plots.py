@@ -6,13 +6,16 @@ itself - underlines under failing positions, colored legend entries - so a plot
 carries the same verdict as the table it sits next to in the report.
 """
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
-import pandas as pd
 import logging
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from matplotlib.patches import Patch
+
 from genomic_benchmarks_qc.report.colors import CLASS_COLORS
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
+
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
     """
@@ -111,7 +114,8 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
     @return: Matplotlib figure object.
     """
 
-    df = melt_stats(stats1, stats2, 'Per sequence nucleotide content', var_name='Nucleotide', value_name='Frequency')
+    df = melt_stats(stats1, stats2, 'Per sequence nucleotide content',
+                    var_name='Nucleotide', value_name='Frequency')
 
     fig, ax = plt.subplots(1, 1, figsize=(12, 4), dpi=300)
     if plot_type == 'violin':
@@ -144,14 +148,16 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
 
     else:
         raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
-    
+
     ax.set_ylim(-0.1, 1.1)
 
     # Reserve the underline margin so flagged/unflagged plots share geometry
     reserve_flag_margin(ax, len(nucleotides))
     # Add colored outlines to failed nucleotides if provided
     if failed_nucleotides:
-        add_failed_outline(ax, {i: failed_nucleotides[nt] for i, nt in enumerate(nucleotides) if nt in failed_nucleotides})
+        add_failed_outline(ax, {i: failed_nucleotides[nt]
+                                for i, nt in enumerate(nucleotides)
+                                if nt in failed_nucleotides})
 
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
@@ -175,10 +181,12 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
     @return: Matplotlib figure object.
     """
 
-    df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content', var_name='Dinucleotide', value_name='Frequency')
+    df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content',
+                    var_name='Dinucleotide', value_name='Frequency')
 
     fig, axs = plt.subplots(
-        len(nucleotides), 1, figsize=(12, len(nucleotides) * 3 + 2), sharey=True, dpi=300, squeeze=False
+        len(nucleotides), 1, figsize=(12, len(nucleotides) * 3 + 2), sharey=True, dpi=300,
+        squeeze=False
     )
     axs = axs[:, 0]
     for index, nt in enumerate(nucleotides):
@@ -221,7 +229,9 @@ def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleoti
         reserve_flag_margin(axs[index], len(dinucleotides))
         # Add colored outlines to failed dinucleotides if provided
         if failed_dinucleotides:
-            add_failed_outline(axs[index], {i: failed_dinucleotides[dn] for i, dn in enumerate(dinucleotides) if dn in failed_dinucleotides})
+            add_failed_outline(axs[index], {i: failed_dinucleotides[dn]
+                                            for i, dn in enumerate(dinucleotides)
+                                            if dn in failed_dinucleotides})
 
         axs[index].set_xlabel('')
         axs[index].legend().set_visible(False)
@@ -246,16 +256,16 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
         df1.assign(label=str(stats1.label)),
         df2.assign(label=str(stats2.label))
     ], ignore_index=True)
-    
+
     min_y = df[stats_name].min()
     max_y = df[stats_name].max()
 
     fig, ax = plt.subplots(1, 1, figsize=(6, 6), dpi=300)
     if plot_type == 'violin':
         sns.violinplot(
-            y=stats_name, 
-            hue="label", 
-            split=True, 
+            y=stats_name,
+            hue="label",
+            split=True,
             data=df,
             gap=.1,
             hue_order=[str(stats1.label), str(stats2.label)],
@@ -268,8 +278,8 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
     elif plot_type == 'boxen':
         sns.boxenplot(
-            y=stats_name, 
-            hue="label", 
+            y=stats_name,
+            hue="label",
             data=df,
             hue_order=[str(stats1.label), str(stats2.label)],
             ax=ax,
@@ -290,12 +300,13 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
         # show only one value
         ax.set_yticks([min_y])
     ax.ticklabel_format(axis='y', style='plain')
-    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.05)) 
+    ax = prepare_legend(ax, box_to_anchor=(0.5, -0.05))
 
     return fig
 
 
-def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position, x_label='', title='', failed_positions=None):
+def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position,
+                                      x_label='', title='', failed_positions=None):
     """Plot per-base sequence comparison with optional failure shading.
 
     The curves run to `end_position`, which callers set to the compared window:
@@ -335,15 +346,18 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         df1_base = df1[nt][:end_position]
         df2_base = df2[nt][:end_position]
         # +1 so the position starts from 1
-        axs[index].plot(df1.index[:end_position] + 1, df1_base, label=f"{stats1.label}", color=HuePalette()[0], alpha=0.7)
-        axs[index].plot(df2.index[:end_position] + 1, df2_base, label=f"{stats2.label}", color=HuePalette()[1], alpha=0.7)
+        axs[index].plot(df1.index[:end_position] + 1, df1_base, label=f"{stats1.label}",
+                        color=HuePalette()[0], alpha=0.7)
+        axs[index].plot(df2.index[:end_position] + 1, df2_base, label=f"{stats2.label}",
+                        color=HuePalette()[1], alpha=0.7)
 
         # Add shading for failed positions with color based on flag type
         if failed_positions and nt in failed_positions:
             for pos, flag in failed_positions[nt].items():
                 if 1 <= pos <= end_position:
                     color = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
-                    # axvspan uses inclusive bounds, so shade from pos-0.5 to pos+0.5 for 1-wide band
+                    # axvspan uses inclusive bounds, so shade from pos-0.5 to pos+0.5
+                    # for a 1-wide band
                     axs[index].axvspan(pos - 0.5, pos + 0.5, color=color, alpha=0.5, linewidth=0)
 
         axs[index].set_ylim(-0.1, 1.1)
@@ -355,11 +369,13 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
 
         # set x ticks
         ticks = [1]
-        ticks.extend(range(max(1, end_position // 10), end_position + 1, max(1, end_position // 10)))
+        step = max(1, end_position // 10)
+        ticks.extend(range(step, end_position + 1, step))
         axs[index].set_xticks(ticks)
 
         # add text to the plot with the nucleotide name
-        axs[index].text(0.9, 0.8, f'Nucleotide: {nt}', ha='center', va='bottom', fontsize=14, transform=axs[index].transAxes)
+        axs[index].text(0.9, 0.8, f'Nucleotide: {nt}', ha='center', va='bottom', fontsize=14,
+                        transform=axs[index].transAxes)
 
         if title and index == 0:
             axs[index].set_title(f'{title}', fontsize=16)
@@ -383,7 +399,7 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
                          if lengths else 0.0
                          for pos in positions])
     # The cohort a comparison at a position actually has is the smaller of the two.
-    binding = [min(pair) for pair in zip(*coverage)]
+    binding = [min(pair) for pair in zip(*coverage, strict=True)]
 
     # plot coverage in the last subplot
     last_index = len(nucleotides)
@@ -435,7 +451,7 @@ def _compute_duplication_bins(stats1, stats2):
             '>500': 0,
             '>1000': 0
         }
-        for k, v in stats.stats['Sequence duplication levels'].items():
+        for v in stats.stats['Sequence duplication levels'].values():
             if v == 0:
                 continue
             if v <= 10:
@@ -506,7 +522,9 @@ def plot_sequence_duplications_within_classes(stats1, stats2, percent_remaining_
         ax.set_ylim(0, max_y * 1.1 if max_y > 0 else 1.0)
 
     if percent_remaining_after_dedup is not None:
-        ax.set_title(f"Percent of sequences remaining after deduplication: {percent_remaining_after_dedup:.2%}")
+        ax.set_title(
+            "Percent of sequences remaining after deduplication: "
+            f"{percent_remaining_after_dedup:.2%}")
 
     ax.set_xlabel('Sequence Duplication Level', fontsize=14)
     ax.set_ylabel('% Total Sequences', fontsize=14)
@@ -537,12 +555,11 @@ def melt_stats(stats1, stats2, stats_name, var_name='Metric', value_name='Value'
     df2 = stats2.stats[stats_name]
     df2 = df2.melt(value_vars=df2.columns, var_name=var_name, value_name=value_name)
 
-    df = pd.concat([
+    return pd.concat([
         df1.assign(label=str(stats1.label)),
         df2.assign(label=str(stats2.label))
     ], ignore_index=True)
 
-    return df
 
 def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_labels=None):
     """
@@ -559,8 +576,8 @@ def prepare_legend(ax, box_to_anchor=(0.5, -0.2), legend_handles=None, legend_la
         # its size keywords here, so a quoted '12' is silently dropped and every
         # legend falls back to the 10pt rcParams default.
         fontsize=12,
-        loc='upper center', 
-        bbox_to_anchor=box_to_anchor, 
+        loc='upper center',
+        bbox_to_anchor=box_to_anchor,
         ncol=3,
     )
     return ax
@@ -580,4 +597,4 @@ class HuePalette:
             palette._palette = sns.color_palette(list(CLASS_COLORS))
 
         return palette._palette
-                
+

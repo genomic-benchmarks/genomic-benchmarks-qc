@@ -11,8 +11,10 @@ import stat
 
 import pandas as pd
 import pytest
-
-from helpers import sequences as _sequences, write_csv as _write_csv, write_fasta as _write_fasta, write_mmseqs_output
+from helpers import sequences as _sequences
+from helpers import write_csv as _write_csv
+from helpers import write_fasta as _write_fasta
+from helpers import write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_classes, evaluate_splits
 from genomic_benchmarks_qc.utils.naming import TMP_PREFIX

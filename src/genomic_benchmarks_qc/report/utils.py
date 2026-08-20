@@ -1,12 +1,13 @@
 """Shared pieces of the HTML reports: templating, colors, embedded images."""
 
-from datetime import datetime
 import base64
 import html
 import json
+from datetime import datetime
 from pathlib import Path
 
 from genomic_benchmarks_qc.report import assets
+
 # Re-exported: the colors are defined in report.colors, which the stylesheets
 # also read, and imported from here by the plotting modules.
 from genomic_benchmarks_qc.report.colors import (  # noqa: F401
@@ -15,6 +16,7 @@ from genomic_benchmarks_qc.report.colors import (  # noqa: F401
     UNKNOWN_COLOR,
     WARN_COLOR,
 )
+
 
 def put_file_details(html_template, filename):
     """
@@ -25,9 +27,7 @@ def put_file_details(html_template, filename):
 
     # Replace {{date}} with the current date and time
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    html_template = html_template.replace("{{date}}", current_time)
-
-    return html_template
+    return html_template.replace("{{date}}", current_time)
 
 
 def put_data(html_template, placeholder, data):
@@ -81,13 +81,13 @@ def icon_html(summary_statuses, key):
 def encode_image_to_base64(image_path):
     """
     Read an image file and return its base64-encoded string.
-    
+
     Args:
         image_path: Path to the image file
-        
+
     Returns:
         Base64-encoded string of the image
-        
+
     Raises:
         FileNotFoundError: If the image file doesn't exist
     """

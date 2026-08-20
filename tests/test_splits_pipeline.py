@@ -10,7 +10,6 @@ import shutil
 
 import pandas as pd
 import pytest
-
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
@@ -161,12 +160,14 @@ class TestFailureHandling:
         train, test = split_inputs
         stub_mmseqs(error=RuntimeError('mmseqs exploded'))
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(RuntimeError, match='mmseqs exploded'):
-                evaluate_splits.run(
-                    train_files=[train], test_files=[test], format='csv',
-                    out_folder=str(tmp_path / 'out'), report_types=['simple'],
-                )
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(RuntimeError, match='mmseqs exploded'),
+        ):
+            evaluate_splits.run(
+                train_files=[train], test_files=[test], format='csv',
+                out_folder=str(tmp_path / 'out'), report_types=['simple'],
+            )
 
         assert 'Train-test split evaluation failed' in caplog.text
 
@@ -175,13 +176,12 @@ class TestFailureHandling:
         train, test = split_inputs
         stub_mmseqs(error=RuntimeError('mmseqs exploded'))
 
-        with caplog.at_level(logging.DEBUG):
-            with pytest.raises(RuntimeError):
-                evaluate_splits.run(
-                    train_files=[train], test_files=[test], format='csv',
-                    out_folder=str(tmp_path / 'out'), report_types=['simple'],
-                    log_level='DEBUG',
-                )
+        with caplog.at_level(logging.DEBUG), pytest.raises(RuntimeError):
+            evaluate_splits.run(
+                train_files=[train], test_files=[test], format='csv',
+                out_folder=str(tmp_path / 'out'), report_types=['simple'],
+                log_level='DEBUG',
+            )
 
         assert 'Traceback' in caplog.text
 

@@ -6,6 +6,7 @@ invisible in the output and silently consistent across the whole report.
 """
 
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pytest

@@ -11,13 +11,21 @@ evidence for a per-position check, so they sit in that check's card in the same
 kind of panel, and not in a card of their own with no flag and no nav entry.
 """
 
-from datetime import datetime
 import html
 import logging
+from datetime import datetime
+
 from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
-from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
 from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
+from genomic_benchmarks_qc.report.utils import (
+    COMMON_CSS,
+    LOGO_BASE64,
+    REPORT_HEADER_HTML,
+    encode_image_to_base64,
+    icon_html,
+    put_data,
+)
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
 
 # Rows of the alignment listing that the page carries. The listing is evidence a

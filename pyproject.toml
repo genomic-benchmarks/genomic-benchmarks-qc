@@ -42,7 +42,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-develop = ["pytest>=8.4", "pytest-cov>=7.0"]
+# Ruff is capped at a minor release on purpose. Being pre-1.0, it uses minor
+# versions where SemVer would use major: 0.17 is allowed to promote rules to
+# stable and to change what an existing rule reports, which would fail CI on
+# pull requests that did not cause it. Patch releases only fix bugs, so those
+# come in freely. Upgrading is a deliberate pull request of its own.
+develop = ["pytest>=8.4", "pytest-cov>=7.0", "ruff>=0.16,<0.17"]
 
 [project.urls]
 Homepage = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
@@ -66,6 +71,49 @@ version = {attr = "genomic_benchmarks_qc.__version__"}
 # here and forgotten below.
 [tool.setuptools.package-data]
 "genomic_benchmarks_qc.report.assets" = ["*.css", "*.js"]
+
+# Linting and formatting. Ruff replaces flake8/isort/pyupgrade in one tool; the
+# rule set is deliberately pragmatic rather than exhaustive, so that a warning
+# means something is actually wrong instead of merely unfashionable.
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Generated reports and the bundled example data are outputs, not source.
+extend-exclude = ["example_datasets", "example_outputs"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: undefined names, unused imports and variables
+    "I",    # isort: import order
+    "UP",   # pyupgrade: syntax that the minimum Python already supports
+    "B",    # flake8-bugbear: likely bugs, e.g. mutable default arguments
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RET",  # flake8-return
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests build deliberately awkward inputs and long expected-value literals.
+"tests/*" = ["E501"]
+# These modules hold the report's HTML as Python strings. A `# noqa` cannot be
+# placed inside a triple-quoted string, and rewrapping markup to satisfy a
+# Python line limit makes it harder to read, not easier.
+"src/genomic_benchmarks_qc/report/classes_html_report.py" = ["E501"]
+"src/genomic_benchmarks_qc/report/split_html_report.py" = ["E501"]
+"src/genomic_benchmarks_qc/report/per_position_payload.py" = ["E501"]
+"src/genomic_benchmarks_qc/report/utils.py" = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Typer's whole API is `def cmd(x: T = typer.Option(...))`, which B008 would
+# otherwise flag on every single CLI parameter.
+extend-immutable-calls = ["typer.Option", "typer.Argument"]
+
+[tool.ruff.format]
+# The codebase mixes quote styles; preserving them keeps a future formatting
+# run from rewriting lines it has no other reason to touch.
+quote-style = "preserve"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

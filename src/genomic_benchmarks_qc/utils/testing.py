@@ -40,7 +40,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+from sklearn.metrics import auc, precision_recall_curve, roc_auc_score
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
@@ -114,7 +114,7 @@ def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> 
 
     # Empty input case
     if values_1.size == 0 or values_2.size == 0:
-        return {metric: np.nan for metric in METRICS_TO_COMPUTE}
+        return dict.fromkeys(METRICS_TO_COMPUTE, np.nan)
 
     combined = np.concatenate([values_1, values_2])
 
@@ -172,7 +172,7 @@ def _chance_metrics(size_1: int, size_2: int) -> dict:
 
 def _unknown_metrics() -> dict:
     """Metrics for a comparison that was not made, which flag as Unknown."""
-    return {metric: np.nan for metric in METRICS_TO_COMPUTE}
+    return dict.fromkeys(METRICS_TO_COMPUTE, np.nan)
 
 
 def _flag_metrics(metrics: dict) -> dict:
@@ -215,7 +215,9 @@ def _aggregate_worst_case_metrics(metric_dicts: list[dict]) -> dict:
     aggregate['Flag'] = _flag_on_score(aggregate.get('AU-ROC', np.nan))
     return aggregate
 
-def _compute_position_binary_scores(sequences: list[str], base: str, position: int, reverse: bool) -> np.ndarray:
+def _compute_position_binary_scores(
+    sequences: list[str], base: str, position: int, reverse: bool
+) -> np.ndarray:
     """Compute binary scores for a specific base at a position across sequences.
 
     Only the sequences long enough to have this position contribute: a sequence
@@ -508,7 +510,8 @@ def direct_feature_model(stats1, stats2):
     )
     results.update(pos_results)
     if per_base_agg:
-        results['Per position nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg.values())
+        results['Per position nucleotide content'] = _aggregate_worst_case_metrics(
+            per_base_agg.values())
 
     # Position features (reverse)
     pos_results_rev, per_base_agg_rev = _score_position_features(
@@ -519,7 +522,8 @@ def direct_feature_model(stats1, stats2):
     )
     results.update(pos_results_rev)
     if per_base_agg_rev:
-        results['Per position reversed nucleotide content'] = _aggregate_worst_case_metrics(per_base_agg_rev.values())
+        results['Per position reversed nucleotide content'] = (
+            _aggregate_worst_case_metrics(per_base_agg_rev.values()))
 
     return results
 
@@ -538,7 +542,8 @@ def flag_significant_differences(stats1, stats2):
           {
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
-            'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
+            'Per position nucleotide content':
+                {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
             'Per position reversed nucleotide content': {...}
           }
     """
@@ -646,7 +651,8 @@ def _extract_failed_features(all_results: dict) -> dict:
         {
             'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
             'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
-            'Per position nucleotide content': {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
+            'Per position nucleotide content':
+                {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
             'Per position reversed nucleotide content': {'A': {10: 'Fail'}, ...},
         }
     """
@@ -683,7 +689,8 @@ def _extract_failed_features(all_results: dict) -> dict:
                     # to shade, and the report would draw a second, identical
                     # copy of every per-position plot.
                     if flag in ('Fail', 'Warning'):
-                        failed_by_feature['Per position nucleotide content'].setdefault(base, {})[position] = flag
+                        per_position = failed_by_feature['Per position nucleotide content']
+                        per_position.setdefault(base, {})[position] = flag
                 except ValueError:
                     # Not a position entry (e.g., aggregate "Per position nucleotide content - A")
                     pass
@@ -700,9 +707,12 @@ def _extract_failed_features(all_results: dict) -> dict:
                     # to shade, and the report would draw a second, identical
                     # copy of every per-position plot.
                     if flag in ('Fail', 'Warning'):
-                        failed_by_feature['Per position reversed nucleotide content'].setdefault(base, {})[position] = flag
+                        per_position = failed_by_feature[
+                            'Per position reversed nucleotide content']
+                        per_position.setdefault(base, {})[position] = flag
                 except ValueError:
-                    # Not a position entry (e.g., aggregate "Per position reversed nucleotide content - A")
+                    # Not a position entry (e.g., the aggregate
+                    # "Per position reversed nucleotide content - A")
                     pass
 
     return failed_by_feature
@@ -722,15 +732,15 @@ def _flag_on_score(score: float) -> str:
         return 'Unknown'
     if score > 0.7:
         return 'Fail'
-    elif score > 0.6:
+    if score > 0.6:
         return 'Warning'
-    else:
-        return 'Pass'
+    return 'Pass'
 
 
 def _flag_unique_bases(stats1, stats2) -> str:
     """Check if both datasets have identical base sets."""
-    return 'Pass' if set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases']) else 'Fail'
+    same_bases = set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases'])
+    return 'Pass' if same_bases else 'Fail'
 
 
 def _flag_duplicate_sequences(stats1, stats2) -> dict:

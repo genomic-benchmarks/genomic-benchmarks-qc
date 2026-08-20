@@ -41,13 +41,13 @@ import json
 
 import numpy as np
 
-from genomic_benchmarks_qc.utils.testing import position_windows
 from genomic_benchmarks_qc.report.colors import (
     CLASS_COLORS,
     FAIL_COLOR,
     UNKNOWN_COLOR,
     WARN_COLOR,
 )
+from genomic_benchmarks_qc.utils.testing import position_windows
 
 # One name per direction, shared by the statistics frame, the check names in the
 # results table ('{name} - {base} position {n}') and the plot file names.

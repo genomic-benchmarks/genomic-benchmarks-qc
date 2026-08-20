@@ -1,14 +1,15 @@
 """The figures for the split report."""
 
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 from genomic_benchmarks_qc.report.classes_plots import HuePalette, prepare_legend
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR
+
 
 def plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats):
     """Plot how similar each sequence's best match in the other half is.
@@ -50,10 +51,10 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
     # Combine data into single DataFrame for hue-based plotting
     hist_data = []
     if tcov.size:
-        for val, w in zip(tcov, tweights):
+        for val, w in zip(tcov, tweights, strict=True):
             hist_data.append({"similarity": val, "type": "Train", "weight": w})
     if qcov.size:
-        for val, w in zip(qcov, qweights):
+        for val, w in zip(qcov, qweights, strict=True):
             hist_data.append({"similarity": val, "type": "Test", "weight": w})
 
     if hist_data:
@@ -112,5 +113,5 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
         legend_handles=legend_handles,
         legend_labels=legend_labels
     )
-    
+
     return fig

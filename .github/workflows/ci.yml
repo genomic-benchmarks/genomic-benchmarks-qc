@@ -10,6 +10,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # One version is enough: Ruff is a standalone binary that never imports the
+      # code, so the interpreter cannot change its findings. The Python syntax it
+      # assumes comes from `target-version` in pyproject.toml, which tracks the
+      # project's minimum rather than this version.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linter
+        run: |
+          python -m pip install --upgrade pip
+          pip install '.[develop]'
+
+      # Rules and per-file exemptions live in [tool.ruff] in pyproject.toml, so
+      # this runs exactly what `ruff check .` runs locally.
+      - name: Ruff
+        run: ruff check --output-format=github .
+
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest

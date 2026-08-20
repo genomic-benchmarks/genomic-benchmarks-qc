@@ -153,9 +153,8 @@ class TestRunCommand:
         def command(log_level=None):
             raise OSError("something broke later")
 
-        with caplog.at_level(logging.DEBUG):
-            with pytest.raises(typer.Exit):
-                _run_command(command, log_level='DEBUG')
+        with caplog.at_level(logging.DEBUG), pytest.raises(typer.Exit):
+            _run_command(command, log_level='DEBUG')
         err = capsys.readouterr().err
         assert "Traceback (most recent call last)" not in err
         assert "Error: something broke later" in err

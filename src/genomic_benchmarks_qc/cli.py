@@ -10,7 +10,6 @@ import logging
 import re
 import traceback
 from pathlib import Path
-from typing import List, Optional
 
 import typer
 
@@ -39,20 +38,20 @@ def _fail(message: str):
     raise typer.Exit(code=1)
 
 
-def _validate_input_files(files: List[str], description: str):
+def _validate_input_files(files: list[str], description: str):
     """Check every input path exists, naming the kind of input in the message."""
     for file_path in files:
         if not Path(file_path).is_file():
             _fail(f"{description} does not exist: {file_path}")
 
 
-def _validate_choice(value, valid_values: List[str], description: str):
+def _validate_choice(value, valid_values: list[str], description: str):
     """Check one value is among the accepted ones."""
     if value not in valid_values:
         _fail(f"Invalid {description} '{value}'. Must be one of: {', '.join(valid_values)}")
 
 
-def _validate_choices(values, valid_values: List[str], description: str):
+def _validate_choices(values, valid_values: list[str], description: str):
     """Check every value of a repeatable option is among the accepted ones."""
     for value in values:
         _validate_choice(value, valid_values, description)
@@ -81,7 +80,7 @@ def _normalize_format(fmt: str) -> str:
     return 'fasta' if base == 'fa' else base
 
 
-def _infer_format_from_inputs(files: List[str]) -> str:
+def _infer_format_from_inputs(files: list[str]) -> str:
     """Infer format across all input files, ensuring they agree."""
     formats = {_normalize_format(_infer_format(f)) for f in files}
     if len(formats) > 1:
@@ -90,7 +89,7 @@ def _infer_format_from_inputs(files: List[str]) -> str:
     return formats.pop()
 
 
-def _resolve_format(files: List[str]) -> str:
+def _resolve_format(files: list[str]) -> str:
     """Infer the shared input format of all files and check it is supported."""
     format = _infer_format_from_inputs(files)
     _validate_choice(format, VALID_FORMATS, 'format')
@@ -128,22 +127,40 @@ def _run_command(command, *args, **kwargs):
             # failure that breaks logging is the one that explains itself least.
             typer.echo(traceback.format_exc(), err=True)
         typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
 @app.command()
 def evaluate_classes(
-    input: List[str] = typer.Option(..., help="Input file(s)."),
-    sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
+    input: list[str] = typer.Option(..., help="Input file(s)."),
+    sequence_column: list[str] = typer.Option(
+        ['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     label_column: str = typer.Option('label', help="Label column name for single-file CSV inputs."),
-    label_list: List[str] = typer.Option(['infer'], help='List of labels to consider or "infer" to detect labels automatically.'),
-    regression: bool = typer.Option(False, help="Treat label column as regression target and split into high/low."),
+    label_list: list[str] = typer.Option(
+        ['infer'], help='List of labels to consider or "infer" to detect labels automatically.'),
+    regression: bool = typer.Option(
+        False, help="Treat label column as regression target and split into high/low."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
-    report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    end_position: Optional[int] = typer.Option(None, help="Last position the per-position checks reach. Defaults to the last position at least 50 of each class's sequences reach. Can only narrow the flagged window, never widen it - what is flagged is decided by --min-coverage, and that window is what the figures draw."),
-    min_coverage: float = typer.Option(0.25, help="Fraction of each class's sequences that must reach a position before it can be flagged, on top of the 250 sequences every compared position needs. This window is what the per-position figures draw; further positions are reported as Unknown and not drawn. 0 leaves only the 250."),
-    plot_type: str = typer.Option('boxen', help="Plot type to use for visualizations (boxen, violin)."),
+    report_types: list[str] = typer.Option(
+        ['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
+    end_position: int | None = typer.Option(
+        None, help=(
+            "Last position the per-position checks reach. Defaults to the last position at "
+            "least 50 of each class's sequences reach. Can only narrow the flagged window, "
+            "never widen it - "
+            "what is flagged is decided by --min-coverage, and that window is what the figures "
+            "draw."
+        )),
+    min_coverage: float = typer.Option(
+        0.25, help=(
+            "Fraction of each class's sequences that must reach a position before it can be "
+            "flagged, on top of the 250 sequences every compared position needs. This window is "
+            "what the per-position figures draw; further positions are reported as Unknown and not "
+            "drawn. 0 leaves only the 250."
+        )),
+    plot_type: str = typer.Option(
+        'boxen', help="Plot type to use for visualizations (boxen, violin)."),
     log_level: str = typer.Option('INFO', help="Logging level."),
-    log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
+    log_file: str | None = typer.Option(None, help="Optional path to write logs to."),
 ):
     """
     Evaluate sequence characteristics across different classes/labels in the dataset.
@@ -184,17 +201,25 @@ def evaluate_classes(
 
 @app.command()
 def evaluate_splits(
-    train_input: List[str] = typer.Option(..., help="Path to the dataset file(s) with training data."),
-    test_input: List[str] = typer.Option(..., help="Path to the dataset file(s) with testing data."),
-    sequence_column: List[str] = typer.Option(['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
+    train_input: list[str] = typer.Option(
+        ..., help="Path to the dataset file(s) with training data."),
+    test_input: list[str] = typer.Option(
+        ..., help="Path to the dataset file(s) with testing data."),
+    sequence_column: list[str] = typer.Option(
+        ['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
-    report_types: List[str] = typer.Option(['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
-    similarity_threshold: float = typer.Option(90.0, help="Similarity threshold for data leakage detection (%)."),
-    threads: Optional[int] = typer.Option(None, help="Set maximum number of threads MMseqs2 will use."),
-    split_memory_limit: Optional[str] = typer.Option(None, "--split-memory-limit", help="Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T)."),
+    report_types: list[str] = typer.Option(
+        ['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
+    similarity_threshold: float = typer.Option(
+        90.0, help="Similarity threshold for data leakage detection (%)."),
+    threads: int | None = typer.Option(
+        None, help="Set maximum number of threads MMseqs2 will use."),
+    split_memory_limit: str | None = typer.Option(
+        None, "--split-memory-limit",
+        help="Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T)."),
     keep_tmp_files: bool = typer.Option(False, help="Keep temporary files for debugging."),
     log_level: str = typer.Option('INFO', help="Logging level."),
-    log_file: Optional[str] = typer.Option(None, help="Optional path to write logs to."),
+    log_file: str | None = typer.Option(None, help="Optional path to write logs to."),
 ):
     """
     Evaluate data leakage in dataset train-test split.

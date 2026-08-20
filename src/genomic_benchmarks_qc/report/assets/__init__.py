@@ -12,7 +12,7 @@ otherwise it works from a source checkout and is missing from the wheel. The
 test suite covers that by loading every asset through this module.
 """
 
-from functools import lru_cache
+from functools import cache
 from importlib.resources import files
 
 from genomic_benchmarks_qc.report.colors import (
@@ -32,7 +32,7 @@ COLOR_PLACEHOLDERS = {
 }
 
 
-@lru_cache(maxsize=None)
+@cache
 def read_asset(name: str) -> str:
     """Return the text of one asset file, with the color placeholders filled in.
 

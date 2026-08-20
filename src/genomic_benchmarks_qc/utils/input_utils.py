@@ -6,15 +6,16 @@ and the small amount of process setup (logger configuration, failure logging,
 output directories) they both need.
 """
 
+import gzip
+import json
+import logging
+from contextlib import contextmanager
+from pathlib import Path
+
+import pandas as pd
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-import pandas as pd
-import logging
-import json
-import gzip
-from contextlib import contextmanager
-from pathlib import Path
 
 
 @contextmanager
@@ -24,7 +25,7 @@ def _open_text(file_path):
         with gzip.open(file_path, 'rt') as handle:
             yield handle
     else:
-        with open(file_path, 'rt') as handle:
+        with open(file_path) as handle:
             yield handle
 
 
@@ -105,7 +106,10 @@ def stream_fasta_records_by_ids(fasta_path, ids_to_keep):
 
 def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
     """Write only selected FASTA records to a new output file."""
-    logging.debug(f"Filtering FASTA file: {fasta_path} -> {new_fasta_path}, keeping {len(ids_to_keep)} IDs")
+    logging.debug(
+        f"Filtering FASTA file: {fasta_path} -> {new_fasta_path}, "
+        f"keeping {len(ids_to_keep)} IDs"
+    )
     records = stream_fasta_records_by_ids(fasta_path, ids_to_keep)
     SeqIO.write(records, str(new_fasta_path), 'fasta')
 
@@ -139,13 +143,17 @@ def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     if label_column is not None:
         columns += [label_column]
 
-    df = pd.read_csv(file_path, delimiter=delim, usecols=columns, dtype=str, compression=compression)
-    
+    df = pd.read_csv(
+        file_path, delimiter=delim, usecols=columns, dtype=str, compression=compression)
+
     # Drop rows with missing labels
     if label_column is not None:
         # check if label column contains any missing values
         if df[label_column].isnull().any():
-            logging.warning(f"Label column '{label_column}' contains missing values. Dropping rows with missing labels.")
+            logging.warning(
+                f"Label column '{label_column}' contains missing values. "
+                "Dropping rows with missing labels."
+            )
         df = df.dropna(subset=[label_column])
         logging.debug(f"Dropped rows with missing labels, new shape: {df.shape}")
 
@@ -187,8 +195,7 @@ def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
 
     if len(seq_columns) == 1:
         return df_parsed[seq_columns[0]].tolist()
-    else:
-        return df_parsed[seq_columns].agg(''.join, axis=1).tolist()
+    return df_parsed[seq_columns].agg(''.join, axis=1).tolist()
 
 def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000):
     """Yield sequences from CSV/TSV files in chunks to limit memory usage."""
@@ -221,7 +228,8 @@ def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10
         if input_format.startswith('fa'):
             yield from stream_fasta_sequences(file)
         elif input_format.startswith('csv') or input_format.startswith('tsv'):
-            yield from stream_table_sequences(file, input_format, sequence_column, chunksize=chunksize)
+            yield from stream_table_sequences(
+                file, input_format, sequence_column, chunksize=chunksize)
         else:
             logging.error(f"Unsupported input format: {input_format}")
             raise ValueError(f"Unsupported input format: {input_format}")

@@ -6,30 +6,40 @@ anywhere without losing anything.
 """
 
 from datetime import datetime
+
 from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.per_position_payload import viewer_html
-from genomic_benchmarks_qc.report.utils import put_data, encode_image_to_base64, image_or_message, escape_str, icon_html, COMMON_CSS, REPORT_HEADER_HTML, LOGO_BASE64
+from genomic_benchmarks_qc.report.utils import (
+    COMMON_CSS,
+    LOGO_BASE64,
+    REPORT_HEADER_HTML,
+    encode_image_to_base64,
+    escape_str,
+    icon_html,
+    image_or_message,
+    put_data,
+)
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, position_windows
 
 
 def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
     """
     Generate HTML for nucleotide-level flags.
-    
+
     Args:
         summary_statuses: dict with summary statuses for various checks.
         flag_prefix: Prefix for the flag keys (e.g., "Per position nucleotide content")
-    
+
     Returns:
         HTML string with nucleotide flags
     """
     if summary_statuses is None:
         return ''
-    
+
     flags_html = ''
-    
-    for flag in summary_statuses.keys():
+
+    for flag in summary_statuses:
         if not flag.startswith(f"{flag_prefix} - "):
             continue
 
@@ -41,7 +51,7 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
 
         nt = remainder
         flag_value = summary_statuses.get(flag, '')
-        
+
         # Determine status class based on flag value
         status_class = ''
         symbol = '?'
@@ -59,13 +69,13 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
             else:
                 status_class = 'status-unknown'
                 symbol = '?'
-        
+
         flags_html += f'''<div class="nucleotide-flag-item">
                 <span class="status-icon-small {status_class}">{symbol}</span>
                 <span class="nucleotide-label">{nt}</span>
             </div>
             '''
-    
+
     return flags_html
 
 HTML_TEMPLATE = """
@@ -422,7 +432,7 @@ def generate_position_window_html(stats1, stats2):
         if needed[0] == needed[1]:
             return f'{needed[0]:,} sequences in each class'
         parts = []
-        for stats, count in zip((stats1, stats2), needed):
+        for stats, count in zip((stats1, stats2), needed, strict=True):
             label = stats.label if stats.label is not None else stats.filename
             parts.append(f'{label}: {count:,}')
         return f'{parts[0]} and {parts[1]} sequences'
@@ -501,7 +511,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     if tool_description is None:
         tool_description = \
             """
-            Toolkit for automated quality control of genomic datasets used in machine learning. 
+            Toolkit for automated quality control of genomic datasets used in machine learning.
             """
     if stats1.filepath == stats2.filepath:
         input_paths = stats1.filepath
@@ -534,7 +544,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{number_of_bases2}}", str(stats2.stats['Number of bases']))
     html_template = put_data(html_template, "{{unique_bases1}}", ', '.join(x for x in stats1.stats['Unique bases']))
     html_template = put_data(html_template, "{{unique_bases2}}", ', '.join(x for x in stats2.stats['Unique bases']))
-    html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")  
+    html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
     if summary_statuses['Sequence Duplications within Labels'].lower() in ('pass', 'ok', 'good', 'success'):
@@ -545,11 +555,11 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", duplication_message)
     else:
         # insert plot showing duplicate sequences
-        html_template = put_data(html_template, "{{sequence_duplications_within_classes}}", 
+        html_template = put_data(html_template, "{{sequence_duplications_within_classes}}",
                                  f'<img src="data:image/png;base64, {encode_image_to_base64(plots_path["Sequence Duplications within Labels"])}" alt="Sequence Duplications within Labels Plot" class="plot-wide">')
-    html_template = put_data(html_template, "{{sequence_length_plot_base64}}", 
+    html_template = put_data(html_template, "{{sequence_length_plot_base64}}",
                              encode_image_to_base64(plots_path['Sequence lengths']))
-    html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}", 
+    html_template = put_data(html_template, "{{per-sequence-gc-content_base64}}",
                              encode_image_to_base64(plots_path['Per sequence GC content']))
     # Sections that require a shared set of bases between the two labels. When
     # the datasets have no bases in common the plot path is None, so we render
@@ -575,7 +585,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # still written to the plots directory as a PNG, it is just not what the page
     # shows.
     per_position_payloads = per_position_payloads or {}
-    for placeholder, direction, dom_id, name in (
+    for placeholder, direction, dom_id, _name in (
         ("{{per-position-nucleotide-content}}", 'forward', 'ppv-fwd',
          'Per Position Nucleotide Content'),
         ("{{per-position-reversed-nucleotide-content}}", 'reversed', 'ppv-rev',
@@ -657,6 +667,5 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
 
     # Generate unique bases flags
     unique_bases_flags = generate_nucleotide_flags_html(summary_statuses, 'Unique bases')
-    html_template = put_data(html_template, "{{unique_bases_flags}}", unique_bases_flags)
+    return put_data(html_template, "{{unique_bases_flags}}", unique_bases_flags)
 
-    return html_template

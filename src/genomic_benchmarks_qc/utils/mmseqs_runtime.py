@@ -13,10 +13,8 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Optional
 
 from genomic_benchmarks_qc.utils.mmseqs_summary import MMSEQS_REQUIRED_COLS
-
 
 SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
 MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC = 1.0
@@ -25,7 +23,7 @@ MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC = 1.0
 def _read_linux_cpu_flags():
     """Return the CPU feature flags from /proc/cpuinfo, or None if unreadable."""
     try:
-        with open("/proc/cpuinfo", "r", encoding="utf-8") as handle:
+        with open("/proc/cpuinfo", encoding="utf-8") as handle:
             for line in handle:
                 if line.lower().startswith("flags"):
                     _, flags_str = line.split(":", 1)
@@ -89,8 +87,8 @@ def run_search(
     train_fasta_file,
     out_file,
     tmp_dir,
-    threads: Optional[int] = None,
-    split_memory_limit: Optional[str] = None,
+    threads: int | None = None,
+    split_memory_limit: str | None = None,
 ):
     """Search the test sequences against the train sequences, returning the hit table.
 
@@ -103,7 +101,8 @@ def run_search(
     or exits non-zero.
     """
     logging.info(
-        "Running MMSeqs2, an ultrafast and sensitive search, for test sequences (query) against train sequences (db)."
+        "Running MMSeqs2, an ultrafast and sensitive search, for test sequences "
+        "(query) against train sequences (db)."
     )
 
     check_mmseqs_preflight()
@@ -155,28 +154,33 @@ def run_search(
             if stream is None:
                 return
             last_progress_log_ts = None
-            
+
             try:
                 while True:
                     chunk = stream.read(4096)
                     if not chunk:
                         break
-                    
+
                     text = chunk.decode("utf-8", errors="replace")
                     for line in text.split("\n"):
                         if not line:
                             continue
-                        
+
                         # Check if this is a progress line (ends with \r before stripping)
                         is_progress = line.endswith("\r")
                         line = line.rstrip("\r").strip()
                         if not line:
                             continue
-                        
+
                         # Progress lines get throttled; regular lines always logged
                         if is_progress:
                             now = time.monotonic()
-                            if last_progress_log_ts is None or (now - last_progress_log_ts) >= MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC:
+                            due = (
+                                last_progress_log_ts is None
+                                or (now - last_progress_log_ts)
+                                >= MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC
+                            )
+                            if due:
                                 logging.debug("MMSeqs2 progress: %s", line)
                                 last_progress_log_ts = now
                         else:

@@ -10,26 +10,32 @@ is defined in `genomic_benchmarks_qc.utils.naming`.
 
 import logging
 import os
+import shutil
 import stat
 import tempfile
 from pathlib import Path
-from typing import Optional
-import shutil
+
 import pandas as pd
 
-from genomic_benchmarks_qc.report.report_generator import generate_splits_html_report, generate_simple_report
+from genomic_benchmarks_qc.report.report_generator import (
+    generate_simple_report,
+    generate_splits_html_report,
+)
 from genomic_benchmarks_qc.report.split_html_report import ROW_CAP
-from genomic_benchmarks_qc.utils.mmseqs_summary import summarize_mmseqs_output, build_mmseqs_export_frame
 from genomic_benchmarks_qc.utils import mmseqs_runtime
 from genomic_benchmarks_qc.utils.input_utils import (
+    SequenceStatsAccumulator,
+    append_fasta_record,
     ensure_directory,
+    filter_fasta_by_ids,
     log_failures,
+    read_selected_fasta_sequences,
     setup_logger,
     stream_files_to_sequences,
-    append_fasta_record,
-    SequenceStatsAccumulator,
-    read_selected_fasta_sequences,
-    filter_fasta_by_ids,
+)
+from genomic_benchmarks_qc.utils.mmseqs_summary import (
+    build_mmseqs_export_frame,
+    summarize_mmseqs_output,
 )
 from genomic_benchmarks_qc.utils.naming import (
     HTML_REPORT_FILE,
@@ -44,9 +50,9 @@ from genomic_benchmarks_qc.utils.naming import (
     unique_slugs,
 )
 from genomic_benchmarks_qc.utils.split_stats import (
+    flag_split_data_leakage,
     get_basic_stats_from_aggregates,
     get_threshold_stats,
-    flag_split_data_leakage,
 )
 
 
@@ -95,7 +101,8 @@ def _stage_sequences_to_fasta(fasta_path, files, input_format, sequence_column, 
     acc = SequenceStatsAccumulator()
 
     with fasta_path.open("w", encoding="utf-8") as fasta_handle:
-        for i, sequence in enumerate(stream_files_to_sequences(files, input_format, sequence_column)):
+        stream = stream_files_to_sequences(files, input_format, sequence_column)
+        for i, sequence in enumerate(stream):
             append_fasta_record(fasta_handle, sequence, f"seq_{i}_{seq_suffix}")
             acc.add(sequence)
 
@@ -125,8 +132,7 @@ def _build_simple_report_frame(threshold_stats):
             "Percentage of leaked targets": f"{threshold_stats['perc_targets_above_thr']:.2f}%",
         }
     }
-    df = pd.DataFrame.from_dict(result, orient='index')
-    return df
+    return pd.DataFrame.from_dict(result, orient='index')
 
 
 def _write_mmseqs_report_bundle(
@@ -213,20 +219,21 @@ def run(
     train_files,
     test_files,
     format,
-    out_folder: Optional[str] = '.',
-    sequence_column: Optional[list[str]] = None,
-    report_types: Optional[list[str]] = None,
-    similarity_threshold: Optional[float] = 90.0,
-    threads: Optional[int] = None,
-    split_memory_limit: Optional[str] = None,
-    keep_tmp_files: Optional[bool] = False,
-    log_level: Optional[str] = 'INFO',
-    log_file: Optional[str] = None,
+    out_folder: str | None = '.',
+    sequence_column: list[str] | None = None,
+    report_types: list[str] | None = None,
+    similarity_threshold: float | None = 90.0,
+    threads: int | None = None,
+    split_memory_limit: str | None = None,
+    keep_tmp_files: bool | None = False,
+    log_level: str | None = 'INFO',
+    log_file: str | None = None,
 ):
     """Run the train-test split evaluation.
 
-    This function reads sequences from the provided training and testing files, performs easy-search using MMseqs2, 
-    and generates reports about potential data leakage between the training and testing datasets.
+    This function reads sequences from the provided training and testing files, performs
+    easy-search using MMseqs2, and generates reports about potential data leakage between
+    the training and testing datasets.
 
     Reports are written into a 'split/<column>/<train>_vs_<test>/'
     sub-directory of `out_folder`, matching the layout of the classes command.
@@ -238,17 +245,21 @@ def run(
     @param train_files: List of paths to training files.
     @param test_files: List of paths to testing files.
     @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder; reports go into '<out_folder>/split/'. Default: '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format.
-                            Several columns are concatenated per row and searched together.
-                            Default: ['sequence'].
+    @param out_folder: Path to the output folder; reports go into '<out_folder>/split/'. Default:
+        '.'.
+    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV
+        format. Several columns are concatenated per row and searched together. Default:
+        ['sequence'].
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0 and 100). Default: 90.0.
+    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0
+        and 100). Default: 90.0.
     @param threads: Maximum number of threads MMseqs2 will use. Default: None.
-    @param split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T). Default: None.
+    @param split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T).
+        Default: None.
     @param keep_tmp_files: Keep temporary files generated for MMseqs2 debugging. Default: False.
     @param log_level: Logging level, default to INFO.
-    @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
+    @param log_file: Path to the log file. If provided, logs will be written to this file as well as
+        to the console.
     @return: None
     """
 
@@ -294,19 +305,22 @@ def run(
 
     try:
         with log_failures("Train-test split evaluation"):
-            train_stats = _stage_sequences_to_fasta(train_fasta_path, train_files, format, sequence_column, 'train')
-            test_stats = _stage_sequences_to_fasta(test_fasta_path, test_files, format, sequence_column, 'test')
+            train_stats = _stage_sequences_to_fasta(
+                train_fasta_path, train_files, format, sequence_column, 'train')
+            test_stats = _stage_sequences_to_fasta(
+                test_fasta_path, test_files, format, sequence_column, 'test')
             num_train_seqs = train_stats["count"]
             num_test_seqs = test_stats["count"]
 
             if num_train_seqs == 0 or num_test_seqs == 0:
                 raise ValueError(
-                    "Both train and test inputs must contain at least one sequence before running split evaluation."
+                    "Both train and test inputs must contain at least one sequence "
+                    "before running split evaluation."
                 )
 
             logging.info(f"Read {num_train_seqs} sequences from training files.")
             logging.info(f"Read {num_test_seqs} sequences from testing files.")
-        
+
             # Run MMseqs2 search and keep raw TSV path for chunked post-processing.
             outfile = "mmseqs2_search_result.tsv"
             results_path = mmseqs_runtime.run_search(
@@ -324,7 +338,7 @@ def run(
             # Get threshold stats
             threshold_stats = get_threshold_stats(
                 summary = summary,
-                similarity_threshold = similarity_threshold, 
+                similarity_threshold = similarity_threshold,
                 num_train_seqs = num_train_seqs,
                 num_test_seqs = num_test_seqs
             )

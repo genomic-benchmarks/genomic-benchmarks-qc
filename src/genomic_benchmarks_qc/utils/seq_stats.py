@@ -9,7 +9,7 @@ read them too.
 
 import logging
 from collections import Counter
-from typing import Optional
+
 import numpy as np
 import pandas as pd
 
@@ -79,7 +79,9 @@ class SequenceStatistics:
     cached in `stats`.
     """
 
-    def __init__(self, sequences: list[str], filename: str, filepath: str, label: str, seq_column: Optional[str] = None, end_position: Optional[int] = None, slug: Optional[str] = None, min_coverage: float = DEFAULT_MIN_COVERAGE):
+    def __init__(self, sequences: list[str], filename: str, filepath: str, label: str,
+                 seq_column: str | None = None, end_position: int | None = None,
+                 slug: str | None = None, min_coverage: float = DEFAULT_MIN_COVERAGE):
         """Hold one class's sequences together with how to identify it.
 
         @param sequences: The sequences of this class, uppercased by the reader.
@@ -213,7 +215,10 @@ class SequenceStatistics:
         else:
             max_length = int(max(lengths))
             if self.end_position > max_length:
-                logging.warning(f"end_position {self.end_position} is greater than the maximum sequence length {max_length}. Setting end_position to {max_length}.")
+                logging.warning(
+                    f"end_position {self.end_position} is greater than the maximum "
+                    f"sequence length {max_length}. Setting end_position to {max_length}."
+                )
                 self.end_position = max_length
 
             logging.info(f"Using end position: {self.end_position}{col_info}.")
@@ -318,7 +323,8 @@ class SequenceStatistics:
         for sequence in self.sequences:
             unique_bases.update(sequence)
         self.stats['Unique bases'] = sorted(unique_bases)
-        self.stats['%GC content'] = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences) / total_bases if total_bases > 0 else 0.0
+        gc_bases = sum(sequence.count('G') + sequence.count('C') for sequence in self.sequences)
+        self.stats['%GC content'] = gc_bases / total_bases if total_bases > 0 else 0.0
         self.stats['Number of sequences left after deduplication'] = len(set(self.sequences))
         self.stats['Empty sequences'] = sum(1 for sequence in self.sequences if len(sequence) == 0)
 
@@ -339,11 +345,14 @@ class SequenceStatistics:
 
         for id, sequence in enumerate(self.sequences):
             nucleotides_per_sequence[id] = self._compute_nucleotide_content(sequence, nucleotides)
-            dinucleotides_per_sequence[id] = self._compute_dinucleotide_content(sequence, dinucleotides)
+            dinucleotides_per_sequence[id] = self._compute_dinucleotide_content(
+                sequence, dinucleotides)
             self._compute_per_position_nucleotide_content(nucleotides_per_position, sequence)
-            self._compute_per_position_nucleotide_content(nucleotides_per_position_reversed, sequence[::-1])
+            self._compute_per_position_nucleotide_content(
+                nucleotides_per_position_reversed, sequence[::-1])
             seq_len = len(sequence)
-            gc_content_per_sequence[id] = (sequence.count('G') + sequence.count('C')) / seq_len * 100 if seq_len > 0 else 0.0
+            gc_bases = sequence.count('G') + sequence.count('C')
+            gc_content_per_sequence[id] = gc_bases / seq_len * 100 if seq_len > 0 else 0.0
             lengths_per_sequence[id] = len(sequence)
 
         self.stats['Per sequence nucleotide content'] = pd.DataFrame(nucleotides_per_sequence).T
@@ -352,23 +361,25 @@ class SequenceStatistics:
             self._normalize_per_position(nucleotides_per_position, nucleotides)).T
         self.stats['Per position reversed nucleotide content'] = pd.DataFrame(
             self._normalize_per_position(nucleotides_per_position_reversed, nucleotides)).T
-        self.stats['Per sequence GC content'] = pd.DataFrame(gc_content_per_sequence, columns=['Per sequence GC content'])
-        self.stats['Sequence lengths'] = pd.DataFrame(lengths_per_sequence, columns=['Sequence lengths'])
+        self.stats['Per sequence GC content'] = pd.DataFrame(
+            gc_content_per_sequence, columns=['Per sequence GC content'])
+        self.stats['Sequence lengths'] = pd.DataFrame(
+            lengths_per_sequence, columns=['Sequence lengths'])
 
     def _compute_nucleotide_content(self, sequence, nucleotides):
         """Return the frequency of each nucleotide within one sequence."""
         seq_len = len(sequence)
         if seq_len == 0:
-            return {nucleotide: 0 for nucleotide in nucleotides}
-        return {nucleotide: sequence.count(nucleotide) / seq_len for nucleotide in nucleotides}   
-     
+            return dict.fromkeys(nucleotides, 0)
+        return {nucleotide: sequence.count(nucleotide) / seq_len for nucleotide in nucleotides}
+
     def _compute_dinucleotide_content(self, sequence, dinucleotides):
         """Return the frequency of each overlapping dinucleotide in one sequence.
 
         Dinucleotides not in `dinucleotides` are counted too rather than
         dropped, so an unexpected base cannot silently vanish from the totals.
         """
-        dinucleotides_per_sequence = {dinucleotide: 0 for dinucleotide in dinucleotides}
+        dinucleotides_per_sequence = dict.fromkeys(dinucleotides, 0)
         seq_len = len(sequence)
 
         # No dinucleotides possible for sequences shorter than 2 -> return zeros
@@ -381,21 +392,25 @@ class SequenceStatistics:
             if dinucleotide in dinucleotides_per_sequence:
                 dinucleotides_per_sequence[dinucleotide] += 1
             else:
-                dinucleotides_per_sequence[dinucleotide] = dinucleotides_per_sequence.get(dinucleotide, 0) + 1
+                dinucleotides_per_sequence[dinucleotide] = (
+                    dinucleotides_per_sequence.get(dinucleotide, 0) + 1)
 
         total = sum(dinucleotides_per_sequence.values())
         if total == 0:
             return dinucleotides_per_sequence
-        
-        dinucleotides_per_sequence = {dinucleotide: count / total for dinucleotide, count in dinucleotides_per_sequence.items()}
 
-        return dinucleotides_per_sequence
-    
+        return {
+            dinucleotide: count / total
+            for dinucleotide, count in dinucleotides_per_sequence.items()
+        }
+
+
     def _compute_per_position_nucleotide_content(self, nucleotides_per_position, sequence):
         """Add one sequence's bases to the per-position counts, in place."""
         for i, nucleotide in enumerate(sequence):
             if i in nucleotides_per_position:
-                nucleotides_per_position[i][nucleotide] = nucleotides_per_position[i].get(nucleotide, 0) + 1
+                nucleotides_per_position[i][nucleotide] = (
+                    nucleotides_per_position[i].get(nucleotide, 0) + 1)
             else:
                 nucleotides_per_position[i] = {nucleotide: 1}
 
@@ -407,13 +422,16 @@ class SequenceStatistics:
         """
         for position in nucleotides_per_position:
             total = sum(nucleotides_per_position[position].values())
-            nucleotides_per_position[position] = {nucleotide: count / total for nucleotide, count in nucleotides_per_position[position].items()}
+            nucleotides_per_position[position] = {
+                nucleotide: count / total
+                for nucleotide, count in nucleotides_per_position[position].items()
+            }
             # add zeros for missing nucleotides
             for nucleotide in nucleotides:
                 if nucleotide not in nucleotides_per_position[position]:
                     nucleotides_per_position[position][nucleotide] = 0
         return nucleotides_per_position
-    
+
     def _compute_sequence_duplication_levels(self):
         """
         Compute the duplication levels for each sequence in the given list of sequences.
@@ -424,9 +442,14 @@ class SequenceStatistics:
         """
 
         sequence_counts = Counter(self.sequences)
-        # remove sequences that are not duplicated and decrement counts by 1 to reflect number of duplications
-        sequence_counts = {sequence: (count - 1) for sequence, count in sequence_counts.items() if count > 1}
+        # remove sequences that are not duplicated and decrement counts by 1 to
+        # reflect number of duplications
+        sequence_counts = {
+            sequence: (count - 1)
+            for sequence, count in sequence_counts.items() if count > 1
+        }
         # sort the sequences by their counts
-        sequence_counts = dict(sorted(sequence_counts.items(), key=lambda item: item[1], reverse=True))
-        
+        sequence_counts = dict(
+            sorted(sequence_counts.items(), key=lambda item: item[1], reverse=True))
+
         self.stats['Sequence duplication levels'] = sequence_counts

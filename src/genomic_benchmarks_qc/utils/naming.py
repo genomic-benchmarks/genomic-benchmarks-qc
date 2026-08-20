@@ -163,7 +163,7 @@ def unique_slugs(values, contexts=None):
     unique = [slug if counts[slug] == 1 else None for slug in slugs]
     used = {slug for slug in unique if slug is not None}
 
-    for index, (value, slug, context) in enumerate(zip(values, slugs, contexts)):
+    for index, (value, slug, context) in enumerate(zip(values, slugs, contexts, strict=True)):
         if unique[index] is not None:
             continue
 

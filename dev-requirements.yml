@@ -13,6 +13,7 @@ dependencies:
   - scipy>=1.14
   - pytest>=8.4
   - pytest-cov>=7.0
+  - ruff>=0.16,<0.17
   - pip
   - pip:
     - typer>=0.20

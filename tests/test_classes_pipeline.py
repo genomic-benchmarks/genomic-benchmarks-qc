@@ -7,7 +7,6 @@ merging, and the argument defaults.
 import logging
 
 import pytest
-
 from helpers import write_csv, write_fasta, write_regression_csv
 
 from genomic_benchmarks_qc import evaluate_classes
@@ -50,15 +49,17 @@ class TestRegressionTargets:
     def test_a_fully_non_numeric_target_is_an_error(self, tmp_path, caplog):
         csv_path = write_regression_csv(tmp_path / 'data.csv', ['abc'] * 10)
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError, match='contains no numeric values'):
-                evaluate_classes.run(
-                    input=[csv_path],
-                    format='csv',
-                    out_folder=str(tmp_path / 'out'),
-                    regression=True,
-                    report_types=['simple'],
-                )
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(ValueError, match='contains no numeric values'),
+        ):
+            evaluate_classes.run(
+                input=[csv_path],
+                format='csv',
+                out_folder=str(tmp_path / 'out'),
+                regression=True,
+                report_types=['simple'],
+            )
 
         # Reported to the log as well as raised, so it reaches --log-file.
         assert 'contains no numeric values' in caplog.text
@@ -79,15 +80,17 @@ class TestRegressionTargets:
         """
         csv_path = write_regression_csv(tmp_path / 'data.csv', values)
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError, match='cannot be split into two classes'):
-                evaluate_classes.run(
-                    input=[csv_path],
-                    format='csv',
-                    out_folder=str(tmp_path / 'out'),
-                    regression=True,
-                    report_types=['simple'],
-                )
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(ValueError, match='cannot be split into two classes'),
+        ):
+            evaluate_classes.run(
+                input=[csv_path],
+                format='csv',
+                out_folder=str(tmp_path / 'out'),
+                regression=True,
+                report_types=['simple'],
+            )
 
         # The message must name the cause, not surface as a missing-label error.
         assert "zero-inflated" in caplog.text
@@ -115,14 +118,16 @@ class TestInputValidation:
         empty = tmp_path / 'empty.fa'
         empty.write_text('')
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError, match='No sequences found in FASTA file'):
-                evaluate_classes.run(
-                    input=[write_fasta(tmp_path / 'pos.fa', 30, seed=1), str(empty)],
-                    format='fasta',
-                    out_folder=str(tmp_path / 'out'),
-                    report_types=['simple'],
-                )
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(ValueError, match='No sequences found in FASTA file'),
+        ):
+            evaluate_classes.run(
+                input=[write_fasta(tmp_path / 'pos.fa', 30, seed=1), str(empty)],
+                format='fasta',
+                out_folder=str(tmp_path / 'out'),
+                report_types=['simple'],
+            )
 
         assert 'empty.fa' in caplog.text
         # Rejected while reading, so no partial reports are left behind.
@@ -174,8 +179,9 @@ class TestDefaults:
             input=[csv_path], format='csv', out_folder=str(tmp_path / 'seed'), report_types=['json'],
         )
 
-        from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
         from helpers import sequences as make_sequences
+
+        from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 
         stats = [
             SequenceStatistics(make_sequences(20, seed=1), filename='a.csv', filepath='a.csv', label='a'),

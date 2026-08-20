@@ -13,12 +13,11 @@ import re
 import numpy as np
 import pandas as pd
 import pytest
-
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
-from genomic_benchmarks_qc.report.split_html_report import alignments_count_text
 from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
+from genomic_benchmarks_qc.report.split_html_report import alignments_count_text
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 
@@ -51,7 +50,7 @@ def render(tmp_path, stats1, stats2):
 
 def payload_from(page, dom_id):
     """Parse one embedded payload back out of the page."""
-    raw = re.search(r'id="%s">(.*?)</script>' % dom_id, page, re.S).group(1)
+    raw = re.search(rf'id="{dom_id}">(.*?)</script>', page, re.S).group(1)
     unescaped = (raw.replace('\\u003c', '<').replace('\\u003e', '>').replace('\\u0026', '&'))
     return json.loads(unescaped)
 

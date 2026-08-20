@@ -16,7 +16,6 @@ import logging
 import pandas as pd
 from pandas.errors import EmptyDataError
 
-
 MMSEQS_REQUIRED_COLS = [
     "query",
     "target",
@@ -123,8 +122,7 @@ def _finalize_results_frame(top_rows_heap):
             results_filt.sort_values(by=["min_cov*pident"], ascending=False)
             .reset_index(drop=True)
         )
-    results_filt = results_filt.reindex(columns=MMSEQS_RESULT_COLUMNS)
-    return results_filt
+    return results_filt.reindex(columns=MMSEQS_RESULT_COLUMNS)
 
 
 def build_mmseqs_export_frame(results_filt):

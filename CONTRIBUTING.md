@@ -92,7 +92,21 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     Coverage is opt-in so that running a single test file does not trip the threshold. New code
     should come with tests, and the threshold should be raised as coverage improves.
 
-6.  If you changed the report's styling or behaviour, the stylesheets and scripts live in
+6.  Check that your changes pass linting:
+
+        $ ruff check .
+
+    The rules live under `[tool.ruff]` in `pyproject.toml` and are the same ones CI runs, so a
+    clean run locally means a clean run on the pull request. Many findings fix themselves:
+
+        $ ruff check --fix .
+
+    Two exemptions are worth knowing about. The modules that hold the report's HTML as Python
+    strings are exempt from the line-length limit, because a `# noqa` cannot be placed inside a
+    triple-quoted string. Tests are exempt from it too. Everything else is expected to stay within
+    100 columns.
+
+7.  If you changed the report's styling or behaviour, the stylesheets and scripts live in
     `src/genomic_benchmarks_qc/report/assets/` and are inlined into the generated HTML. They are
     real files so they can be checked without generating a report:
 
@@ -102,18 +116,19 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     checkout and is missing from the installed package. `tests/test_report_assets.py` fails when a
     new one is not.
 
-7.  Commit your changes and push your branch to GitHub:
+8.  Commit your changes and push your branch to GitHub:
 
         $ git add .
         $ git commit -m "Your detailed description of your changes."
         $ git push origin name-of-your-bugfix-or-feature
 
-8.  Submit a pull request through the GitHub website.
+9.  Submit a pull request through the GitHub website.
 
 ## Pull Request Guidelines
 
 Before you submit a pull request, check that it meets these guidelines:
 
 1.  The pull request should include tests.
-2.  If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring.
-3.  The pull request should work for Python >=3.12
+2.  `ruff check .` should report no errors; CI runs the same check and fails the pull request otherwise.
+3.  If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring.
+4.  The pull request should work for Python >=3.12

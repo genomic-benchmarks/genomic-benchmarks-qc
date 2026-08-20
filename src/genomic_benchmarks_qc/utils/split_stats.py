@@ -21,7 +21,7 @@ def flag_split_data_leakage(perc_queries_above_thr, fail_threshold=2.0):
 
 def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, test_stats):
     """Combine the two halves' sequence counts and lengths for the report header."""
-    basic_stats = {
+    return {
         "train_filename": str(filename_train),
         "test_filename": str(filename_test),
         "number_of_sequences_train": int(train_stats["count"]),
@@ -33,7 +33,6 @@ def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, 
         "mean_length_test": float(test_stats["mean_length"]),
         "max_length_test": int(test_stats["max_length"]),
     }
-    return basic_stats
 
 
 def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_seqs):
@@ -51,7 +50,7 @@ def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_
     num_targets_with_hits = len(summary["target_ids_with_hits"])
     num_targets_above_thr = len(summary["target_ids_above_threshold"])
 
-    threshold_stats = {
+    return {
         "similarity_threshold": similarity_threshold,
         "perc_queries_above_thr": _calculate_percentage(num_queries_above_thr, num_test_seqs),
         "num_queries_above_thr": num_queries_above_thr,
@@ -64,4 +63,3 @@ def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_
         "hits": summary["total_hits"],
         "total_combinations": num_train_seqs * num_test_seqs,
     }
-    return threshold_stats

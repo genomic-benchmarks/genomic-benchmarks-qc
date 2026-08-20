@@ -68,7 +68,6 @@ class TestShape:
 
     def test_the_first_series_is_the_first_label(self, payload, comparison):
         stats1, stats2, _ = comparison
-        end = payload['endPosition']
 
         assert payload['labels'] == ['a', 'b']
         assert payload['counts'] == [len(stats1.sequences), len(stats2.sequences)]
@@ -240,7 +239,7 @@ class TestMarkup:
     def test_the_payload_cannot_close_its_own_script_element(self):
         script = payload_script({'labels': ['</script><img src=x>', 'b & c']}, 'ppv-fwd-data')
 
-        assert '</script>' == script[-len('</script>'):]
+        assert script[-len('</script>'):] == '</script>'
         assert '</script>' not in script[:-len('</script>')]
         assert '\\u003c' in script and '\\u0026' in script
 

@@ -10,20 +10,22 @@ is defined in `genomic_benchmarks_qc.utils.naming`.
 """
 
 import logging
-from pathlib import Path
 from itertools import combinations
-from typing import Optional
+from pathlib import Path
+
 import pandas as pd
 
-from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics, DEFAULT_MIN_COVERAGE
-from genomic_benchmarks_qc.utils.testing import flag_significant_differences
-from genomic_benchmarks_qc.report.report_generator import generate_json_report, generate_simple_report, generate_dataset_html_report
+from genomic_benchmarks_qc.report.report_generator import (
+    generate_dataset_html_report,
+    generate_json_report,
+    generate_simple_report,
+)
 from genomic_benchmarks_qc.utils.input_utils import (
     ensure_directory,
     log_failures,
+    read_csv_file,
     read_fasta,
     read_sequences_from_df,
-    read_csv_file,
     setup_logger,
 )
 from genomic_benchmarks_qc.utils.naming import (
@@ -38,6 +40,8 @@ from genomic_benchmarks_qc.utils.naming import (
     strip_extensions,
     unique_slugs,
 )
+from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE, SequenceStatistics
+from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 
 
 def run_analysis(input_statistics, report_dir, report_types, plot_type):
@@ -195,7 +199,7 @@ def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_posi
     # Classes are ordered by their path name, so the comparison directories
     # do not depend on the order the files happened to be given in, and match
     # what a CSV input with the same class names would produce.
-    ordered_inputs = sorted(zip(input, labels, slugs), key=lambda item: item[2])
+    ordered_inputs = sorted(zip(input, labels, slugs, strict=True), key=lambda item: item[2])
 
     seq_stats = []
     for input_file, label, slug in ordered_inputs:
@@ -208,8 +212,9 @@ def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_posi
             logging.error(f"No sequences found in FASTA file '{input_file}'.")
             raise ValueError(f"No sequences found in FASTA file '{input_file}'.")
         logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
-        seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name, filepath=input_file,
-                                         label=label, slug=slug, end_position=end_position,
+        seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name,
+                                         filepath=input_file, label=label, slug=slug,
+                                         end_position=end_position,
                                          min_coverage=min_coverage)]
 
     run_analysis(
@@ -240,7 +245,7 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
 
     # Labels come straight from the data, so they may contain characters
     # that are unusable in a path ('/', spaces) or that differ only in case.
-    label_slugs = dict(zip(labels, unique_slugs(labels)))
+    label_slugs = dict(zip(labels, unique_slugs(labels), strict=True))
 
     # Same ordering rule as for FASTA inputs, applied whether the labels were
     # inferred, derived from a regression target or listed explicitly.
@@ -255,14 +260,19 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
         seq_stats = []
         for label in labels:
             sequences = read_sequences_from_df(df, seq_col, label_column, label)
-            logging.debug(f"Read {len(sequences)} sequences for label '{label}' from column '{reported_column}'.")
-            seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath, label=label,
-                                             slug=label_slugs[label], seq_column=reported_column,
-                                             end_position=end_position, min_coverage=min_coverage)]
+            logging.debug(
+                f"Read {len(sequences)} sequences for label '{label}' "
+                f"from column '{reported_column}'."
+            )
+            seq_stats += [SequenceStatistics(sequences, filename=filename, filepath=filepath,
+                                             label=label, slug=label_slugs[label],
+                                             seq_column=reported_column,
+                                             end_position=end_position,
+                                             min_coverage=min_coverage)]
         return seq_stats
 
     # loop over individual sequence columns
-    for seq_col, column_dir in zip(sequence_column, column_dirs):
+    for seq_col, column_dir in zip(sequence_column, column_dirs, strict=True):
         run_analysis(
             input_statistics=statistics_for(seq_col, seq_col),
             report_dir=class_dir / column_dir,
@@ -280,23 +290,24 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
         )
 
 
-def run(input, 
-        format, 
-        out_folder='.', 
-        sequence_column: Optional[list[str]] = None, 
-        label_column='label', 
-        label_list: Optional[list[str]] = None,
-        regression: Optional[bool] = False,
-        report_types: Optional[list[str]] = None,
-        end_position: Optional[int] = None,
+def run(input,
+        format,
+        out_folder='.',
+        sequence_column: list[str] | None = None,
+        label_column='label',
+        label_list: list[str] | None = None,
+        regression: bool | None = False,
+        report_types: list[str] | None = None,
+        end_position: int | None = None,
         min_coverage: float = DEFAULT_MIN_COVERAGE,
-        plot_type: Optional[str] = 'boxen',
-        log_level: Optional[str] = 'INFO',
-        log_file: Optional[str] = None
+        plot_type: str | None = 'boxen',
+        log_level: str | None = 'INFO',
+        log_file: str | None = None
     ):
     """Run the dataset evaluation.
 
-    This function reads sequences from the provided input files, performs analysis, and generates reports about the sequences.
+    This function reads sequences from the provided input files, performs analysis, and
+    generates reports about the sequences.
 
     Reports are written to '<out_folder>/class/<column>/<classA>_vs_<classB>/',
     one directory per compared pair of classes. FASTA inputs have no sequence
@@ -304,17 +315,20 @@ def run(input,
     Any grouping above that - collection, dataset, split - is left to the caller,
     who expresses it through `out_folder`.
 
-    @param input: List of paths to input files. Can be a list of files, each containing sequences from one class.
+    @param input: List of paths to input files. Can be a list of files, each containing sequences
+        from one class.
     @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder; reports go into '<out_folder>/class/'. Default: '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV format. 
-                            Either one column or list of columns. Each column is analyzed separately, and
-                            all of them together in an extra 'merged' report. Default: ['sequence']
+    @param out_folder: Path to the output folder; reports go into '<out_folder>/class/'. Default:
+        '.'.
+    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV
+        format. Either one column or list of columns. Each column is analyzed separately, and all of
+        them together in an extra 'merged' report. Default: ['sequence']
     @param label_column: Name of the label column for datasets in CSV/TSV format. Default: 'label'.
-    @param label_list: List of label classes to consider or "infer" to parse different labels automatically from label column.
-                      For datasets in CSV/TSV format. Default: ['infer'].
-    @param regression: If True, label column is considered as a regression target and values are split into 2 classes
-                       at the median. Raises ValueError if that does not produce two non-empty classes.
+    @param label_list: List of label classes to consider or "infer" to parse different labels
+        automatically from label column. For datasets in CSV/TSV format. Default: ['infer'].
+    @param regression: If True, label column is considered as a regression target and values are
+        split into 2 classes at the median. Raises ValueError if that does not produce two non-empty
+        classes.
     @param report_types: Types of reports to generate. Default: ['html', 'simple'].
     @param end_position: Last position of the sequences the per-position checks
                          reach, 1-based and inclusive. If not provided, the last
@@ -331,9 +345,11 @@ def run(input,
                          because they are reached by too few of each class for a
                          difference there to be a difference between the classes
                          rather than between their longest sequences. Default: 0.25.
-    @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is recommended. Default: 'boxen'.
+    @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is
+        recommended. Default: 'boxen'.
     @param log_level: Logging level, default to INFO.
-    @param log_file: Path to the log file. If provided, logs will be written to this file as well as to the console.
+    @param log_file: Path to the log file. If provided, logs will be written to this file as well as
+        to the console.
     @return: None
     """
 

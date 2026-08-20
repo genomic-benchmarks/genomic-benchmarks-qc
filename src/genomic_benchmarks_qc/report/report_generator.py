@@ -6,20 +6,23 @@ the figures in `classes_plots`/`splits_plots` - and the names of the files are
 defined in `genomic_benchmarks_qc.utils.naming`.
 """
 
+import logging
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import pandas as pd
-from pathlib import Path
-import logging
 
+from genomic_benchmarks_qc.report import classes_plots, splits_plots
 from genomic_benchmarks_qc.report.classes_html_report import get_dataset_html_template
+from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
 from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
-from genomic_benchmarks_qc.report import classes_plots
-from genomic_benchmarks_qc.report import splits_plots
-from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 
-def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max, total_hits=None):
+
+def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path,
+                                plots_dir, query_similarity_max, target_similarity_max,
+                                total_hits=None):
     """
     Generate an HTML report visualising data leakage.
 
@@ -31,30 +34,33 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
 
     logging.info(f"Generating HTML report: {output_path}")
 
-    plots_paths_dict = generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
+    plots_paths_dict = generate_split_plots(
+        query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
 
-    template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict,
-                                        total_hits=total_hits)
+    template = get_splits_html_template(basic_stats, threshold_stats, results_filt,
+                                        plots_paths_dict, total_hits=total_hits)
     with open(output_path, 'w') as file:
         file.write(template)
-        
+
 def generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir):
     """Save the split figures and return {plot title: path} for the template."""
 
     plots_paths_dict = {}
 
-    fig = splits_plots.plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats)
+    fig = splits_plots.plot_similarity_histograms(
+        query_similarity_max, target_similarity_max, threshold_stats)
     plots_paths_dict['Similarity histograms'] = plots_dir / 'similarity_histograms.png'
     fig.savefig(plots_dir / 'similarity_histograms.png', bbox_inches='tight')
     plt.close(fig)
 
     return plots_paths_dict
 
-def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_type, results, failed_by_feature):
+def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_type, results,
+                                 failed_by_feature):
     """Generate HTML report comparing two dataset statistics.
 
-    Generates plots with colored failure indicators (red #c62828 for Fail, orange #f57f17 for Warning),
-    writes HTML report and duplicate sequences file.
+    Generates plots with colored failure indicators (red #c62828 for Fail, orange #f57f17
+    for Warning), writes HTML report and duplicate sequences file.
 
     Args:
         stats1, stats2: Statistics objects for two datasets.
@@ -115,7 +121,8 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
     }
 
     # Load the HTML template
-    template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses, duplicate_seqs,
+    template = get_dataset_html_template(stats1, stats2, plots_paths, summary_statuses,
+                                         duplicate_seqs,
                                          duplicate_seqs_file=duplicate_seqs_path,
                                          per_position_payloads=per_position_payloads)
 
@@ -145,7 +152,8 @@ def generate_simple_report(results, output_path):
     results.index.name = 'Check'
     results.to_csv(output_path)
 
-def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen', failed_by_feature=None, percent_remaining=None):
+def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
+                           failed_by_feature=None, percent_remaining=None):
     """Generate comparison plots between two datasets.
 
     Args:
@@ -153,7 +161,8 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen', faile
         output_path: Directory to save plots.
         plot_type: Plot type ('boxen' or 'violin').
         failed_by_feature: Dict with failure info for shading (optional).
-        percent_remaining: Optional float with the percentage of sequences remaining after deduplication.
+        percent_remaining: Optional float with the percentage of sequences remaining
+            after deduplication.
 
     Returns:
         Dictionary mapping plot names to file paths.
@@ -169,13 +178,16 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen', faile
 
     plots_paths = {}
 
-    bases_overlap = sorted(list(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])))
+    bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
     # Get failed nucleotides and dinucleotides for boxen plot outlines
-    failed_nucleotides = failed_by_feature.get('Per sequence nucleotide content', {}) if failed_by_feature else None
-    failed_dinucleotides = failed_by_feature.get('Per sequence dinucleotide content', {}) if failed_by_feature else None
-    failed_pos_forward = failed_by_feature.get('Per position nucleotide content', {}) if failed_by_feature else None
-    failed_pos_reverse = failed_by_feature.get('Per position reversed nucleotide content', {}) if failed_by_feature else None
+    def failed_for(feature):
+        return failed_by_feature.get(feature, {}) if failed_by_feature else None
+
+    failed_nucleotides = failed_for('Per sequence nucleotide content')
+    failed_dinucleotides = failed_for('Per sequence dinucleotide content')
+    failed_pos_forward = failed_for('Per position nucleotide content')
+    failed_pos_reverse = failed_for('Per position reversed nucleotide content')
 
     # Handle disjoint bases case - no common bases between datasets.
     # No plots are produced; the HTML report renders an explanatory message
@@ -314,7 +326,8 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen', faile
     plt.close(fig)
     plots_paths['Per sequence GC content'] = gc_path
 
-    # Plot sequence duplications within classes - only if some sequences were removed by deduplication
+    # Plot sequence duplications within classes - only if some sequences were removed
+    # by deduplication
     if percent_remaining is not None and percent_remaining < 1.0:
         fig = classes_plots.plot_sequence_duplications_within_classes(
             stats1,
