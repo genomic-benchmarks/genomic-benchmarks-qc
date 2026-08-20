@@ -47,24 +47,7 @@ gb-qc evaluate-classes \
   --out-folder example_outputs/enhancers_dataset
 ```
 
-It tells you what it is doing as it goes, including which positions it could and could not compare:
-
-```text
-INFO - Starting classes evaluation.
-INFO - Merging 2 input files: enhancers_train.csv, enhancers_test.csv
-INFO - Computing statistics for merged, label 0, sequence column: sequence
-INFO - No end position given, so per-position checks cover positions 1-483 for sequence
-       comparison, as far as at least 50 sequences reach.
-INFO - Positions 1-359 for sequence comparison may be flagged, as far as 250 sequences reach.
-INFO - Positions 360-483 for sequence comparison are reached by too few sequences to compare,
-       so they are reported as Unknown and are not drawn.
-INFO - Comparing classes: 0 vs 1
-INFO - Generating simple report: .../class/sequence/0_vs_1/gb-qc-report.csv
-INFO - Generating PNG plots at: .../class/sequence/0_vs_1/plots
-INFO - Classes evaluation successfully completed.
-```
-
-and leaves you a report to open — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html):
+It leaves you a report to open — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html):
 
 ```text
 example_outputs/enhancers_dataset/class/sequence/0_vs_1/
@@ -81,6 +64,15 @@ gb-qc evaluate-splits \
   --test-input example_datasets/enhancers_test.csv \
   --sequence-column sequence \
   --out-folder example_outputs/enhancers_dataset
+```
+
+with a report of its own — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html):
+
+```text
+example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/
+├── gb-qc-report.html   ← open this
+├── gb-qc-report.csv
+├── plots/
 ```
 
 Both commands can share one `--out-folder`; they write into `class/` and `split/` respectively and never overwrite each other.
