@@ -11,10 +11,13 @@ import logging
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
 from genomic_benchmarks_qc.report.colors import CLASS_COLORS
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
+from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
@@ -37,7 +40,7 @@ def plot_gc_content(stats1, stats2, plot_type='boxen'):
         plot_type=plot_type
     )
 
-def reserve_flag_margin(ax, n_positions):
+def reserve_flag_margin(ax: Axes, n_positions: int) -> None:
     """Reserve the bottom margin used by flag underlines so geometry is stable.
 
     The colored underlines from add_failed_outline are drawn with clip_on=False,
@@ -47,8 +50,9 @@ def reserve_flag_margin(ax, n_positions):
     invisible stubs at every position makes the tight bbox identical whether or
     not any position is actually flagged.
 
-    @param ax: Matplotlib axis object.
-    @param n_positions: Number of x categories to reserve space for.
+    Args:
+        ax: Matplotlib axis object.
+        n_positions: Number of x categories to reserve space for.
     """
     xaxis_transform = ax.get_xaxis_transform()
     xticks = list(ax.get_xticks())
@@ -66,13 +70,17 @@ def reserve_flag_margin(ax, n_positions):
             zorder=10,
         )
 
-def add_failed_outline(ax, failed_positions, x_left_custom=None, x_right_custom=None):
+def add_failed_outline(ax: Axes, failed_positions: dict[int, str],
+                       x_left_custom: float | None = None,
+                       x_right_custom: float | None = None) -> None:
     """Add colored underlines to failed positions.
 
-    @param ax: Matplotlib axis object.
-    @param failed_positions: Dict mapping position index -> flag status ('Fail' or 'Warning').
-    @param x_left_custom: Optional custom left x-coordinate for the underline.
-    @param x_right_custom: Optional custom right x-coordinate for the underline.
+    Args:
+        ax: Matplotlib axis object.
+        failed_positions: Dict mapping position index -> flag status ('Fail' or
+            'Warning').
+        x_left_custom: Optional custom left x-coordinate for the underline.
+        x_right_custom: Optional custom right x-coordinate for the underline.
     """
 
     xaxis_transform = ax.get_xaxis_transform()
@@ -100,18 +108,23 @@ def add_failed_outline(ax, failed_positions, x_left_custom=None, x_right_custom=
                 zorder=10,
             )
 
-def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=None):
+def plot_nucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
+                     nucleotides: list[str], plot_type: str,
+                     failed_nucleotides: dict[str, str] | None = None) -> Figure:
     """
     Plot the nucleotide content of two sets of sequences.
 
-    @param stats1: Statistics for the first set of sequences.
-    @param stats2: Statistics for the second set of sequences.
-    @param nucleotides: List of nucleotides to plot.
-    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-    @param failed_nucleotides: Dict mapping nucleotide -> flag status
-        (e.g., {'A': 'Warning', 'G': 'Fail'}). Used to add colored
-        underlines beneath the failed nucleotides.
-    @return: Matplotlib figure object.
+    Args:
+        stats1: Statistics for the first set of sequences.
+        stats2: Statistics for the second set of sequences.
+        nucleotides: List of nucleotides to plot.
+        plot_type: Type of plot to create (e.g., 'boxen', 'violin').
+        failed_nucleotides: Dict mapping nucleotide -> flag status
+            (e.g., `{'A': 'Warning', 'G': 'Fail'}`). Used to add colored underlines
+            beneath the failed nucleotides.
+
+    Returns:
+        Matplotlib figure object.
     """
 
     df = melt_stats(stats1, stats2, 'Per sequence nucleotide content',
@@ -167,18 +180,23 @@ def plot_nucleotides(stats1, stats2, nucleotides, plot_type, failed_nucleotides=
 
     return fig
 
-def plot_dinucleotides(stats1, stats2, nucleotides, plot_type, failed_dinucleotides=None):
+def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
+                       nucleotides: list[str], plot_type: str,
+                       failed_dinucleotides: dict[str, str] | None = None) -> Figure:
     """
     Plot the dinucleotide content of two sets of sequences.
 
-    @param stats1: Statistics for the first set of sequences.
-    @param stats2: Statistics for the second set of sequences.
-    @param nucleotides: List of nucleotides to generate dinucleotides from.
-    @param plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-    @param failed_dinucleotides: Dict mapping dinucleotide -> flag status
-        (e.g., {'AA': 'Warning', 'GG': 'Fail'}). Used to add red outlines
-        to failed dinucleotides in boxen plots.
-    @return: Matplotlib figure object.
+    Args:
+        stats1: Statistics for the first set of sequences.
+        stats2: Statistics for the second set of sequences.
+        nucleotides: List of nucleotides to generate dinucleotides from.
+        plot_type: Type of plot to create (e.g., 'boxen', 'violin').
+        failed_dinucleotides: Dict mapping dinucleotide -> flag status
+            (e.g., `{'AA': 'Warning', 'GG': 'Fail'}`). Used to add red outlines
+            to failed dinucleotides in boxen plots.
+
+    Returns:
+        Matplotlib figure object.
     """
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content',

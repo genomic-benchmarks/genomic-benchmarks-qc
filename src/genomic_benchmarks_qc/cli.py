@@ -15,6 +15,11 @@ import typer
 
 from genomic_benchmarks_qc.evaluate_classes import run as run_evaluate_classes
 from genomic_benchmarks_qc.evaluate_splits import run as run_evaluate_splits
+from genomic_benchmarks_qc.utils.seq_stats import (
+    DEFAULT_MIN_COVERAGE,
+    MIN_SEQUENCES_PER_REPORTED_POSITION,
+)
+from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -145,17 +150,17 @@ def evaluate_classes(
     end_position: int | None = typer.Option(
         None, help=(
             "Last position the per-position checks reach. Defaults to the last position at "
-            "least 50 of each class's sequences reach. Can only narrow the flagged window, "
-            "never widen it - "
+            f"least {MIN_SEQUENCES_PER_REPORTED_POSITION} of each class's sequences reach. Can "
+            "only narrow the flagged window, never widen it - "
             "what is flagged is decided by --min-coverage, and that window is what the figures "
             "draw."
         )),
     min_coverage: float = typer.Option(
-        0.25, help=(
+        DEFAULT_MIN_COVERAGE, help=(
             "Fraction of each class's sequences that must reach a position before it can be "
-            "flagged, on top of the 250 sequences every compared position needs. This window is "
-            "what the per-position figures draw; further positions are reported as Unknown and not "
-            "drawn. 0 leaves only the 250."
+            f"flagged, on top of the {MIN_SEQUENCES_PER_CLASS} sequences every compared position "
+            "needs. This window is what the per-position figures draw; further positions are "
+            f"reported as Unknown and not drawn. 0 leaves only the {MIN_SEQUENCES_PER_CLASS}."
         )),
     plot_type: str = typer.Option(
         'boxen', help="Plot type to use for visualizations (boxen, violin)."),

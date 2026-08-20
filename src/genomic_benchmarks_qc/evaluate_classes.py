@@ -290,11 +290,11 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
         )
 
 
-def run(input,
-        format,
-        out_folder='.',
+def run(input: list[str],
+        format: str,
+        out_folder: str = '.',
         sequence_column: list[str] | None = None,
-        label_column='label',
+        label_column: str = 'label',
         label_list: list[str] | None = None,
         regression: bool | None = False,
         report_types: list[str] | None = None,
@@ -315,42 +315,46 @@ def run(input,
     Any grouping above that - collection, dataset, split - is left to the caller,
     who expresses it through `out_folder`.
 
-    @param input: List of paths to input files. Can be a list of files, each containing sequences
-        from one class.
-    @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder; reports go into '<out_folder>/class/'. Default:
-        '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV
-        format. Either one column or list of columns. Each column is analyzed separately, and all of
-        them together in an extra 'merged' report. Default: ['sequence']
-    @param label_column: Name of the label column for datasets in CSV/TSV format. Default: 'label'.
-    @param label_list: List of label classes to consider or "infer" to parse different labels
-        automatically from label column. For datasets in CSV/TSV format. Default: ['infer'].
-    @param regression: If True, label column is considered as a regression target and values are
-        split into 2 classes at the median. Raises ValueError if that does not produce two non-empty
-        classes.
-    @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param end_position: Last position of the sequences the per-position checks
-                         reach, 1-based and inclusive. If not provided, the last
-                         position that at least 50 of each class's sequences reach is
-                         used; the smaller of the two classes' values applies to the
-                         comparison. It does not decide which positions are flagged,
-                         and it is not what the figures draw - they draw the
-                         flagged window. Default: None.
-    @param min_coverage: Fraction of each class's sequences that must reach a position
-                         before it may be flagged, on top of the
-                         MIN_SEQUENCES_PER_CLASS sequences every compared position
-                         needs. This window is what the per-position figures draw.
-                         Positions past it are reported as Unknown and not drawn,
-                         because they are reached by too few of each class for a
-                         difference there to be a difference between the classes
-                         rather than between their longest sequences. Default: 0.25.
-    @param plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is
-        recommended. Default: 'boxen'.
-    @param log_level: Logging level, default to INFO.
-    @param log_file: Path to the log file. If provided, logs will be written to this file as well as
-        to the console.
-    @return: None
+    Args:
+        input: List of paths to input files. Can be a list of files, each containing
+            sequences from one class.
+        format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
+        out_folder: Path to the output folder; reports go into '<out_folder>/class/'.
+            Default: `'.'`.
+        sequence_column: Name of the columns with sequences to analyze for datasets in
+            CSV/TSV format. Either one column or list of columns. Each column is analyzed
+            separately, and all of them together in an extra 'merged' report.
+            Default: `['sequence']`.
+        label_column: Name of the label column for datasets in CSV/TSV format.
+            Default: `'label'`.
+        label_list: List of label classes to consider or "infer" to parse different labels
+            automatically from label column. For datasets in CSV/TSV format.
+            Default: `['infer']`.
+        regression: If True, label column is considered as a regression target and values
+            are split into 2 classes at the median. Raises ValueError if that does not
+            produce two non-empty classes.
+        report_types: Types of reports to generate. Default: `['html', 'simple']`.
+        end_position: Last position of the sequences the per-position checks reach,
+            1-based and inclusive. If not provided, the last position that at least
+            [MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION]
+            of each class's sequences reach is used; the smaller of the two classes'
+            values applies to the comparison. It does not decide which positions are
+            flagged, and it is not what the figures draw - they draw the flagged window.
+            Default: `None`.
+        min_coverage: Fraction of each class's sequences that must reach a position before
+            it may be flagged, on top of the
+            [MIN_SEQUENCES_PER_CLASS][genomic_benchmarks_qc.utils.testing.MIN_SEQUENCES_PER_CLASS]
+            sequences every compared position needs. This window is what the per-position
+            figures draw. Positions past it are reported as Unknown and not drawn, because
+            they are reached by too few of each class for a difference there to be a
+            difference between the classes rather than between their longest sequences.
+            Default: `0.25`
+            ([DEFAULT_MIN_COVERAGE][genomic_benchmarks_qc.utils.seq_stats.DEFAULT_MIN_COVERAGE]).
+        plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is
+            recommended. Default: `'boxen'`.
+        log_level: Logging level, default to INFO.
+        log_file: Path to the log file. If provided, logs will be written to this file as
+            well as to the console.
     """
 
     if sequence_column is None:

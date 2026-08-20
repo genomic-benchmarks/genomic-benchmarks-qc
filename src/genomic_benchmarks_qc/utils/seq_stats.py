@@ -5,6 +5,36 @@ computed from them - lengths, GC content, nucleotide and dinucleotide
 composition, per-position composition, duplication levels. The comparison in
 `genomic_benchmarks_qc.utils.testing` reads these; the plots and HTML report
 read them too.
+
+Two windows govern the per-position features, and they answer different
+questions.
+
+The scored window is where the flags may be set. Per-position statistics
+compare only the sequences long enough to reach a position, so a position needs
+a cohort that is both large enough to measure and representative enough to
+speak for the class: at least
+[MIN_SEQUENCES_PER_CLASS][genomic_benchmarks_qc.utils.testing.MIN_SEQUENCES_PER_CLASS]
+sequences, and at least
+[DEFAULT_MIN_COVERAGE][genomic_benchmarks_qc.utils.seq_stats.DEFAULT_MIN_COVERAGE]
+of the class. The count is what binds on small and mid-sized classes; the
+fraction binds on large ones, where a tail cohort can clear the count many times
+over and still be nothing but the class's longest sequences.
+
+The reported window is how far the per-position checks are named at all, and it
+reaches much further. Past the scored window they can only say Unknown, and
+saying it is the point: a report that stopped at the scored window would not
+distinguish a dataset whose sequences end there from one whose tail was too thin
+to compare. It stops where cohorts fall below
+[MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION],
+past which a position is reached by so few sequences that there is nothing left
+to report about it either.
+
+The figures draw the scored window and stop there. The tail is described in the
+report's prose instead of drawn, because a curve is read as a measurement and
+nothing out there was measured. The exception is a comparison with no scored
+window at all: there the figures draw the reported one, every position Unknown,
+which is what the rest of the report does with a comparison too small to score -
+plot it, flag nothing.
 """
 
 import logging
@@ -16,32 +46,7 @@ import pandas as pd
 from genomic_benchmarks_qc.utils.naming import slugify
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
 
-# Two windows govern the per-position features, and they answer different
-# questions.
-#
-# The scored window is where the flags may be set. Per-position statistics
-# compare only the sequences long enough to reach a position, so a position needs
-# a cohort that is both large enough to measure and representative enough to
-# speak for the class: at least `MIN_SEQUENCES_PER_CLASS` sequences, and at least
-# `DEFAULT_MIN_COVERAGE` of the class. The count is what binds on small and
-# mid-sized classes; the fraction binds on large ones, where a tail cohort can
-# clear the count many times over and still be nothing but the class's longest
-# sequences.
-#
-# The reported window is how far the per-position checks are named at all, and
-# it reaches much further. Past the scored window they can only say Unknown, and
-# saying it is the point: a report that stopped at the scored window would not
-# distinguish a dataset whose sequences end there from one whose tail was too
-# thin to compare. It stops where cohorts fall below
-# `MIN_SEQUENCES_PER_REPORTED_POSITION`, past which a position is reached by so
-# few sequences that there is nothing left to report about it either.
-#
-# The figures draw the scored window and stop there. The tail is described in
-# the report's prose instead of drawn, because a curve is read as a measurement
-# and nothing out there was measured. The exception is a comparison with no
-# scored window at all: there the figures draw the reported one, every position
-# Unknown, which is what the rest of the report does with a comparison too small
-# to score - plot it, flag nothing.
+# The two windows these bound are explained in the module docstring.
 DEFAULT_MIN_COVERAGE = 0.25
 MIN_SEQUENCES_PER_REPORTED_POSITION = 50
 
@@ -84,26 +89,27 @@ class SequenceStatistics:
                  slug: str | None = None, min_coverage: float = DEFAULT_MIN_COVERAGE):
         """Hold one class's sequences together with how to identify it.
 
-        @param sequences: The sequences of this class, uppercased by the reader.
-        @param filename: Name of the file they came from, shown in the report.
-        @param filepath: Full path they came from, shown in the report.
-        @param label: The class name, shown verbatim in reports and plots.
-        @param seq_column: Sequence column they came from, or None for FASTA.
-        @param end_position: Last position the per-position checks reach,
-                             1-based and inclusive. Defaults to the last
-                             position at least
-                             `MIN_SEQUENCES_PER_REPORTED_POSITION` of these
-                             sequences reach. It does not decide which positions
-                             may be flagged - the scored window does - and it is
-                             not what the figures draw, which is the scored
-                             window.
-        @param slug: Path form of `label`; derived from it when not given, but
-                     normally passed in by the caller, which is the only place
-                     that can tell whether it collides with another class.
-        @param min_coverage: Fraction of these sequences that must reach a
-                             position before it may set a flag, on top of the
-                             `MIN_SEQUENCES_PER_CLASS` sequences every scored
-                             position needs. 0 leaves only that count.
+        Args:
+            sequences: The sequences of this class, uppercased by the reader.
+            filename: Name of the file they came from, shown in the report.
+            filepath: Full path they came from, shown in the report.
+            label: The class name, shown verbatim in reports and plots.
+            seq_column: Sequence column they came from, or None for FASTA.
+            end_position: Last position the per-position checks reach, 1-based and
+                inclusive. Defaults to the last position at least
+                [MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION]
+                of these sequences reach. It does not decide which positions may be
+                flagged - the scored window does - and it is not what the figures draw,
+                which is the scored window.
+            slug: Path form of `label`; derived from it when not given, but normally
+                passed in by the caller, which is the only place that can tell whether it
+                collides with another class.
+            min_coverage: Fraction of these sequences that must reach a position before it
+                may set a flag, on top of the
+                [MIN_SEQUENCES_PER_CLASS][genomic_benchmarks_qc.utils.testing.MIN_SEQUENCES_PER_CLASS]
+                sequences every scored position needs. 0 leaves only that count.
+                Default: `0.25`
+                ([DEFAULT_MIN_COVERAGE][genomic_benchmarks_qc.utils.seq_stats.DEFAULT_MIN_COVERAGE]).
         """
         self.filename = filename
         self.filepath = filepath
@@ -119,39 +125,42 @@ class SequenceStatistics:
         self.scored_end_position = None
         self.stats = {}
 
-    def compute(self):
+    def compute(self) -> tuple[dict, int]:
         """
         Compute various statistics from the given list of sequences.
 
         Results are also cached on `self.stats`, and the per-position windows
         (`self.end_position`, `self.scored_end_position`) are resolved here.
 
-        @return: A tuple (statistics, end_position), where statistics is a
-            dictionary containing:
-            - Filename: str
-            - Filepath: str
-            - Label: str, or 'N/A'
-            - Sequence column: str, or 'N/A'
-            - Number of sequences: int
-            - Number of bases: int
-            - Unique bases: list of str
-            - %GC content: float
-            - Number of sequences left after deduplication: int
-            - Empty sequences: int
-            - Per sequence nucleotide content: pd.DataFrame
-              (index: sequence_id, columns: nucleotides, values: frequency)
-            - Per sequence dinucleotide content: pd.DataFrame
-              (index: sequence_id, columns: dinucleotides, values: frequency)
-            - Per position nucleotide content: pd.DataFrame
-              (index: position, columns: nucleotides, values: frequency)
-            - Per position reversed nucleotide content: pd.DataFrame
-              (index: position, columns: nucleotides, values: frequency)
-            - Per sequence GC content: dict pd.DataFrame
-              (index: sequence_id, columns: GC content (%), values: GC content)
-            - Sequence lengths: pd.DataFrame
-              (index: sequence_id, columns: Length, values: length of the sequence)
-            - Sequence duplication levels: dict {sequence: extra copies},
-              holding only the sequences that occur more than once
+        The statistics dictionary holds:
+
+        - Filename: str
+        - Filepath: str
+        - Label: str, or 'N/A'
+        - Sequence column: str, or 'N/A'
+        - Number of sequences: int
+        - Number of bases: int
+        - Unique bases: list of str
+        - %GC content: float
+        - Number of sequences left after deduplication: int
+        - Empty sequences: int
+        - Per sequence nucleotide content: pd.DataFrame
+          (index: sequence_id, columns: nucleotides, values: frequency)
+        - Per sequence dinucleotide content: pd.DataFrame
+          (index: sequence_id, columns: dinucleotides, values: frequency)
+        - Per position nucleotide content: pd.DataFrame
+          (index: position, columns: nucleotides, values: frequency)
+        - Per position reversed nucleotide content: pd.DataFrame
+          (index: position, columns: nucleotides, values: frequency)
+        - Per sequence GC content: dict pd.DataFrame
+          (index: sequence_id, columns: GC content (%), values: GC content)
+        - Sequence lengths: pd.DataFrame
+          (index: sequence_id, columns: Length, values: length of the sequence)
+        - Sequence duplication levels: dict {sequence: extra copies},
+          holding only the sequences that occur more than once
+
+        Returns:
+            A tuple of that statistics dictionary and `end_position`.
         """
         message = f"Computing statistics for {self.filename}"
         if self.label is not None:
@@ -173,7 +182,7 @@ class SequenceStatistics:
 
         `end_position` bounds the positions the per-position checks are named for;
         `scored_end_position` bounds the positions allowed to set a flag, and is
-        the window the figures draw. The module comment says why those are two
+        the window the figures draw. The module docstring says why those are two
         different numbers. Both are 1-based and inclusive, and both are 0 when
         there is nothing to report or nothing to score.
 
@@ -432,13 +441,13 @@ class SequenceStatistics:
                     nucleotides_per_position[position][nucleotide] = 0
         return nucleotides_per_position
 
-    def _compute_sequence_duplication_levels(self):
+    def _compute_sequence_duplication_levels(self) -> None:
         """
         Compute the duplication levels for each sequence in the given list of sequences.
 
-        @return: None; stores 'Sequence duplication levels' in `self.stats` as a
-            dictionary of {sequence: number of extra copies}, ordered most
-            duplicated first. Sequences occurring once are not included.
+        Stores 'Sequence duplication levels' in `self.stats` as a dictionary of
+        `{sequence: number of extra copies}`, ordered most duplicated first. Sequences
+        occurring once are not included.
         """
 
         sequence_counts = Counter(self.sequences)

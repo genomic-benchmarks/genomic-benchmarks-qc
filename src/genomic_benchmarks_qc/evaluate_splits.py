@@ -216,9 +216,9 @@ def _write_mmseqs_report_bundle(
     )
 
 def run(
-    train_files,
-    test_files,
-    format,
+    train_files: list[str],
+    test_files: list[str],
+    format: str,
     out_folder: str | None = '.',
     sequence_column: list[str] | None = None,
     report_types: list[str] | None = None,
@@ -242,25 +242,26 @@ def run(
     collection, dataset - is left to the caller, who expresses it through
     `out_folder`.
 
-    @param train_files: List of paths to training files.
-    @param test_files: List of paths to testing files.
-    @param format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
-    @param out_folder: Path to the output folder; reports go into '<out_folder>/split/'. Default:
-        '.'.
-    @param sequence_column: Name of the columns with sequences to analyze for datasets in CSV/TSV
-        format. Several columns are concatenated per row and searched together. Default:
-        ['sequence'].
-    @param report_types: Types of reports to generate. Default: ['html', 'simple'].
-    @param similarity_threshold: Similarity threshold for flagging potential data leakage (between 0
-        and 100). Default: 90.0.
-    @param threads: Maximum number of threads MMseqs2 will use. Default: None.
-    @param split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G, 1T).
-        Default: None.
-    @param keep_tmp_files: Keep temporary files generated for MMseqs2 debugging. Default: False.
-    @param log_level: Logging level, default to INFO.
-    @param log_file: Path to the log file. If provided, logs will be written to this file as well as
-        to the console.
-    @return: None
+    Args:
+        train_files: List of paths to training files.
+        test_files: List of paths to testing files.
+        format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
+        out_folder: Path to the output folder; reports go into '<out_folder>/split/'.
+            Default: `'.'`.
+        sequence_column: Name of the columns with sequences to analyze for datasets in
+            CSV/TSV format. Several columns are concatenated per row and searched
+            together. Default: `['sequence']`.
+        report_types: Types of reports to generate. Default: `['html', 'simple']`.
+        similarity_threshold: Similarity threshold for flagging potential data leakage
+            (between 0 and 100). Default: `90.0`.
+        threads: Maximum number of threads MMseqs2 will use. Default: `None`.
+        split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G,
+            1T). Default: `None`.
+        keep_tmp_files: Keep temporary files generated for MMseqs2 debugging.
+            Default: `False`.
+        log_level: Logging level, default to INFO.
+        log_file: Path to the log file. If provided, logs will be written to this file as
+            well as to the console.
     """
 
     if sequence_column is None:

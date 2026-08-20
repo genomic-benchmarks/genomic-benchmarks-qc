@@ -190,7 +190,9 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
     if end_position is None:
         end_position = drawn_window(stats1, stats2)
     if bases_overlap is None:
-        bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
+        bases_overlap = sorted(
+            set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])
+        )
 
     plots_paths = {}
 
