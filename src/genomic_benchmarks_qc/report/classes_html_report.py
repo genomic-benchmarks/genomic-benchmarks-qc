@@ -97,7 +97,7 @@ HTML_TEMPLATE = """
             </div>
             <h2>Summary</h2>
             <div class="sidebar-item">
-                <span style="display: inline-block; width: 40px;"></span>
+                <span class="sidebar-spacer" style="display: inline-block; width: 40px;"></span>
                 <a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a>
             </div>
             <div class="sidebar-item">

@@ -121,7 +121,7 @@ h3 { color: var(--ink-2); }
 .sidebar > .sidebar-item .status-icon {
   width: var(--dot); height: var(--dot); line-height: var(--dot); font-size: 11px;
 }
-.sidebar-item > span[style*="width: 40px"] { width: var(--dot) !important; }
+.sidebar-item > .sidebar-spacer { width: var(--dot) !important; }
 .status-icon-small {
   width: 22px; height: 22px; line-height: 22px; font-size: 11px;
   border-radius: 50%; font-family: var(--ui);
