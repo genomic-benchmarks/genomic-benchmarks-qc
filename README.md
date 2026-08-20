@@ -7,13 +7,6 @@
 
 Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
 
-<!-- TODO(screenshot): add the file, then uncomment the <img> below.
-      assets/report-summary.png — top of gb-qc-report.html: the Summary
-     table with its Pass/Warning/Fail flags, plus the first plot below it. ~1200px wide. -->
-<!-- <img src="assets/report-summary.png" alt="Example gb-qc HTML report" width="800" /> -->
-
-**[Open the example report →](https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html)** — or [browse all example outputs](example_outputs/)
-
 ## What it catches
 
 A model that scores well on a biased dataset has learned the bias, not the biology. `gb-qc` looks for the differences a classifier could exploit without understanding anything:
@@ -23,7 +16,9 @@ A model that scores well on a biased dataset has learned the bias, not the biolo
 - **Position 1 is `N` in one class only**, or every sequence in one class starts with the same adapter — a per-position give-away that no summary statistic would show.
 - **The same sequence appears in both classes, or your test set repeats your training set.** `evaluate-splits` catches near-duplicates too, with an MMseqs2 similarity search.
 
-Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
+Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
+
+<img src="./assets/genomic-benchmarks-qc-html-report.png" alt="Example gb-qc HTML report" width="800" />
 
 ## Installation
 
@@ -69,7 +64,7 @@ INFO - Generating PNG plots at: .../class/sequence/0_vs_1/plots
 INFO - Classes evaluation successfully completed.
 ```
 
-and leaves you a report to open — [this one](https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html):
+and leaves you a report to open — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html):
 
 ```text
 example_outputs/enhancers_dataset/class/sequence/0_vs_1/
@@ -140,7 +135,7 @@ flags one when it exceeds `--similarity-threshold` (90% by default). The report 
 percentage of leaked queries and targets, a histogram of the similarity distribution, and
 the rendered alignments of the 100 most similar pairs, so you can see what is actually
 shared. The bundled enhancers example carries a little real leakage: 0.67% of queries and
-0.33% of targets — [see the report](https://htmlpreview.github.io/?https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
+0.33% of targets — [see the report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
 
 ## Input Formats
 
