@@ -37,6 +37,7 @@ of sequences: it is ~75 bytes per position per direction, against ~900 KB for
 the PNG it replaces.
 """
 
+import html
 import json
 
 import numpy as np
@@ -247,9 +248,13 @@ def viewer_html(payload, dom_id):
         HTML snippet as a string.
     """
     labels = payload['labels']
-    aria = (f"Per-position nucleotide frequency for {', '.join(payload['nucleotides'])} "
-            f"across positions 1 to {payload['endPosition']}, comparing "
-            f"{labels[0]} with {labels[1]}. Flagged positions are listed below the plot.")
+    # The attribute holds the same two names and the same bases as the payload,
+    # so it is escaped for the same reason the payload is: a label carrying a
+    # quote would otherwise end the attribute and the element with it.
+    aria = html.escape(
+        f"Per-position nucleotide frequency for {', '.join(payload['nucleotides'])} "
+        f"across positions 1 to {payload['endPosition']}, comparing "
+        f"{labels[0]} with {labels[1]}. Flagged positions are listed below the plot.")
     return f'''{payload_script(payload, dom_id + '-data')}
 <div class="ppv" id="{dom_id}" data-payload="{dom_id}-data">
   <div class="ppv-bar">

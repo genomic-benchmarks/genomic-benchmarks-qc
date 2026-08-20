@@ -101,6 +101,18 @@
     return v == null || isNaN(v) ? '—' : v.toFixed(3);
   }
 
+  /* The payload is data, not markup: a class label is whatever the caller
+   * passed to --label or whatever the file was called, and a base is any
+   * character the sequences contained. Both are written into table markup
+   * below, so both go through here on the way out. */
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function createViewer(root) {
     var dataEl = document.getElementById(root.getAttribute('data-payload'));
     if (!dataEl) return null;
@@ -707,7 +719,7 @@
             + ' of ' + count.toLocaleString() + '</td>'
             + '<td>(' + Math.round(frac * 100) + '%)</td>';
         return '<tr><th><span class="ppv-swatch" style="background:' + data.colors[i]
-          + '"></span>' + data.labels[i] + '</th>' + reach + '</tr>';
+          + '"></span>' + esc(data.labels[i]) + '</th>' + reach + '</tr>';
       }).filter(Boolean);
       return rows.length
         ? '<div class="ppv-tt-reach"><div class="ppv-tt-reach-head">'
@@ -732,7 +744,7 @@
           ? '<span class="ppv-chip" style="background:' + data.flagColors[fl] + '">' + fl + '</span>'
           : '';
         return '<tr' + (nts[hoverPanel] === nt ? ' class="is-focus"' : '') + '>'
-          + '<th>' + nt + '</th>'
+          + '<th>' + esc(nt) + '</th>'
           + '<td>' + fmt(v0) + '</td><td>' + fmt(v1) + '</td>'
           + (showFlags ? '<td class="ppv-tt-flag">' + chip + '</td>' : '') + '</tr>';
       }).join('');
@@ -743,8 +755,8 @@
         '<div class="ppv-tt-head">Position ' + hover + '</div>'
         + '<div class="ppv-tt-sub">Frequency of each base, per class</div>'
         + '<table><thead><tr><th>Base</th>'
-        + '<td><span class="ppv-swatch" style="background:' + data.colors[0] + '"></span>' + data.labels[0] + '</td>'
-        + '<td><span class="ppv-swatch" style="background:' + data.colors[1] + '"></span>' + data.labels[1] + '</td>'
+        + '<td><span class="ppv-swatch" style="background:' + data.colors[0] + '"></span>' + esc(data.labels[0]) + '</td>'
+        + '<td><span class="ppv-swatch" style="background:' + data.colors[1] + '"></span>' + esc(data.labels[1]) + '</td>'
         + (showFlags ? '<td>Flag</td>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>'
         + reachBlock();
       tooltip.hidden = false;
@@ -940,7 +952,7 @@
           + '<td class="qc-nowrap"><span class="ppv-sev" style="background:'
           + data.flagColors[r.flag] + '"></span>' + r.flag + '</td>'
           + '<td class="qc-key">' + r.pos + '</td>'
-          + '<td class="qc-mono">' + r.nt + '</td>'
+          + '<td class="qc-mono">' + esc(r.nt) + '</td>'
           + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td>'
           + '<td class="qc-num">' + data.freq[r.nt][0][r.pos - 1].toFixed(3) + '</td>'
           + '<td class="qc-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td></tr>';
@@ -968,8 +980,8 @@
           + '<th rowspan="2"></th>'
           + '<th class="ppv-h-group" colspan="2">Frequency of base at position, '
           + 'per class</th></tr>'
-          + '<tr><th class="ppv-h-sub">' + swatch(0) + data.labels[0] + '</th>'
-          + '<th class="ppv-h-sub">' + swatch(1) + data.labels[1] + '</th></tr>'
+          + '<tr><th class="ppv-h-sub">' + swatch(0) + esc(data.labels[0]) + '</th>'
+          + '<th class="ppv-h-sub">' + swatch(1) + esc(data.labels[1]) + '</th></tr>'
           + '</thead><tbody>'
           + rows.slice(0, limit).map(cell).join('')
           + '</tbody></table>'
