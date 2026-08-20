@@ -2,6 +2,13 @@
 
 Self-contained in the same way as the class report: embedded plots, inlined
 styling, and the top alignments rendered inline as text.
+
+The page is built from the same components as the class report - the cards, the
+key/value tables, and the collapsible findings panel with a listing table inside
+it (.qc-panel / .qc-listing in report_design.css). The high-similarity pairs are
+evidence for the Data Leakage check in the way the flagged positions are
+evidence for a per-position check, so they sit in that check's card in the same
+kind of panel, and not in a card of their own with no flag and no nav entry.
 """
 
 from datetime import datetime
@@ -13,6 +20,12 @@ from genomic_benchmarks_qc.report.utils import encode_image_to_base64, put_data,
 from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
 
+# Rows of the alignment listing that the page carries. The listing is evidence a
+# reader spot-checks, not a data file - every hit is exported to
+# mmseqs/mmseqs2_search_result.tsv - and each row here embeds two coloured
+# sequences, which is what the page weighs.
+ROW_CAP = 100
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -22,25 +35,6 @@ HTML_TEMPLATE = """
     <title>Similar Sequences Report</title>
     <style>
     {{common_css}}
-
-    /* Local styles for alignment display only */
-    .alignment-block {
-        font-family: monospace;
-        font-size: 12px;
-        background: #f7f7f7;
-        padding: 10px;
-        white-space: pre;
-        overflow-x: auto;
-        border: 1px solid #ddd;
-    }
-    /* DNA base coloring */
-    .base-A { color: #2ca02c; font-weight: bold; } /* green */
-    .base-C { color: #1f77b4; font-weight: bold; } /* blue */
-    .base-G { color: #ff7f0e; font-weight: bold; } /* orange */
-    .base-T { color: #d62728; font-weight: bold; } /* red */
-
-    .base-gap { color: #555; } /* darker grey */
-    .base-other { color: #999; }  /* N, ambiguous - grey */
     </style>
 </head>
 <body>
@@ -67,8 +61,8 @@ HTML_TEMPLATE = """
             <section id="basic-descriptive-statistics" class="table-section">
                 <div class="section-header">
                     <h2>Basic Descriptive Statistics</h2>
-                </div>            
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                </div>
+                <table>
                     <tr id="leakage-filename">
                         <td><span>Filename</span></td>
                         <td style="text-align: center;">{{test_filename}}</td>
@@ -94,7 +88,7 @@ HTML_TEMPLATE = """
                         <td style="text-align: center;">{{max_length_test}}</td>
                         <td style="text-align: center;">{{max_length_train}}</td>
                     </tr>
-                </table>            
+                </table>
             </section>
 
             <section id="similarity-section" class="table-section">
@@ -107,24 +101,54 @@ HTML_TEMPLATE = """
                 </div>
                 <div id="data-leakage-explanation" class="explanation-text">
                     <p>
-                        Genomic Benchmarks QC evaluate-splits uses 
-                        <a href="https://github.com/soedinglab/MMseqs2" target="_blank">MMseqs2</a> 
-                        to perform an ultra fast and sensitive test sequence search against a train set database and compute alignment-based 
+                        Genomic Benchmarks QC evaluate-splits uses
+                        <a href="https://github.com/soedinglab/MMseqs2" target="_blank">MMseqs2</a>
+                        to perform an ultra fast and sensitive test sequence search against a train set database and compute alignment-based
                         metrics for detecting data leakage across train–test splits.
                     </p>
                     <p>
-                        Data leakage is the percentage of train/test sequences whose best alignment exceeds the configured similarity threshold. 
-                        Here, similarity equals min(query coverage, target coverage) × percent identity, 
-                        where coverage is the fraction of each sequence spanned by the alignment, 
+                        Data leakage is the percentage of train/test sequences whose best alignment exceeds the configured similarity threshold.
+                        Here, similarity equals min(query coverage, target coverage) × percent identity,
+                        where coverage is the fraction of each sequence spanned by the alignment,
                         and percent identity is the proportion of identical aligned positions.
                     </p>
                     <p>
-                        Status is based on the percentage of test sequences with similarity at or above the threshold: 
-                        Pass means 0% leaked test sequences, Warning means greater than 0% and less than 2%, 
+                        Status is based on the percentage of test sequences with similarity at or above the threshold:
+                        Pass means 0% leaked test sequences, Warning means greater than 0% and less than 2%,
                         and Fail means 2% or more.
                     </p>
+                    <p>
+                        The panel under the histogram lists the alignments at or above the threshold, up to the
+                        first {{row_cap}}; every hit is exported to
+                        <code>mmseqs/mmseqs2_search_result.tsv</code> beside this report. Its columns are:
+                    </p>
+                    <dl class="explanation-defs">
+                        <dt>Query (Q)</dt>
+                        <dd>Identifier of the test sequence: <code>seq_&lt;i&gt;_test</code>, where i is its 0-based position in the input test file.</dd>
+
+                        <dt>Target (T)</dt>
+                        <dd>Identifier of the train sequence: <code>seq_&lt;i&gt;_train</code>, where i is its 0-based position in the input train file.</dd>
+
+                        <dt>Q Cov.</dt>
+                        <dd>Fraction of the query sequence covered by the alignment (0–1).</dd>
+
+                        <dt>T Cov.</dt>
+                        <dd>Fraction of the target sequence covered by the alignment (0–1).</dd>
+
+                        <dt>% Identity</dt>
+                        <dd>Percent identical aligned positions in the aligned region.</dd>
+
+                        <dt>% Similarity</dt>
+                        <dd>Similarity score used for leakage detection, calculated as min(Q Cov., T Cov.) × % Identity.</dd>
+
+                        <dt>E-value</dt>
+                        <dd>MMseqs2 E-value (lower is more "significant").</dd>
+
+                        <dt>Alignment</dt>
+                        <dd>Click “Show” to expand the alignment visualisation for a row.</dd>
+                    </dl>
                 </div>
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <table>
                     <tr id="filename">
                         <td><span>Filename</span></td>
                         <td style="text-align: center;">{{test_filename}}</td>
@@ -140,77 +164,18 @@ HTML_TEMPLATE = """
                         <td style="text-align: center;">{{num_queries_above_thr}}</td>
                         <td style="text-align: center;">{{num_targets_above_thr}}</td>
                     </tr>
-                </table> 
-
-                <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" style="max-width: 100%; width: 100%; height: auto; display: block; margin: 0 auto;">
-            </section>
-
-            <section id="results-section">
-                <div class="section-header">
-                    <h3 style="margin: 0;">Alignment of High-Similarity Sequences (Top 100)</h3>
-                    <button class="toggle-btn"
-                            onclick="toggleExplanation('results-explanation')"
-                            title="Show explanation">?</button>
-                </div>
-
-                <div id="results-explanation" class="explanation-text">
-                    <p>
-                        This table lists the top 100 alignments between test (query) and train (target)
-                        sequences that exceed the defined similarity threshold.
-                    </p>
-
-                    <div style="
-                        display: grid;
-                        grid-template-columns: 180px 1fr;
-                        gap: 4px 14px;
-                        margin-top: 10px;
-                        margin-left: 20px;
-                    ">
-                        <div><strong>Query</strong></div>
-                        <div>0-based index of the test sequence in the input test file order.</div>
-
-                        <div><strong>Target</strong></div>
-                        <div>0-based index of the train sequence in the input train file order.</div>
-
-                        <div><strong>Q Cov.</strong></div>
-                        <div>Fraction of the query sequence covered by the alignment (0–1).</div>
-
-                        <div><strong>T Cov.</strong></div>
-                        <div>Fraction of the target sequence covered by the alignment (0–1).</div>
-
-                        <div><strong>% Identity</strong></div>
-                        <div>Percent identical aligned positions in the aligned region.</div>
-
-                        <div><strong>% Similarity</strong></div>
-                        <div>Similarity score used for leakage detection, calculated as min(Q Cov., T Cov.) × % Identity.</div>
-
-                        <div><strong>E-value</strong></div>
-                        <div>MMSeqs2 E-value (lower is more "significant").</div>
-
-                        <div><strong>Alignment</strong></div>
-                        <div>Click “Show” to expand the alignment visualisation for a row.</div>
-                    </div>
-                </div>
-
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">Query (Q)</th>
-                            <th style="text-align: left;">Target (T)</th>
-                            <th>Q Cov.</th>
-                            <th>T Cov.</th>
-                            <th>% Identity</th>
-                            <th>% Similarity</th>
-                            <th>E-value</th>
-                            <th>Alignment</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{results_rows}}
-                    </tbody>
                 </table>
+
+                <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" class="plot-wide">
+
+                <details class="qc-panel" id="results-section">
+                    <summary>{{alignments_count}}</summary>
+                    <div class="qc-panel-body">
+                        {{results_body}}
+                    </div>
+                </details>
             </section>
-            
+
         </div>
     </div>
 
@@ -220,13 +185,55 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict, tool_description=None):
-    """Build Train-Test Split Check HTML using shared helpers."""
+RESULTS_TABLE = """<table class="qc-listing">
+                            <thead>
+                                <tr>
+                                    <th>Query (Q)</th>
+                                    <th>Target (T)</th>
+                                    <th>Q Cov.</th>
+                                    <th>T Cov.</th>
+                                    <th>% Identity</th>
+                                    <th>% Similarity</th>
+                                    <th>E-value</th>
+                                    <th>Alignment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{results_rows}}
+                            </tbody>
+                        </table>"""
+
+
+def alignments_count_text(total, shown):
+    """The panel's summary line: how many pairs leaked, and how many are listed.
+
+    The same job the flagged-position panel's count does in the class report -
+    say what is inside before it is opened - and it has to distinguish a clean
+    split from a listing that was capped.
+    """
+    if total == 0:
+        return 'No high-similarity alignments'
+    plural = '' if total == 1 else 's'
+    capped = f' (first {shown} shown)' if shown < total else ''
+    return f'{total} high-similarity alignment{plural}{capped}'
+
+
+def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict,
+                             tool_description=None, total_hits=None):
+    """Build Train-Test Split Check HTML using shared helpers.
+
+    Args:
+        results_filt: The hits to list, already capped by the caller or not.
+        total_hits: How many hits there were before any cap, so the panel can say
+            what it is not showing. Defaults to the number of rows given.
+    """
 
     html_template = HTML_TEMPLATE
 
-    # insert shared CSS and header fragment
-    html_template = put_data(html_template, "{{common_css}}", COMMON_CSS)
+    # insert shared CSS and header fragment; split_report.css is layered on top,
+    # the way per_position_viewer.css is in the class report
+    html_template = put_data(html_template, "{{common_css}}",
+                             COMMON_CSS + assets.stylesheet('split_report.css'))
     # The shared behaviour, plus this report's own alignment toggles. At the end
     # of the body so it runs against a complete page.
     html_template = put_data(html_template, "{{report_scripts}}",
@@ -246,6 +253,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
     html_template = put_data(html_template, "{{version}}", __version__)
+    html_template = put_data(html_template, "{{row_cap}}", str(ROW_CAP))
 
     html_template = put_data(html_template, "{{train_filename}}", str(basic_stats['train_filename']))
     html_template = put_data(html_template, "{{test_filename}}", str(basic_stats['test_filename']))
@@ -263,7 +271,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{num_targets_above_thr}}", f"{threshold_stats['num_targets_above_thr']}")
 
     # insert plots as base64-encoded images
-    html_template = put_data(html_template, "{{histogram_similarity_base64}}", 
+    html_template = put_data(html_template, "{{histogram_similarity_base64}}",
                              encode_image_to_base64(plots_paths_dict['Similarity histograms']))
 
     leakage_flag = flag_split_data_leakage(threshold_stats["perc_queries_above_thr"])
@@ -273,15 +281,21 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         icon_html({"Data Leakage": leakage_flag}, "Data Leakage")
     )
 
-    if len(results_filt) == 0:
-        html_template = put_data(
-            html_template,
-            "{{results_rows}}",
-            "<tr><td colspan='8'>No high-similarity sequences found across train/test splits.</td></tr>"
-        )
-        return html_template
+    results_display = results_filt.head(ROW_CAP).copy()  # the page lists at most this many hits
+    total = len(results_filt) if total_hits is None else total_hits
+    html_template = put_data(html_template, "{{alignments_count}}",
+                             alignments_count_text(total, len(results_display)))
 
-    results_display = results_filt.head(100).copy() # limit to top 100 hits for display in HTML report
+    if len(results_display) == 0:
+        # An empty panel says the same thing the flagged-position panel does when
+        # a check found nothing: the listing is empty because there is nothing in
+        # it, not because it failed to build.
+        return put_data(
+            html_template,
+            "{{results_body}}",
+            '<p class="qc-empty">No test sequence aligns to a train sequence at or above '
+            'the similarity threshold.</p>'
+        )
 
     rows = []
     alignment_error_logged = False
@@ -301,34 +315,33 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
                     row['query'], row['target'], type(e).__name__, e,
                 )
             alignment_str_color = (
-                '<span style="color:red; font-weight:bold;">'
-                'ALIGNMENT VISUALISATION ERROR</span><br>'
+                '<span class="aln-error">ALIGNMENT VISUALISATION ERROR</span><br>'
                 f'{html.escape(type(e).__name__)}: {html.escape(str(e))}<br>'
-                '<span style="font-weight:normal;">This can happen with a '
+                '<span class="aln-error-detail">This can happen with a '
                 'conda-installed mmseqs2 — see the installation notes in README.md.</span>'
             )
         rows.append(f"""
     <tr>
-        <td>{row['query']}</td>
-        <td>{row['target']}</td>
-        <td style="text-align: center; ">{row['qcov']:.2f}</td>
-        <td style="text-align: center; ">{row['tcov']:.2f}</td>
-        <td style="text-align: center; ">{row['pident']:.1f}</td>
-        <td style="text-align: center; ">{row['min_cov*pident']:.2f}</td>
-        <td style="text-align: center; ">{row['evalue']:.2e}</td>
-        <td style="text-align: center;">
-            <button onclick="toggleAlignment('aln-{i}', this)">
+        <td class="qc-mono">{row['query']}</td>
+        <td class="qc-mono">{row['target']}</td>
+        <td class="qc-num">{row['qcov']:.2f}</td>
+        <td class="qc-num">{row['tcov']:.2f}</td>
+        <td class="qc-num">{row['pident']:.1f}</td>
+        <td class="qc-key">{row['min_cov*pident']:.2f}</td>
+        <td class="qc-num">{row['evalue']:.2e}</td>
+        <td>
+            <button type="button" class="qc-btn" onclick="toggleAlignment('aln-{i}', this)">
                 Show
             </button>
         </td>
     </tr>
 
     <tr id="aln-{i}" style="display:none;">
-        <td colspan="8">
+        <td class="aln-cell" colspan="8">
             <pre class="alignment-block">{alignment_str_color}</pre>
         </td>
     </tr>
     """)
-        
-    html_template = put_data(html_template, "{{results_rows}}", "\n".join(rows))
-    return html_template
+
+    results_table = put_data(RESULTS_TABLE, "{{results_rows}}", "\n".join(rows))
+    return put_data(html_template, "{{results_body}}", results_table)

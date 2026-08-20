@@ -3,6 +3,10 @@
  *
  * Tokens come from report_design.css - this file must not redeclare them on
  * .ppv, or a change to the palette would stop at the edge of this component.
+ * The same goes for the look of the parts this figure shares with the split
+ * report: the collapsible panel (.qc-panel), the listing table inside it
+ * (.qc-listing) and the toolbar buttons (.qc-btn) are all defined there, and
+ * what is left here is only what is particular to this figure.
  *
  * The canvas is wider than the box it sits in: it also carries the coverage
  * panel's right-hand y axis, which lives outside the plot body. .ppv-plot is
@@ -19,12 +23,6 @@
 }
 .ppv-bar-gap { flex: 1 1 auto; }
 .ppv-bar-label { font-size: 13px; color: var(--ink-3); margin-right: 6px; }
-.ppv-bar button {
-  font-family: var(--ui); font-size: 13px; color: var(--ink-2); background: var(--panel);
-  border: 1px solid var(--line); border-radius: 7px; padding: 5px 11px; cursor: pointer;
-  transition: border-color .15s, color .15s, background .15s;
-}
-.ppv-bar button:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .ppv-readout { font-size: 13px; color: var(--ink-3); font-family: var(--mono); margin: 0; }
 .ppv-plot { position: relative; width: 92%; }
 .ppv-canvas { display: block; cursor: crosshair; }
@@ -58,31 +56,9 @@
 .ppv-swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
 .ppv-chip { color: #fff; border-radius: 9px; padding: 1px 7px; font-size: 10.5px; font-family: var(--ui); }
 
-/* flagged-position list: collapsed, capped, built from the payload */
-.ppv-flags { margin: 16px 0 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
-.ppv-flags > summary {
-  cursor: pointer; padding: 11px 14px; font-size: 14px; font-weight: 550; color: var(--ink-2);
-  list-style: none; display: flex; align-items: center; gap: 8px; border-radius: var(--r);
-}
-.ppv-flags > summary::-webkit-details-marker { display: none; }
-.ppv-flags > summary::before {
-  content: "›"; font-size: 17px; color: var(--ink-3); transition: transform .18s;
-  display: inline-block; line-height: 1;
-}
-.ppv-flags[open] > summary::before { transform: rotate(90deg); }
-.ppv-flags[open] > summary { border-bottom: 1px solid var(--line-2); border-radius: var(--r) var(--r) 0 0; }
-.ppv-flags > summary:hover { color: var(--accent); }
-.ppv-flags-body { padding: 4px 14px 14px; overflow-x: auto; }
-.ppv-flagtable { width: 100%; table-layout: auto; border-collapse: collapse; font-size: 13.5px; }
-/* Every column is centred, header and body alike. The cells all hold something
- * of a fixed width - a flag word, a position, one base, a three-decimal
- * frequency - so there is no ragged edge for a left or right rule to tidy up,
- * and one alignment throughout keeps each label sitting over its own numbers. */
-.ppv-flagtable th {
-  text-align: center; font-weight: 600; font-size: 11.5px; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--ink-3); padding: 10px 10px 6px; border-bottom: 1px solid var(--line);
-  white-space: nowrap;
-}
+/* flagged-position list: the shared .qc-panel / .qc-listing component, plus what
+ * is particular to this table - a two-row header, and rows that zoom the figure.
+ * Everything else it looks like comes from report_design.css. */
 /* What the two rightmost columns hold, spanning them. Styled as a column header
  * and not as a caption - it inherits the uppercase, tracked-out `th` rule the
  * other headers use, so the header row reads as one row of labels rather than a
@@ -99,27 +75,13 @@
  * baseline, and only the class names sit below. */
 .ppv-flagtable thead th { vertical-align: top; }
 .ppv-flagtable th.ppv-h-sub { padding-top: 0; }
-.ppv-flagtable td {
-  padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: center;
-  font-variant-numeric: tabular-nums;
-}
+/* A row is a link into the figure: click it and the plot zooms to that position. */
 .ppv-flagtable tbody tr { cursor: pointer; }
-.ppv-flagtable tbody tr:hover { background: var(--accent-soft); }
 .ppv-flagtable tbody tr:hover .ppv-go { opacity: 1; }
-.ppv-c-flag { white-space: nowrap; color: var(--ink-2); }
-.ppv-c-pos { font-family: var(--mono); font-weight: 600; }
-.ppv-c-base { font-family: var(--mono); }
-.ppv-c-num { font-family: var(--mono); color: var(--ink-2); }
 .ppv-c-go { width: 1%; }
 .ppv-sev { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 7px; }
 .ppv-go {
   font-size: 11.5px; color: var(--accent); opacity: 0; transition: opacity .15s;
   border: 1px solid var(--accent); border-radius: 5px; padding: 1px 7px; white-space: nowrap;
 }
-.ppv-more {
-  margin: 12px 0 0; font-family: var(--ui); font-size: 13px; color: var(--accent);
-  background: transparent; border: 1px solid var(--line); border-radius: 7px;
-  padding: 6px 12px; cursor: pointer;
-}
-.ppv-more:hover { border-color: var(--accent); background: var(--accent-soft); }
-.ppv-empty { font-size: 13.5px; color: var(--ink-3); margin: 6px 0; }
+.ppv-more { margin: 12px 0 0; }

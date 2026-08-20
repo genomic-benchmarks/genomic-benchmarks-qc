@@ -248,12 +248,12 @@ def viewer_html(payload, dom_id):
     return f'''{payload_script(payload, dom_id + '-data')}
 <div class="ppv" id="{dom_id}" data-payload="{dom_id}-data">
   <div class="ppv-bar">
-    <button type="button" data-action="prev" title="Previous flagged position">&#9664; Prev flag</button>
-    <button type="button" data-action="next" title="Next flagged position">Next flag &#9654;</button>
+    <button type="button" class="qc-btn" data-action="prev" title="Previous flagged position">&#9664; Prev flag</button>
+    <button type="button" class="qc-btn" data-action="next" title="Next flagged position">Next flag &#9654;</button>
     <span class="ppv-readout" aria-live="polite"></span>
     <span class="ppv-bar-gap"></span>
-    <button type="button" data-action="reset" title="Reset zoom (or double-click the figure)">Reset zoom</button>
-    <button type="button" data-action="save" title="Save the current window as PNG">&#8595; Save view</button>
+    <button type="button" class="qc-btn" data-action="reset" title="Reset zoom (or double-click the figure)">Reset zoom</button>
+    <button type="button" class="qc-btn" data-action="save" title="Save the current window as PNG">&#8595; Save view</button>
   </div>
   <div class="ppv-plot">
     <canvas class="ppv-canvas" role="img" aria-label="{aria}"></canvas>
@@ -264,8 +264,8 @@ def viewer_html(payload, dom_id):
   </div>
   <p class="ppv-hint">Drag to zoom &middot; shift-drag to pan &middot; scroll to zoom &middot;
   double-click to reset &middot; hover for the frequencies and flags at a position</p>
-  <details class="ppv-flags">
+  <details class="qc-panel">
     <summary><span class="ppv-flags-count">Flagged positions</span></summary>
-    <div class="ppv-flags-body"></div>
+    <div class="qc-panel-body ppv-flags-body"></div>
   </details>
 </div>'''

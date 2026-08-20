@@ -167,20 +167,97 @@ pre { background: var(--line-2); border-radius: 8px; }
 /* ---------------- tables ----------------
  * report.css draws a full 1px grid and zebra stripes; rules and a hover row are
  * quieter and let the numbers line up on the right. */
-.table-section table { margin: 14px 0 0; font-size: 14px; }
-.table-section table td {
+.table-section > table { margin: 14px 0 0; font-size: 14px; }
+.table-section > table td {
   padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line-2);
   text-align: right;
 }
-.table-section table td:first-child {
+.table-section > table td:first-child {
   text-align: left; width: auto; color: var(--ink-2); font-weight: 500;
 }
-.table-section table tr:nth-child(even) { background: transparent; }
-.table-section table tr:hover { background: var(--accent-soft); }
-.table-section table tr:first-child td { font-weight: 600; color: var(--ink); }
-.table-section table span { font-weight: 600; }
+.table-section > table tr:nth-child(even) { background: transparent; }
+.table-section > table tr:hover { background: var(--accent-soft); }
+.table-section > table tr:first-child td { font-weight: 600; color: var(--ink); }
+.table-section > table span { font-weight: 600; }
 #sequence-duplication-levels table th,
 #sequence-duplication-levels table td { border: 1px solid var(--line); }
+
+/* ---------------- findings panels ----------------
+ * A check whose evidence is a list - the flagged positions under the
+ * per-position figure, the high-similarity pairs under the leakage histogram -
+ * puts it in a collapsed panel at the end of the check's card, with a listing
+ * table inside. Both reports draw the same thing, which is why the component
+ * lives here rather than beside either one's markup.
+ *
+ * The panel's summary carries the count, so a reader can see there is something
+ * in it - and how much - without opening it. */
+.qc-panel {
+  margin: 16px 0 0; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--panel);
+}
+.qc-panel > summary {
+  cursor: pointer; padding: 11px 14px; font-size: 14px; font-weight: 550;
+  color: var(--ink-2); list-style: none; display: flex; align-items: center;
+  gap: 8px; border-radius: var(--r);
+}
+.qc-panel > summary::-webkit-details-marker { display: none; }
+.qc-panel > summary::before {
+  content: "\203A"; font-size: 17px; color: var(--ink-3); transition: transform .18s;
+  display: inline-block; line-height: 1;
+}
+.qc-panel[open] > summary::before { transform: rotate(90deg); }
+.qc-panel[open] > summary {
+  border-bottom: 1px solid var(--line-2); border-radius: var(--r) var(--r) 0 0;
+}
+.qc-panel > summary:hover { color: var(--accent); }
+.qc-panel-body { padding: 4px 14px 14px; overflow-x: auto; }
+.qc-empty { font-size: 13.5px; color: var(--ink-3); margin: 6px 0; }
+
+/* ---------------- listing tables ----------------
+ * The tables inside those panels: one row per finding, unlike the two-column
+ * key/value tables above, which is why they get headers and a different rhythm.
+ *
+ * Every column is centred, header and body alike. The cells all hold something
+ * of a fixed width - a flag word, a position, one base, a three-decimal
+ * frequency, a sequence id - so there is no ragged edge for a left or right rule
+ * to tidy up, and one alignment throughout keeps each label sitting over its own
+ * numbers. */
+.qc-listing { width: 100%; table-layout: auto; border-collapse: collapse; font-size: 13.5px; }
+.qc-listing th {
+  text-align: center; font-weight: 600; font-size: 11.5px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink-3); padding: 10px 10px 6px;
+  border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.qc-listing td {
+  padding: 7px 10px; border-bottom: 1px solid var(--line-2); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.qc-listing tbody tr:hover { background: var(--accent-soft); }
+/* Cell flavours say what a column holds, not which column it is, so both
+ * reports label their cells with the same handful of names. */
+.qc-listing .qc-key { font-family: var(--mono); font-weight: 600; }
+.qc-listing .qc-mono { font-family: var(--mono); }
+.qc-listing .qc-num { font-family: var(--mono); color: var(--ink-2); }
+.qc-listing .qc-nowrap { white-space: nowrap; color: var(--ink-2); }
+
+/* ---------------- small buttons ----------------
+ * The per-position toolbar, 'show all rows', 'show this alignment': anything
+ * that is a control inside a card rather than a section of its own. */
+.qc-btn {
+  font-family: var(--ui); font-size: 13px; color: var(--ink-2); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 7px; padding: 5px 11px; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.qc-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* A term-and-meaning list inside an explanation: the column key the split
+ * report's alignment table needs, kept out of the markup so it reads like the
+ * prose explanations elsewhere. */
+.explanation-defs {
+  display: grid; grid-template-columns: 150px 1fr; gap: 4px 14px; margin: 10px 0 0 18px;
+}
+.explanation-defs dt { font-weight: 600; color: var(--ink); }
+.explanation-defs dd { margin: 0; }
 
 /* ---------------- figures ----------------
  * .plot-wide is the family whose axes have to line up down the page: the

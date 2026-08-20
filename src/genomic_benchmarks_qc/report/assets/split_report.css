@@ -1,0 +1,35 @@
+/* What is particular to the split report: the alignment a row of the
+ * high-similarity listing expands into.
+ *
+ * Everything else that report draws - the cards, the key/value tables, the
+ * collapsible findings panel and the listing table inside it - is the shared
+ * design in report.css and report_design.css, the same components the class
+ * report uses. This file is to that report what per_position_viewer.css is to
+ * the class report's figure, and it must not redeclare the tokens either.
+ */
+
+/* The expanded row is one wide cell holding the alignment, so it gets none of
+ * the listing's cell padding - the <pre> inside carries its own - and none of
+ * its centring. Selected through .qc-listing to outrank the `td` rules there. */
+.qc-listing .aln-cell { padding: 0 0 10px; text-align: left; }
+.alignment-block {
+  font-family: var(--mono); font-size: 12px; line-height: 1.45;
+  background: var(--line-2); border-radius: 8px; padding: 10px;
+  white-space: pre; overflow-x: auto; margin: 0;
+}
+
+/* DNA base colouring. Query and target are printed one above the other, so the
+ * colours are what makes a mismatch findable by eye; they are the standard
+ * four-base palette rather than report tokens, because they name bases and not
+ * severities. */
+.base-A { color: #2ca02c; font-weight: bold; } /* green */
+.base-C { color: #1f77b4; font-weight: bold; } /* blue */
+.base-G { color: #ff7f0e; font-weight: bold; } /* orange */
+.base-T { color: #d62728; font-weight: bold; } /* red */
+.base-gap { color: #555; }                     /* darker grey */
+.base-other { color: #999; }                   /* N, ambiguous - grey */
+
+/* The alignment visualisation can fail on an mmseqs2 build that reports no
+ * backtrace; the row says so in place of the alignment. */
+.aln-error { color: var(--fail); font-weight: bold; }
+.aln-error-detail { font-weight: normal; color: var(--ink-2); }

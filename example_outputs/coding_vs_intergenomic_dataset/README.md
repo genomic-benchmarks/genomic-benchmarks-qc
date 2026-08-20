@@ -11,7 +11,7 @@ gb-qc evaluate-classes \
 
 Running the above command for `gb-qc evaluate-classes` tool will create `example_outputs/coding_vs_intergenomic_dataset` folder with the following results:
 
-```
+```text
 class/
 └── sequence/
     └── coding_seqs_vs_intergenomic_seqs/

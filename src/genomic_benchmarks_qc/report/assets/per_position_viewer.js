@@ -927,23 +927,23 @@
         // An empty list means two opposite things, and reading the wrong one is
         // reading an unscored comparison as a clean one.
         host.innerHTML = data.compared === false
-          ? '<p class="ppv-empty">No position here was compared: too few sequences reach any of '
+          ? '<p class="qc-empty">No position here was compared: too few sequences reach any of '
             + 'them. The frequencies are drawn so they can be read by eye, and nothing in the '
             + 'figure is a finding.</p>'
-          : '<p class="ppv-empty">Every position passed in this direction.</p>';
+          : '<p class="qc-empty">Every position passed in this direction.</p>';
         return;
       }
 
       var shown = Math.min(ROW_CAP, rows.length);
       function cell(r) {
         return '<tr tabindex="0" data-pos="' + r.pos + '">'
-          + '<td class="ppv-c-flag"><span class="ppv-sev" style="background:'
+          + '<td class="qc-nowrap"><span class="ppv-sev" style="background:'
           + data.flagColors[r.flag] + '"></span>' + r.flag + '</td>'
-          + '<td class="ppv-c-pos">' + r.pos + '</td>'
-          + '<td class="ppv-c-base">' + r.nt + '</td>'
+          + '<td class="qc-key">' + r.pos + '</td>'
+          + '<td class="qc-mono">' + r.nt + '</td>'
           + '<td class="ppv-c-go"><span class="ppv-go">Zoom</span></td>'
-          + '<td class="ppv-c-num">' + data.freq[r.nt][0][r.pos - 1].toFixed(3) + '</td>'
-          + '<td class="ppv-c-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td></tr>';
+          + '<td class="qc-num">' + data.freq[r.nt][0][r.pos - 1].toFixed(3) + '</td>'
+          + '<td class="qc-num">' + data.freq[r.nt][1][r.pos - 1].toFixed(3) + '</td></tr>';
       }
       /* Two header rows: what the numbers hold spans the two class columns, and
        * the class names sit under it as its sub-columns. The two frequencies are
@@ -961,7 +961,7 @@
       var posLabel = data.xLabel || 'Position in sequence';
       function paint(limit) {
         host.innerHTML =
-          '<table class="ppv-flagtable"><thead>'
+          '<table class="qc-listing ppv-flagtable"><thead>'
           + '<tr><th rowspan="2">Flag</th>'
           + '<th rowspan="2">' + posLabel + '</th>'
           + '<th rowspan="2">Base</th>'
@@ -974,7 +974,7 @@
           + rows.slice(0, limit).map(cell).join('')
           + '</tbody></table>'
           + (limit < rows.length
-            ? '<button type="button" class="ppv-more">Show all ' + rows.length + ' positions</button>'
+            ? '<button type="button" class="qc-btn ppv-more">Show all ' + rows.length + ' positions</button>'
             : '');
         host.querySelectorAll('tbody tr').forEach(function (tr) {
           var pos = +tr.getAttribute('data-pos');

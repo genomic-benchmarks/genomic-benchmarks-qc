@@ -125,8 +125,9 @@ With variable-length sequences, the tail positions that too few sequences reach 
 `evaluate-splits` searches every test sequence against the training set with MMseqs2 and
 flags one when it exceeds `--similarity-threshold` (90% by default). The report gives the
 percentage of leaked queries and targets, a histogram of the similarity distribution, and
-the rendered alignments of the 100 most similar pairs, so you can see what is actually
-shared. The bundled enhancers example carries a little real leakage: 0.67% of queries and
+a panel listing the leaked pairs — up to the first 100, each expanding into its rendered
+alignment, so you can see what is actually shared. Every hit is exported to
+`mmseqs/mmseqs2_search_result.tsv` beside the report. The bundled enhancers example carries a little real leakage: 0.67% of queries and
 0.33% of targets — [see the report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
 
 ## Input Formats

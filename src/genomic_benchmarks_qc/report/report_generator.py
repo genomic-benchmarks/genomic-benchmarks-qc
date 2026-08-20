@@ -19,9 +19,13 @@ from genomic_benchmarks_qc.report import classes_plots
 from genomic_benchmarks_qc.report import splits_plots
 from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 
-def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max):
+def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path, plots_dir, query_similarity_max, target_similarity_max, total_hits=None):
     """
-    Generate an HTML report visualising data leakage. 
+    Generate an HTML report visualising data leakage.
+
+    `results_filt` holds the hits the page lists; `total_hits` is how many there
+    were before that cap, so the listing can say what it is not showing. It
+    defaults to the number of rows given, for a caller that does not cap.
     """
     plots_dir.mkdir(parents=True, exist_ok=True)
 
@@ -29,7 +33,8 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
 
     plots_paths_dict = generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
 
-    template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict)
+    template = get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict,
+                                        total_hits=total_hits)
     with open(output_path, 'w') as file:
         file.write(template)
         

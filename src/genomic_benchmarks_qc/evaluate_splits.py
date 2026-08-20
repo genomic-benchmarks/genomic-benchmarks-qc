@@ -18,6 +18,7 @@ import shutil
 import pandas as pd
 
 from genomic_benchmarks_qc.report.report_generator import generate_splits_html_report, generate_simple_report
+from genomic_benchmarks_qc.report.split_html_report import ROW_CAP
 from genomic_benchmarks_qc.utils.mmseqs_summary import summarize_mmseqs_output, build_mmseqs_export_frame
 from genomic_benchmarks_qc.utils import mmseqs_runtime
 from genomic_benchmarks_qc.utils.input_utils import (
@@ -183,9 +184,12 @@ def _write_mmseqs_report_bundle(
         test_stats,
     )
 
-    # Prepare top 100 hits with full alignment sequences for HTML visualization
+    # Prepare the hits the report lists, with full alignment sequences; the rest
+    # are exported to TSV above and never need their alignments rendered. The cap
+    # is the report's, so the page and the count it prints cannot disagree.
+    total_hits = len(results_filt)
     results_filt_for_html = add_alignment_sequences(
-        results_filt.head(100),
+        results_filt.head(ROW_CAP),
         test_fasta_path,
         train_fasta_path,
     )
@@ -202,6 +206,7 @@ def _write_mmseqs_report_bundle(
         plots_dir,
         summary["query_similarity_max"],
         summary["target_similarity_max"],
+        total_hits=total_hits,
     )
 
 def run(

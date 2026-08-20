@@ -17,6 +17,7 @@ import pytest
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
+from genomic_benchmarks_qc.report.split_html_report import alignments_count_text
 from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
@@ -170,21 +171,63 @@ class TestDuplicateSequences:
         assert json.loads(block) == [shared]
 
 
+def split_page(tmp_path, monkeypatch, hits):
+    """Run the split report end to end against a fixed set of MMseqs2 hits."""
+    train = write_csv(tmp_path / 'train.csv', ['0'], rows_per_label=5)
+    test = write_csv(tmp_path / 'test.csv', ['0'], rows_per_label=5)
+
+    def fake_run_search(query_fasta, target_fasta, output_path, tmp_dir, **kwargs):
+        return write_mmseqs_output(output_path, hits)
+
+    monkeypatch.setattr(evaluate_splits.mmseqs_runtime, 'run_search', fake_run_search)
+    evaluate_splits.run(train_files=[train], test_files=[test], format='csv',
+                        out_folder=str(tmp_path / 'out'), report_types=['html'])
+
+    return (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
+            / 'gb-qc-report.html').read_text()
+
+
 class TestSplitReport:
     def test_it_gets_the_shared_behaviour_and_its_own(self, tmp_path, monkeypatch):
-        train = write_csv(tmp_path / 'train.csv', ['0'], rows_per_label=5)
-        test = write_csv(tmp_path / 'test.csv', ['0'], rows_per_label=5)
-
-        def fake_run_search(query_fasta, target_fasta, output_path, tmp_dir, **kwargs):
-            return write_mmseqs_output(output_path, [mmseqs_hit('seq_0_test', 'seq_0_train')])
-
-        monkeypatch.setattr(evaluate_splits.mmseqs_runtime, 'run_search', fake_run_search)
-        evaluate_splits.run(train_files=[train], test_files=[test], format='csv',
-                            out_folder=str(tmp_path / 'out'), report_types=['html'])
-
-        page = (tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test' / 'gb-qc-report.html').read_text()
+        page = split_page(tmp_path, monkeypatch,
+                          [mmseqs_hit('seq_0_test', 'seq_0_train')])
 
         assert 'window.toggleExplanation' in page      # report_ui.js
         assert 'window.toggleAlignment' in page        # split_report.js
         assert 'initPerPositionViewers' not in page    # no per-position figure here
         assert '{{report_scripts}}' not in page
+
+    def test_the_leakage_listing_uses_the_shared_components(self, tmp_path, monkeypatch):
+        """The high-similarity pairs are the same kind of thing as the class
+        report's flagged positions - a check's findings - and are shown in the
+        same collapsible panel and listing table, styled from the shared sheet."""
+        page = split_page(tmp_path, monkeypatch,
+                          [mmseqs_hit('seq_0_test', 'seq_0_train')])
+
+        assert 'class="qc-panel"' in page
+        assert 'class="qc-listing"' in page
+        assert '1 high-similarity alignment' in page
+        # the panel sits inside the check it belongs to, not in a card of its own
+        section = re.search(r'<section id="similarity-section".*?</section>', page, re.S)
+        assert section and 'qc-panel' in section.group(0)
+        assert '.qc-listing' in page                   # report_design.css
+        assert '.alignment-block' in page              # split_report.css
+
+    def test_the_count_says_when_the_listing_was_capped(self):
+        """The page carries at most ROW_CAP rows, and the hits it drops are in
+        the exported TSV - so a capped listing has to say so, or 100 rows read as
+        'there were exactly 100'."""
+        assert alignments_count_text(0, 0) == 'No high-similarity alignments'
+        assert alignments_count_text(1, 1) == '1 high-similarity alignment'
+        assert alignments_count_text(4, 4) == '4 high-similarity alignments'
+        assert alignments_count_text(250, 100) == (
+            '250 high-similarity alignments (first 100 shown)')
+
+    def test_a_clean_split_says_so_in_the_panel(self, tmp_path, monkeypatch):
+        """An empty listing has to read as 'nothing leaked', not as a table that
+        failed to build - the same distinction the flag panel draws."""
+        page = split_page(tmp_path, monkeypatch, [])
+
+        assert 'No high-similarity alignments' in page
+        assert 'qc-empty' in page
+        assert '{{results_body}}' not in page
