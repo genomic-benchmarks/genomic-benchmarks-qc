@@ -8,6 +8,7 @@ that the same evaluations can be called directly from Python.
 
 import logging
 import re
+import traceback
 from pathlib import Path
 from typing import List, Optional
 
@@ -102,17 +103,30 @@ def _run_command(command, *args, **kwargs):
     Only the message is echoed here, but the traceback is not thrown away with
     the exception: it goes to the log at DEBUG, so `--log-level DEBUG` records
     the cause even for failures raised before `log_failures` takes over - a
-    scratch directory that cannot be created, say.
+    scratch directory that cannot be created, say. Setting the log up is itself
+    one of those failures, and the one case where the log cannot record it, so
+    the traceback falls back to stderr there.
     """
     try:
         command(*args, **kwargs)
     except typer.Exit:
         raise
     except Exception as exc:
+        # `setup_logger` runs inside the command, so it can be what failed - an
+        # unwritable `--log-file`, say - and then nothing ever configured the
+        # root logger and the DEBUG record below has nowhere to go. Decide that
+        # here, before `logging.debug` installs a default handler on its way
+        # out and makes an unconfigured logger look configured.
+        debug_lost = (str(kwargs.get('log_level', '')).upper() == 'DEBUG'
+                      and not logging.getLogger().isEnabledFor(logging.DEBUG))
         # Failures inside the evaluation proper are logged twice at DEBUG, once
         # here and once by `log_failures`. Worth it: the alternative is guessing
         # whether the evaluation got far enough to have logged anything at all.
         logging.debug("Command failed.", exc_info=True)
+        if debug_lost:
+            # Asking for DEBUG has to produce a traceback somewhere, or the one
+            # failure that breaks logging is the one that explains itself least.
+            typer.echo(traceback.format_exc(), err=True)
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1)
 

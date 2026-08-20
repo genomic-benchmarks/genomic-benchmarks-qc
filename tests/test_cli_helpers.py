@@ -1,5 +1,7 @@
 """Unit tests for the helper functions in genomic_benchmarks_qc.cli."""
 
+import logging
+
 import pytest
 import typer
 
@@ -132,6 +134,41 @@ class TestRunCommand:
             _run_command(command)
         assert excinfo.value.exit_code == 1
         assert "Error: something broke" in capsys.readouterr().err
+
+    def test_echoes_traceback_when_debug_was_asked_for_but_never_configured(self, capsys):
+        """`setup_logger` failing is the one failure the log cannot record."""
+        def command(log_level=None):
+            raise OSError("cannot open log file")
+
+        with pytest.raises(typer.Exit):
+            _run_command(command, log_level='DEBUG')
+        err = capsys.readouterr().err
+        # The traceback names the frame the DEBUG log would otherwise have kept.
+        assert "Traceback (most recent call last)" in err
+        assert "cannot open log file" in err
+        assert "Error: cannot open log file" in err
+
+    def test_no_traceback_once_debug_logging_is_configured(self, capsys, caplog):
+        """A working DEBUG log already has the traceback; stderr stays clean."""
+        def command(log_level=None):
+            raise OSError("something broke later")
+
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(typer.Exit):
+                _run_command(command, log_level='DEBUG')
+        err = capsys.readouterr().err
+        assert "Traceback (most recent call last)" not in err
+        assert "Error: something broke later" in err
+
+    def test_no_traceback_when_debug_was_not_asked_for(self, capsys):
+        def command(log_level=None):
+            raise OSError("cannot open log file")
+
+        with pytest.raises(typer.Exit):
+            _run_command(command, log_level='INFO')
+        err = capsys.readouterr().err
+        assert "Traceback (most recent call last)" not in err
+        assert "Error: cannot open log file" in err
 
     def test_propagates_typer_exit_unchanged(self, capsys):
         def command():
