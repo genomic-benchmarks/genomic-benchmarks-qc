@@ -18,7 +18,7 @@ A model that scores well on a biased dataset has learned the bias, not the biolo
 
 Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
 
-<img src="./assets/genomic-benchmarks-qc-html-report.gif" alt="Example gb-qc HTML report" width="1200" />
+<img src="./assets/genomic-benchmarks-qc-html-report.webp" alt="Example gb-qc HTML report" width="1200" />
 
 ## Installation
 
