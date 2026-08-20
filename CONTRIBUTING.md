@@ -52,54 +52,72 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
 1.  Fork the Genomic Benchmarks QC repo on GitHub.
 2.  Clone your fork locally:
 
-        $ git clone git@github.com:your_name_here/genomic-benchmarks-qc.git
+    ```bash
+    git clone git@github.com:your_name_here/genomic-benchmarks-qc.git
+    ```
 
 3.  Install your local copy into a conda environment. Assuming you have conda installed, this is how you set up your fork for local development.
 
 
-        $ cd genomic-benchmarks-qc/
-        $ conda env create -f dev-requirements.yml
-        $ source activate gb-qc-dev
-        $ pip install -e '.[develop]'
+    ```bash
+    cd genomic-benchmarks-qc/
+    conda env create -f dev-requirements.yml
+    source activate gb-qc-dev
+    pip install -e '.[develop]'
+    ```
 
 4.  Create a branch for local development:
 
-        $ git checkout -b name-of-your-bugfix-or-feature
+    ```bash
+    git checkout -b name-of-your-bugfix-or-feature
+    ```
 
     Now you can make your changes locally.
 
 5.  When you’re done making changes, check that your changes pass the tests:
 
-        $ pytest
+    ```bash
+    pytest
+    ```
 
     Test paths and the `src/` import path are configured in `pyproject.toml`, so plain `pytest` works from the repository root. To run a single file or test:
 
-        $ pytest tests/test_cli_helpers.py
-        $ pytest -k SplitMemoryLimit
+    ```bash
+    pytest tests/test_cli_helpers.py
+    pytest -k SplitMemoryLimit
+    ```
 
     To check unit test coverage, add `--cov`:
 
-        $ pytest --cov
+    ```bash
+    pytest --cov
+    ```
 
     The coverage settings live under `[tool.coverage.*]` in `pyproject.toml`. Branch coverage is
     on, and the run fails if total coverage drops below 60% (currently ~65%), which is also
     enforced in CI. Uncovered line numbers are
     printed per file; for a browsable line-by-line report use:
 
-        $ pytest --cov --cov-report=html
-        $ open htmlcov/index.html
+    ```bash
+    pytest --cov --cov-report=html
+    open htmlcov/index.html
+    ```
 
     Coverage is opt-in so that running a single test file does not trip the threshold. New code
     should come with tests, and the threshold should be raised as coverage improves.
 
 6.  Check that your changes pass linting:
 
-        $ ruff check .
+    ```bash
+    ruff check .
+    ```
 
     The rules live under `[tool.ruff]` in `pyproject.toml` and are the same ones CI runs, so a
     clean run locally means a clean run on the pull request. Many findings fix themselves:
 
-        $ ruff check --fix .
+    ```bash
+    ruff check --fix .
+    ```
 
     Two exemptions are worth knowing about. The modules that hold the report's HTML as Python
     strings are exempt from the line-length limit, because a `# noqa` cannot be placed inside a
@@ -110,7 +128,9 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     `src/genomic_benchmarks_qc/report/assets/` and are inlined into the generated HTML. They are
     real files so they can be checked without generating a report:
 
-        $ for f in src/genomic_benchmarks_qc/report/assets/*.js; do node --check "$f" || break; done
+    ```bash
+    (for f in src/genomic_benchmarks_qc/report/assets/*.js; do node --check "$f" || exit 1; done)
+    ```
 
     Every asset has to be declared as package data in `pyproject.toml`, otherwise it works from a
     checkout and is missing from the installed package. `tests/test_report_assets.py` fails when a
@@ -118,9 +138,11 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
 
 8.  Commit your changes and push your branch to GitHub:
 
-        $ git add .
-        $ git commit -m "Your detailed description of your changes."
-        $ git push origin name-of-your-bugfix-or-feature
+    ```bash
+    git add .
+    git commit -m "Your detailed description of your changes."
+    git push origin name-of-your-bugfix-or-feature
+    ```
 
 9.  Submit a pull request through the GitHub website.
 
