@@ -85,8 +85,12 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
 
     # The per-position window comes from the two classes' sequence lengths, so it
     # is read off the statistics rather than passed in: a window that disagreed
-    # with the statistics it is drawn from would misplace every flag.
+    # with the statistics it is drawn from would misplace every flag. It and the
+    # bases the two classes share are resolved once here and handed to the plots
+    # and to the payload alike, so the PNGs in plots/ and the interactive
+    # figures cannot end up drawn over different windows or different bases.
     end_position = drawn_window(stats1, stats2)
+    bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
     summary_statuses = results['Flag'].to_dict()
 
@@ -100,7 +104,9 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
     plots_paths = generate_dataset_plots(
         stats1, stats2, plots_path, plot_type,
         failed_by_feature=failed_by_feature,
-        percent_remaining=percent_remaining
+        percent_remaining=percent_remaining,
+        end_position=end_position,
+        bases_overlap=bases_overlap
     )
 
     # find duplicate sequences between labels
@@ -113,7 +119,6 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
     # is the compared one, or the reported one when nothing could be compared -
     # see `drawn_window`. Both directions come back None when the two classes
     # share no bases, which is the same condition that leaves those plots unmade.
-    bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
     per_position_payloads = {
         direction: build_payload(stats1, stats2, bases_overlap, end_position,
                                  results, direction)
@@ -153,7 +158,8 @@ def generate_simple_report(results, output_path):
     results.to_csv(output_path)
 
 def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
-                           failed_by_feature=None, percent_remaining=None):
+                           failed_by_feature=None, percent_remaining=None,
+                           end_position=None, bases_overlap=None):
     """Generate comparison plots between two datasets.
 
     Args:
@@ -163,6 +169,11 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
         failed_by_feature: Dict with failure info for shading (optional).
         percent_remaining: Optional float with the percentage of sequences remaining
             after deduplication.
+        end_position: Optional last per-position position to draw, 1-based and
+            inclusive, as `drawn_window` resolves it. Read off the statistics
+            when not given.
+        bases_overlap: Optional sorted list of the bases the two classes share.
+            Read off the statistics when not given.
 
     Returns:
         Dictionary mapping plot names to file paths.
@@ -173,12 +184,15 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
     # The per-position figures draw only what was compared, so the scored window
     # is the one they are plotted over; the wider window the checks themselves
     # run over is not drawn, except when nothing was compared and it is all
-    # there is - see `drawn_window`.
-    end_position = drawn_window(stats1, stats2)
+    # there is - see `drawn_window`. A caller that already resolved the window
+    # and the shared bases hands them in, so the figures it saves and the flags
+    # it draws over them come from one answer rather than two.
+    if end_position is None:
+        end_position = drawn_window(stats1, stats2)
+    if bases_overlap is None:
+        bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
     plots_paths = {}
-
-    bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
     # Get failed nucleotides and dinucleotides for boxen plot outlines
     def failed_for(feature):
