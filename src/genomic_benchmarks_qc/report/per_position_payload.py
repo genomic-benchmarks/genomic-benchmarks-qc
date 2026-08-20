@@ -129,7 +129,12 @@ def _coverage(stats, end_position):
     if lengths.size == 0:
         return [0.0] * end_position
     positions = np.arange(1, end_position + 1)
-    reaching = (lengths[None, :] >= positions[:, None]).sum(axis=1) / lengths.size
+    # A sequence reaches position p iff its length is >= p, so the count is the
+    # size of the sorted tail from p onwards - one binary search per position
+    # rather than a positions-by-sequences comparison matrix, which for a wide
+    # window and a large cohort is the biggest allocation in the payload.
+    ordered = np.sort(lengths)
+    reaching = (ordered.size - np.searchsorted(ordered, positions, side='left')) / ordered.size
     return [round(float(value), DECIMALS) for value in reaching]
 
 
