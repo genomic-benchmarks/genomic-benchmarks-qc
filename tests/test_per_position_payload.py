@@ -51,8 +51,8 @@ def comparison():
 @pytest.fixture(scope='module')
 def payload(comparison):
     stats1, stats2, results = comparison
-    return build_payload(stats1, stats2, BASES, drawn_window(stats1, stats2),
-                         results, 'forward')
+    end_position, compared = drawn_window(stats1, stats2)
+    return build_payload(stats1, stats2, BASES, end_position, results, 'forward', compared)
 
 
 class TestShape:
@@ -131,7 +131,7 @@ class TestFlags:
         assert results.loc[dropped, 'Flag'] != 'Unknown'
 
         payload = build_payload(stats1, stats2, BASES, scored_end,
-                                results.drop(index=dropped), 'forward')
+                                results.drop(index=dropped), 'forward', True)
 
         assert payload['flags']['A']['2'] == 'Unknown'
 
@@ -158,12 +158,17 @@ class TestFlags:
         results, _ = flag_significant_differences(stats1, stats2)
         end, scored_end = position_windows(stats1, stats2)
         assert scored_end == 0 and end > 0
-        assert drawn_window(stats1, stats2) == end
+        assert drawn_window(stats1, stats2) == (end, False)
 
-        payload = build_payload(stats1, stats2, BASES, drawn_window(stats1, stats2),
-                                pd.DataFrame.from_dict(results, orient='index'), 'forward')
+        end_position, compared = drawn_window(stats1, stats2)
+        payload = build_payload(stats1, stats2, BASES, end_position,
+                                pd.DataFrame.from_dict(results, orient='index'),
+                                'forward', compared)
 
         assert payload['endPosition'] == end
+        # The one case the viewer has to caption differently: it says 'nothing
+        # here was compared' where it would otherwise say 'every position passed'.
+        assert payload['compared'] is False
         for base in BASES:
             assert set(payload['flags'][base]) == {str(p) for p in range(1, end + 1)}
             assert set(payload['flags'][base].values()) == {'Unknown'}
@@ -179,8 +184,10 @@ def tail_payload():
     stats2 = make_stats(random_sequences(400, 60, seed=6), label='b')
     results, _ = flag_significant_differences(stats1, stats2)
     end, scored_end = position_windows(stats1, stats2)
-    payload = build_payload(stats1, stats2, BASES, drawn_window(stats1, stats2),
-                            pd.DataFrame.from_dict(results, orient='index'), 'forward')
+    end_position, compared = drawn_window(stats1, stats2)
+    payload = build_payload(stats1, stats2, BASES, end_position,
+                            pd.DataFrame.from_dict(results, orient='index'),
+                            'forward', compared)
     return payload, end, scored_end
 
 
@@ -213,7 +220,7 @@ class TestDirections:
         stats1, stats2, results = comparison
         _, scored_end = position_windows(stats1, stats2)
 
-        payload = build_payload(stats1, stats2, BASES, scored_end, results, 'reversed')
+        payload = build_payload(stats1, stats2, BASES, scored_end, results, 'reversed', True)
 
         assert payload['direction'] == 'reversed'
         # The axis says which end position 1 is, not that the sequence was
@@ -226,13 +233,13 @@ class TestDirections:
         stats1, stats2, results = comparison
 
         with pytest.raises(ValueError):
-            build_payload(stats1, stats2, BASES, 10, results, 'sideways')
+            build_payload(stats1, stats2, BASES, 10, results, 'sideways', True)
 
     @pytest.mark.parametrize('bases, end', [([], 30), (BASES, 0)])
     def test_nothing_to_draw_gives_no_payload(self, comparison, bases, end):
         stats1, stats2, results = comparison
 
-        assert build_payload(stats1, stats2, bases, end, results, 'forward') is None
+        assert build_payload(stats1, stats2, bases, end, results, 'forward', True) is None
 
 
 class TestMarkup:

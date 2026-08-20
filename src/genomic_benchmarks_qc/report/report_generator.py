@@ -89,7 +89,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
     # bases the two classes share are resolved once here and handed to the plots
     # and to the payload alike, so the PNGs in plots/ and the interactive
     # figures cannot end up drawn over different windows or different bases.
-    end_position = drawn_window(stats1, stats2)
+    end_position, compared = drawn_window(stats1, stats2)
     bases_overlap = sorted(set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']))
 
     summary_statuses = results['Flag'].to_dict()
@@ -121,7 +121,7 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
     # share no bases, which is the same condition that leaves those plots unmade.
     per_position_payloads = {
         direction: build_payload(stats1, stats2, bases_overlap, end_position,
-                                 results, direction)
+                                 results, direction, compared)
         for direction in ('forward', 'reversed')
     }
 
@@ -188,7 +188,7 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
     # and the shared bases hands them in, so the figures it saves and the flags
     # it draws over them come from one answer rather than two.
     if end_position is None:
-        end_position = drawn_window(stats1, stats2)
+        end_position, _ = drawn_window(stats1, stats2)
     if bases_overlap is None:
         bases_overlap = sorted(
             set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases'])

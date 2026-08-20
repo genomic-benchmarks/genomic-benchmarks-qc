@@ -90,7 +90,7 @@ STORED_FLAGS = ('Fail', 'Warning', 'Unknown')
 DECIMALS = 3
 
 
-def drawn_window(stats1, stats2):
+def drawn_window(stats1, stats2) -> tuple[int, bool]:
     """The window the per-position figures draw, given two classes.
 
     The compared window, which is what makes an unflagged position on the figure
@@ -100,12 +100,21 @@ def drawn_window(stats1, stats2):
     report, and every position in the fallback is Unknown, so nothing in it can
     be misread as having passed.
 
+    Which of the two windows came back is returned with it, because the figure
+    has to say so: the two cases are drawn the same way and read differently, and
+    a caller that recovered the distinction by asking `position_windows` again
+    could answer it for a window it is no longer drawing.
+
     Returns:
-        Last position to draw, 1-based and inclusive; 0 when the comparison has
-        no per-position checks at all and there is genuinely nothing to draw.
+        Tuple of (end_position, compared): the last position to draw, 1-based and
+        inclusive - 0 when the comparison has no per-position checks at all and
+        there is genuinely nothing to draw - and whether that window is the
+        compared one, which is False only in the fallback.
     """
     end_position, scored_end_position = position_windows(stats1, stats2)
-    return scored_end_position if scored_end_position >= 1 else end_position
+    if scored_end_position >= 1:
+        return scored_end_position, True
+    return end_position, False
 
 
 def _series(frame, base, end_position):
@@ -173,7 +182,7 @@ def _flags_by_position(results, prefix, bases, end_position):
     return flags
 
 
-def build_payload(stats1, stats2, bases, end_position, results, direction):
+def build_payload(stats1, stats2, bases, end_position, results, direction, compared):
     """Assemble the payload for one direction of the per-position figure.
 
     Args:
@@ -184,6 +193,11 @@ def build_payload(stats1, stats2, bases, end_position, results, direction):
             reported one when nothing could be compared.
         results: DataFrame of every check's metrics, indexed by check name.
         direction: 'forward' or 'reversed'.
+        compared: Whether the positions being drawn were compared, as
+            `drawn_window` returns it alongside the window. False only in the
+            fallback case, where the figure is the reported window with every
+            position Unknown; the viewer needs it to say 'nothing here was
+            compared' where it would otherwise say 'every position passed'.
 
     Returns:
         A JSON-serialisable dict, or None when there is nothing to draw: no base
@@ -198,16 +212,10 @@ def build_payload(stats1, stats2, bases, end_position, results, direction):
     frame2 = stats2.stats[FEATURE_NAMES[direction]]
     flags = _flags_by_position(results, FEATURE_NAMES[direction], bases, end_position)
 
-    # Whether anything in the window was compared. False only in the fallback
-    # case, where the figure is the reported window with every position Unknown;
-    # the viewer needs it to say 'nothing here was compared' where it would
-    # otherwise say 'every position passed'.
-    _, scored_end_position = position_windows(stats1, stats2)
-
     return {
         'direction': direction,
         'endPosition': int(end_position),
-        'compared': bool(scored_end_position >= 1),
+        'compared': bool(compared),
         'xLabel': X_LABELS[direction],
         'labels': [_label(stats1), _label(stats2)],
         'colors': list(CLASS_COLORS),
