@@ -206,8 +206,8 @@ class SequenceStatistics:
             # longest sequence: a position that sets a flag has to be reported.
             self.end_position = max(self._reported_window(lengths), scored_window)
             logging.info(
-                f"End position argument not provided. Per-position checks cover positions "
-                f"1-{self.end_position}{col_info}, which is as far as at least "
+                f"No end position given, so per-position checks cover positions "
+                f"1-{self.end_position}{col_info}, as far as at least "
                 f"{MIN_SEQUENCES_PER_REPORTED_POSITION} sequences reach."
             )
         else:
@@ -227,26 +227,24 @@ class SequenceStatistics:
         required = self._required_cohort(len(lengths))
         if self.scored_end_position < 1:
             logging.warning(
-                f"Not enough sequences{col_info} for per-position statistics: a position is "
-                f"compared only where {required:,} of them reach it, and none does, so every "
-                "position is reported as Unknown. The figures are still drawn, over the whole "
-                "reported window, with no flag on any position."
+                f"Not enough sequences{col_info} for per-position statistics: no position is "
+                f"reached by {required:,} of them, so every position is reported as Unknown. "
+                "The figures are still drawn, with no flag on any position."
             )
             return
 
-        floor = (f"{required:,} sequences, which is {self.min_coverage:.0%} of this class"
+        floor = (f"{required:,} sequences ({self.min_coverage:.0%} of this class)"
                  if required > MIN_SEQUENCES_PER_CLASS
                  else f"{required:,} sequences")
         logging.info(
-            f"Positions 1-{self.scored_end_position}{col_info} may be flagged, which is as far "
-            f"as {floor} reach."
+            f"Positions 1-{self.scored_end_position}{col_info} may be flagged, as far as "
+            f"{floor} reach."
         )
         if self.end_position > self.scored_end_position:
             logging.info(
                 f"Positions {self.scored_end_position + 1}-{self.end_position}{col_info} are "
-                "reported as Unknown and are not drawn: too few sequences reach them to say "
-                "whether a difference there is a difference between the classes or between their "
-                "longest sequences."
+                "reached by too few sequences to compare, so they are reported as Unknown and "
+                "are not drawn."
             )
 
     def _reported_window(self, lengths) -> int:
