@@ -5,6 +5,7 @@ and the styling is inlined, so a report can be moved, zipped or served from
 anywhere without losing anything.
 """
 
+import html
 from datetime import datetime
 
 from genomic_benchmarks_qc import __version__
@@ -413,7 +414,7 @@ def generate_position_window_html(stats1, stats2):
     def coverage_at(position):
         parts = []
         for stats in (stats1, stats2):
-            label = stats.label if stats.label is not None else stats.filename
+            label = html.escape(str(stats.label if stats.label is not None else stats.filename))
             coverage = stats.coverage_at(position)
             count = int(round(coverage * stats.stats['Number of sequences']))
             parts.append(f"{label}: {coverage:.1%} ({count:,} sequences)")
@@ -433,7 +434,7 @@ def generate_position_window_html(stats1, stats2):
             return f'{needed[0]:,} sequences in each class'
         parts = []
         for stats, count in zip((stats1, stats2), needed, strict=True):
-            label = stats.label if stats.label is not None else stats.filename
+            label = html.escape(str(stats.label if stats.label is not None else stats.filename))
             parts.append(f'{label}: {count:,}')
         return f'{parts[0]} and {parts[1]} sequences'
 
@@ -585,6 +586,14 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # still written to the plots directory as a PNG, it is just not what the page
     # shows.
     per_position_payloads = per_position_payloads or {}
+    # A direction arrives without a payload for either of two reasons, and only
+    # one of them is about the bases: the labels share none, or the comparison
+    # has no position to draw at all. Saying the first where the second holds
+    # would explain the empty section with something that is not true of it.
+    if set(stats1.stats['Unique bases']) & set(stats2.stats['Unique bases']):
+        no_payload_message = 'There is nothing to plot for this comparison.'
+    else:
+        no_payload_message = disjoint_bases_message
     for placeholder, direction, dom_id, _name in (
         ("{{per-position-nucleotide-content}}", 'forward', 'ppv-fwd',
          'Per Position Nucleotide Content'),
@@ -594,7 +603,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         payload = per_position_payloads.get(direction)
         if payload is None:
             html_template = put_data(html_template, placeholder,
-                                     f'<p class="no-plot-message">{disjoint_bases_message}</p>')
+                                     f'<p class="no-plot-message">{no_payload_message}</p>')
         else:
             html_template = put_data(html_template, placeholder, viewer_html(payload, dom_id))
 
