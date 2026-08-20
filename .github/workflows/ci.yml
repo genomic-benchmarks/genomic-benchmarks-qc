@@ -66,6 +66,10 @@ jobs:
       - name: Coverage summary
         if: always()
         run: |
+          if [ ! -f coverage.json ]; then
+            echo "_No coverage data produced; skipping coverage summary._" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json, pathlib
 
