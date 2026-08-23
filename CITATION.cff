@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: "genomic-benchmarks-qc: automated quality control for genomic machine learning datasets"
+abstract: >-
+  Detects biases, inconsistencies and data leakage in genomic machine learning
+  datasets before model training. Each check asks whether a classifier seeing
+  only one feature could separate the classes, and reports a Pass, Warning or
+  Fail flag with the AU-ROC behind it.
+type: software
+authors:
+  - given-names: Katarina
+    family-names: Gresova
+    email: gresova11@gmail.com
+    # TODO: add `orcid: "https://orcid.org/..."` here. Left out rather than
+    # guessed - a wrong ORCID attributes the work to someone else.
+repository-code: "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+url: "https://genomic-benchmarks.github.io/genomic-benchmarks-qc/"
+license: MIT
+version: "0.9.0"
+keywords:
+  - genomics
+  - machine learning
+  - quality control
+  - benchmark datasets
+  - data leakage
+  - bioinformatics
+# TODO: add preferred-citation once the paper is published, so that GitHub's
+# "Cite this repository" points at the paper rather than the software.

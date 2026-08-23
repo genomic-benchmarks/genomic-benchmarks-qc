@@ -30,12 +30,38 @@ read or mail, and a CSV you can put in CI.
 
     The [README][readme] is complete and remains the place to start:
     installation, every input format, the full output layout, and the CLI
-    options in table form. This site adds what a README has no room for — the
-    [worked examples](examples/index.md) with live reports, and the
-    [generated reference](reference/cli.md). Longer-form guides are still to
-    come.
+    options in table form. This site adds what a README has no room for.
 
   [readme]: https://github.com/genomic-benchmarks/genomic-benchmarks-qc#readme
+
+## Start here
+
+<div class="grid cards" markdown>
+
+-   **A flag fired. Now what?**
+
+    [The checks](guide/checks.md) — what each one measures, and what to actually
+    do about it. The page to read first.
+
+-   **Why should I trust a flag?**
+
+    [How a flag is decided](guide/how-it-works.md) — the single-feature AU-ROC,
+    the 0.6 and 0.7 boundaries, and why
+    <span class="flag flag-unknown">Unknown</span> is not
+    <span class="flag flag-pass">Pass</span>.
+
+-   **Show me it working**
+
+    [Eight worked examples](examples/index.md) with live reports. Start with
+    [hidden-motif](examples/hidden-motif.md), whose only flaw is eight
+    nucleotides wide.
+
+-   **Something is wrong**
+
+    [Troubleshooting](faq.md) — MMseqs2 not found, everything came back
+    `Unknown`, it is slow, the plot stops early.
+
+</div>
 
 ## The examples
 
@@ -65,7 +91,8 @@ is always what the current code produces.
 ## Flags
 
 Flags come from the AU-ROC of a classifier that sees only the one feature under
-test:
+test — see [how a flag is decided](guide/how-it-works.md) for why the boundaries
+sit where they do:
 
 | Flag | AU-ROC | Meaning |
 |---|---|---|
@@ -79,3 +106,16 @@ test:
 not that it came out clean — a check needs at least 250 sequences per class
 before it is scored at all. The plots and descriptive statistics are computed
 from all the data either way, so a small dataset can still be compared by eye.
+
+## Also here
+
+- [The per-position plot](guide/per-position.md) — it is interactive, and
+  [one example](examples/hidden-motif.md) explains why it has to be
+- [Train/test leakage](guide/leakage.md) — how similarity is measured, and what
+  to do about it
+- [Using it in CI](guide/ci.md) — the CSV as a build gate
+- [Python API](guide/python-api.md) — both commands are one function call
+- [Running at scale](guide/at-scale.md) — notes from a survey of 234 dataset
+  splits
+- [Runtime and memory](guide/performance.md) — measured, and the scaling is not
+  what you would guess

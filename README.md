@@ -8,7 +8,7 @@
 
 Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
 
-Everything you need is below. The [documentation site](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/) adds eight [worked examples](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/examples/) with live reports — a clean dataset, a badly biased one, one whose only flaw is eight nucleotides wide — plus the generated CLI and API reference.
+Everything you need is below. The [documentation site](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/) adds what a README has no room for: eight [worked examples](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/examples/) with live reports — a clean dataset, a badly biased one, one whose only flaw is eight nucleotides wide — a guide to [what to do about each check](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/checks/) and [why the thresholds sit where they do](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/how-it-works/), and the generated CLI and API reference.
 
 ## What it catches
 
@@ -107,6 +107,8 @@ Flags come from the AU-ROC of a classifier that sees only that one feature:
 
 ### The per-position plot is interactive
 
+Full walkthrough: [the per-position plot](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/per-position/).
+
 For long sequences a static plot cannot show much: a single flagged position is lost in a figure spanning hundreds of them. The per-position panels are therefore interactive, so you can zoom in and explore the individual failing positions.
 
 <!-- TODO(gif): add the file, then uncomment the <img> below.
@@ -124,6 +126,8 @@ For long sequences a static plot cannot show much: a single flagged position is 
 With variable-length sequences, the tail positions that too few sequences reach are not scored and are left out of the figures.
 
 ### The leakage report
+
+Full treatment, including how similarity is computed: [train/test leakage](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/leakage/).
 
 `evaluate-splits` searches every test sequence against the training set with MMseqs2 and
 flags one when it exceeds `--similarity-threshold` (90% by default). The report gives the

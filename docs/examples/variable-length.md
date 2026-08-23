@@ -60,13 +60,26 @@ Declining to score is the only honest answer.
 and leaves only the 250-sequence floor, which extends flagging to position 2636.
 Read what comes back with the caveat above firmly in mind.
 
-### The vocabulary check fails
+### The vocabulary check fails, and for a sharper reason than it looks
 
-<span class="flag flag-fail">Fail</span> on `Unique bases`: some sequences
-contain characters outside ACGT. In a genomic dataset that is usually `N` from
-unresolved assembly, and it matters for a mundane reason — your tokeniser has to
-do something with them, and whatever it does is a modelling decision you did not
-consciously make. Worth finding before training rather than after.
+<span class="flag flag-fail">Fail</span> on `Unique bases`. The check does not
+flag non-ACGT characters as such — a dataset where both classes contain `N`
+passes. What it flags is an **asymmetry**, and that is what is here:
+
+| Class | Alphabet |
+|---|---|
+| `0` | A, C, G, T |
+| `1` | A, C, G, **N**, T |
+
+**Six sequences out of 3,607** carry an `N` that the other class never contains.
+Which means any sequence containing `N` is perfectly classifiable, by a rule a
+model will find long before it finds any biology. Six sequences will not move an
+AU-ROC, but the asymmetry is the tell: it almost always means the two classes came
+through different pipelines, and that is worth knowing about a dataset before you
+train on it.
+
+It also matters mundanely — your tokeniser has to do something with `N`, and
+whatever it does silently is a modelling decision you did not make on purpose.
 
 ### Sequences repeat, within and between classes
 

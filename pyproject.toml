@@ -51,6 +51,7 @@ develop = ["pytest>=8.4", "pytest-cov>=7.0", "ruff>=0.16,<0.17"]
 
 [project.urls]
 Homepage = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+Documentation = "https://genomic-benchmarks.github.io/genomic-benchmarks-qc/"
 Repository = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
 Issues = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues"
 
