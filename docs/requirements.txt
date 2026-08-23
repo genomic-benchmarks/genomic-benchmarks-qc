@@ -1,0 +1,9 @@
+# Documentation build. Pinned to minor ranges: Material and mkdocstrings both
+# change rendering across minors, which would show up as an unexplained diff in
+# the published site rather than as a failure.
+mkdocs>=1.6,<2
+mkdocs-material>=9.5,<10
+mkdocstrings[python]>=0.27,<0.31
+# Signature formatting: without one of Black or Ruff, mkdocstrings leaves long
+# signatures on one line. Ruff is already a dev dependency.
+ruff>=0.16,<0.17

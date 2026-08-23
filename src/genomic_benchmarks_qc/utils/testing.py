@@ -37,10 +37,16 @@ difference is not evidence of no difference.
 """
 
 import logging
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import auc, precision_recall_curve, roc_auc_score
+
+if TYPE_CHECKING:
+    # Imported for annotations only: seq_stats imports this module, so a real
+    # import would be circular.
+    from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 
 METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 
@@ -454,14 +460,15 @@ def _score_dataframe_features(
 
     return results
 
-def direct_feature_model(stats1, stats2):
+def direct_feature_model(stats1: 'SequenceStatistics',
+                         stats2: 'SequenceStatistics') -> dict:
     """Compute all direct feature comparison metrics between two datasets.
 
     Uses full datasets (no subsampling) for raw-feature metrics.
 
     Args:
-        stats1: SequenceStatistics object for dataset 1.
-        stats2: SequenceStatistics object for dataset 2.
+        stats1: Statistics for the first dataset.
+        stats2: Statistics for the second dataset.
 
     Returns:
         Nested dictionary with all computed metrics and flags.
@@ -531,24 +538,26 @@ def direct_feature_model(stats1, stats2):
     return results
 
 
-def flag_significant_differences(stats1, stats2):
+def flag_significant_differences(stats1: 'SequenceStatistics',
+                                 stats2: 'SequenceStatistics') -> tuple[dict, dict]:
     """Generate comprehensive QC comparison between two datasets.
 
     Args:
-        stats1: SequenceStatistics object for dataset 1.
-        stats2: SequenceStatistics object for dataset 2.
+        stats1: Statistics for the first dataset.
+        stats2: Statistics for the second dataset.
 
     Returns:
-        Tuple of (summary_statuses, failed_by_feature) where:
-        - summary_statuses: Ordered dictionary with all flags and metrics.
-        - failed_by_feature: Nested dict with failure info for visualization:
-          {
-            'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
-            'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
-            'Per position nucleotide content':
-                {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per position reversed nucleotide content': {...}
-          }
+        Tuple of `(summary_statuses, failed_by_feature)`, where
+        `summary_statuses` is an ordered dictionary of every flag and metric,
+        and `failed_by_feature` carries the per-feature detail the plots need:
+
+            {
+                'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
+                'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
+                'Per position nucleotide content':
+                    {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
+                'Per position reversed nucleotide content': {...},
+            }
     """
     results = {}
 

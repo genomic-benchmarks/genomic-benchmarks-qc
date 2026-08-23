@@ -1,0 +1,28 @@
+/* The accent is the reports' own --accent from report_design.css, so a reader
+   moving between the docs and a generated report stays in one visual world. */
+:root {
+  --md-primary-fg-color:        #1f6fd0;
+  --md-primary-fg-color--light: #4c8ddb;
+  --md-primary-fg-color--dark:  #17549c;
+  --md-accent-fg-color:         #1f6fd0;
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:  #6ba6ea;
+  --md-accent-fg-color:   #6ba6ea;
+  --md-typeset-a-color:   #6ba6ea;
+}
+
+/* Flag names read as flags wherever they appear in prose. The colours come from
+   report/colors.py, which the plots and reports also read, so all three agree. */
+.flag { font-weight: 600; white-space: nowrap; }
+.flag-pass { color: #2e7d32; }
+.flag-warn { color: #f57f17; }
+.flag-fail { color: #c62828; }
+.flag-unknown { color: #8a8983; }
+[data-md-color-scheme="slate"] .flag-pass { color: #6fbf73; }
+[data-md-color-scheme="slate"] .flag-warn { color: #f0b13c; }
+[data-md-color-scheme="slate"] .flag-fail { color: #ef6a6a; }
+
+/* Generated CLI reference: Typer emits one bullet per option, which reads badly
+   as a wall. Give each some air. */
+.md-typeset h2 + p + ul > li { margin-bottom: .35rem; }
