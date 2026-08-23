@@ -1,0 +1,50 @@
+# FASTA input: one file per class, label taken from the filename.
+#
+# The only example that is not a table, and the one that shows how a filename
+# stem becomes a class label and then a directory name.
+
+name = "fasta-classes"
+title = "One FASTA file per class"
+blurb = """
+Coding versus intergenomic sequences, 600 of each at 200 nucleotides. FASTA
+carries no labels, so each file is one class and its filename stem becomes the
+label - coding_seqs.fasta becomes coding_seqs. The two classes differ in
+composition strongly enough that most per-sequence checks fail.
+"""
+
+[source]
+collection = "genomic-benchmarks_v1"
+dataset = "demo_coding_vs_intergenomic_seqs"
+citation = "Gresova et al. Genomic benchmarks: a collection of datasets for genomic sequence classification. BMC Genomic Data 24, 25 (2023)"
+url = "https://doi.org/10.1186/s12863-023-01123-8"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+600 coding and 600 intergenomic sequences of 200 nt, split into one FASTA
+file per class. FASTA carries no label column - the filename is the label.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = [
+    "--input", "data/coding_seqs.fasta",
+    "--input", "data/intergenomic_seqs.fasta",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/coding_seqs_vs_intergenomic_seqs"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Pass"
+"Duplicate Sequences between Labels" = "Pass"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Fail"
+"Per sequence nucleotide content" = "Fail"
+"Per sequence dinucleotide content" = "Fail"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"

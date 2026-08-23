@@ -167,6 +167,13 @@ out/
 sandbox/
 data/
 reports/
+
+# The example datasets are committed on purpose - see examples/README.md. The
+# bare `data/` rule just above is meant for scratch directories and would
+# otherwise swallow every examples/*/data/ silently, which is exactly the kind
+# of thing nobody notices until the docs build fails on a fresh clone.
+!examples/*/data/
+!examples/*/data/**
 mmseqs/
 .DS_Store
 .prototype/

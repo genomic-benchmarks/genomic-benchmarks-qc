@@ -4,7 +4,7 @@
 
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
+  --input examples/paired-sequences/data/miRNA_mRNA_pairs_dataset.tsv \
   --out-folder example_outputs/miRNA_mRNA_dataset \
   --sequence-column gene \
   --sequence-column noncodingRNA

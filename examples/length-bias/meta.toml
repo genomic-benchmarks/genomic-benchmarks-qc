@@ -1,0 +1,69 @@
+# The README's first claim, and the only example with a continuous label.
+#
+# "Your negatives are shorter than your positives. A length classifier now beats
+# your model" leads the README's list of what gb-qc catches, and until this
+# example none of the others demonstrated it - every one of them has classes
+# whose length distributions are identical, scoring the length check at exactly
+# 0.500. Worth knowing why: across all 234 dataset splits surveyed for the
+# paper, no dataset fails the length check outright. The strongest length bias
+# on record is this one, at AU-ROC 0.61 - a Warning. That is a finding about the
+# field rather than a gap in the example set, and the docs page says so.
+#
+# It also carries the only two options nothing else exercises:
+#
+#   --regression      the label is translation efficiency, a continuous value,
+#                     split at its median into high and low
+#   --end-position    these are whole mRNAs, median 3446 nt and up to 17497. Left
+#                     unbounded the per-position checks would run for thousands
+#                     of positions and produce a report nobody can load. Trimmed
+#                     to 500, which is what that option is for.
+
+name = "length-bias"
+title = "When length alone separates the classes"
+blurb = """
+Human mRNA translation efficiency. The label is continuous, so --regression
+splits it at the median into high and low - and the two halves turn out to have
+different length distributions, enough for a classifier seeing nothing but
+sequence length to reach AU-ROC 0.61. Composition follows length here, so the
+nucleotide and dinucleotide checks pick up the same signal second-hand.
+"""
+
+[source]
+collection = "mRNABench"
+dataset = "translation-efficiency-human"
+citation = "mRNABench. Translation efficiency task, human."
+url = "https://github.com/morrislab/mRNAbench"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+train split, 1000 rows. Not stratified: the label is continuous, so there are
+no classes to stratify by until --regression splits it at the median.
+Only the sequence and target columns were kept.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = [
+    "--input", "data/train.csv",
+    "--label-column", "target",
+    "--regression",
+    "--end-position", "500",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/high_vs_low"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Pass"
+"Duplicate Sequences between Labels" = "Pass"
+"Sequence lengths" = "Warning"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Warning"
+"Per sequence dinucleotide content" = "Warning"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"

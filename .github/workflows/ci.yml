@@ -108,8 +108,8 @@ jobs:
       - name: evaluate-classes (FASTA, one file per class)
         run: |
           gb-qc evaluate-classes \
-            --input example_datasets/coding_seqs.fasta \
-            --input example_datasets/intergenomic_seqs.fasta \
+            --input examples/fasta-classes/data/coding_seqs.fasta \
+            --input examples/fasta-classes/data/intergenomic_seqs.fasta \
             --out-folder ci_out/coding
           out="ci_out/coding/class/sequence/coding_seqs_vs_intergenomic_seqs"
           test -f "$out/gb-qc-report.csv"
@@ -120,8 +120,8 @@ jobs:
       - name: evaluate-classes (multiple CSV files, label column)
         run: |
           gb-qc evaluate-classes \
-            --input example_datasets/enhancers_train.csv \
-            --input example_datasets/enhancers_test.csv \
+            --input examples/enhancers/data/enhancers_train.csv \
+            --input examples/enhancers/data/enhancers_test.csv \
             --out-folder ci_out/enhancers
           test -f "ci_out/enhancers/class/sequence/0_vs_1/gb-qc-report.csv"
           test -f "ci_out/enhancers/class/sequence/0_vs_1/gb-qc-report.html"
@@ -129,7 +129,7 @@ jobs:
       - name: evaluate-classes (TSV, multiple sequence columns)
         run: |
           gb-qc evaluate-classes \
-            --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
+            --input examples/paired-sequences/data/miRNA_mRNA_pairs_dataset.tsv \
             --sequence-column gene \
             --sequence-column noncodingRNA \
             --label-column label \
@@ -141,8 +141,8 @@ jobs:
       - name: evaluate-splits (data leakage, uses MMseqs2)
         run: |
           gb-qc evaluate-splits \
-            --train-input example_datasets/enhancers_train.csv \
-            --test-input example_datasets/enhancers_test.csv \
+            --train-input examples/enhancers/data/enhancers_train.csv \
+            --test-input examples/enhancers/data/enhancers_test.csv \
             --sequence-column sequence \
             --out-folder ci_out/splits
           test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.csv"

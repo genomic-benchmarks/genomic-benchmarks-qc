@@ -79,7 +79,7 @@ version = {attr = "genomic_benchmarks_qc.__version__"}
 line-length = 100
 target-version = "py312"
 # Generated reports and the bundled example data are outputs, not source.
-extend-exclude = ["example_datasets", "example_outputs"]
+extend-exclude = ["examples/*/data", "example_outputs"]
 
 [tool.ruff.lint]
 select = [

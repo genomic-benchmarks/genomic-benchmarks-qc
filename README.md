@@ -42,8 +42,8 @@ Point the tool at your dataset and give it somewhere to write:
 
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/enhancers_train.csv \
-  --input example_datasets/enhancers_test.csv \
+  --input examples/enhancers/data/enhancers_train.csv \
+  --input examples/enhancers/data/enhancers_test.csv \
   --out-folder example_outputs/enhancers_dataset
 ```
 
@@ -60,8 +60,8 @@ To check whether your test set leaks into your training set:
 
 ```bash
 gb-qc evaluate-splits \
-  --train-input example_datasets/enhancers_train.csv \
-  --test-input example_datasets/enhancers_test.csv \
+  --train-input examples/enhancers/data/enhancers_train.csv \
+  --test-input examples/enhancers/data/enhancers_test.csv \
   --sequence-column sequence \
   --out-folder example_outputs/enhancers_dataset
 ```
@@ -153,8 +153,8 @@ Override the names with `--sequence-column` and `--label-column`. Any other colu
 
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/coding_seqs.fasta \
-  --input example_datasets/intergenomic_seqs.fasta \
+  --input examples/fasta-classes/data/coding_seqs.fasta \
+  --input examples/fasta-classes/data/intergenomic_seqs.fasta \
   --out-folder example_outputs/coding_vs_intergenomic_dataset
 ```
 
@@ -162,7 +162,7 @@ gb-qc evaluate-classes \
 
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/miRNA_mRNA_pairs_dataset.tsv \
+  --input examples/paired-sequences/data/miRNA_mRNA_pairs_dataset.tsv \
   --sequence-column gene \
   --sequence-column noncodingRNA \
   --label-column label \

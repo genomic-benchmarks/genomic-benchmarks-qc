@@ -8,8 +8,8 @@ Compare sequence characteristics between train and test sets. Files are pooled a
 
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/enhancers_train.csv \
-  --input example_datasets/enhancers_test.csv \
+  --input examples/enhancers/data/enhancers_train.csv \
+  --input examples/enhancers/data/enhancers_test.csv \
   --out-folder example_outputs/enhancers_dataset
 ```
 
@@ -42,8 +42,8 @@ Detect train-test data leakage via sequence similarity.
 
 ```bash
 gb-qc evaluate-splits \
-  --train-input example_datasets/enhancers_train.csv \
-  --test-input example_datasets/enhancers_test.csv \
+  --train-input examples/enhancers/data/enhancers_train.csv \
+  --test-input examples/enhancers/data/enhancers_test.csv \
   --sequence-column sequence \
   --out-folder example_outputs/enhancers_dataset
 ```

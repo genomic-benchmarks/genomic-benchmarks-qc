@@ -1,0 +1,61 @@
+# The example the interactive per-position plot exists for.
+#
+# Every summary statistic passes. The entire difference between the classes is
+# an eight-nucleotide window at the centre of a 398-position sequence - the GT
+# splice donor site - which a static figure spanning 398 positions renders as a
+# hairline. This is the dataset to open the viewer on.
+
+name = "hidden-motif"
+title = "A bias eight nucleotides wide"
+blurb = """
+Arabidopsis splice donor sites. GC content, length, duplication and vocabulary
+are all clean; the per-position check fails on its own, from ten flagged
+positions between 198 and 205 out of 398. Zoom in and the donor site is
+unmistakable. Zoom out and it is invisible.
+"""
+
+[source]
+collection = "OmniGenBench"
+dataset = "splicing_arabidopsis_thaliana_donor"
+citation = "Yang et al. OmniGenBench: A Modular Platform for Reproducible Genomic Foundation Models Benchmarking. arXiv:2505.14402"
+url = "https://doi.org/10.48550/arXiv.2505.14402"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+train split, 2000 sequences per class; test split in full, 1000 sequences.
+Only the label and sequence columns were kept.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = ["--input", "data/train.csv"]
+
+[[run]]
+id = "split"
+command = "evaluate-splits"
+args = [
+    "--train-input", "data/train.csv",
+    "--test-input", "data/test.csv",
+    "--sequence-column", "sequence",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Pass"
+"Duplicate Sequences between Labels" = "Pass"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Pass"
+"Per sequence dinucleotide content" = "Warning"
+"Per position nucleotide content" = "Fail"
+"Per position reversed nucleotide content" = "Fail"
+
+[expect."split/sequence/train_vs_test"]
+"Data Leakage" = "Pass"

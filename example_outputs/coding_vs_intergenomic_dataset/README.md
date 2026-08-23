@@ -4,8 +4,8 @@
 
 ```bash
 gb-qc evaluate-classes \
-  --input example_datasets/coding_seqs.fasta \
-  --input example_datasets/intergenomic_seqs.fasta \
+  --input examples/fasta-classes/data/coding_seqs.fasta \
+  --input examples/fasta-classes/data/intergenomic_seqs.fasta \
   --out-folder example_outputs/coding_vs_intergenomic_dataset
 ```
 
