@@ -8,7 +8,7 @@
 
 Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
 
-Everything you need is below. The [documentation site](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/) adds what a README has no room for: eight [worked examples](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/examples/) with live reports — a clean dataset, a badly biased one, one whose only flaw is eight nucleotides wide — a guide to [what to do about each check](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/checks/) and [why the thresholds sit where they do](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/how-it-works/), and the generated CLI and API reference.
+Everything you need is below. The [documentation site](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/) adds what a README has no room for: eight [worked examples](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/examples/) with live reports — a clean dataset, a badly biased one, one whose only flaw is six positions wide — a guide to [what to do about each check](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/checks/) and [why the thresholds sit where they do](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/how-it-works/), and the generated CLI and API reference.
 
 ## What it catches
 

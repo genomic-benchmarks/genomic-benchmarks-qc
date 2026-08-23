@@ -33,6 +33,21 @@ is exploitable — so the reported value is always ≥ 0.5.
 Alongside AU-ROC the report gives AU-PR and the accuracy at the best threshold.
 They are there for context; **the flag comes from AU-ROC alone.**
 
+### It measures difference, not structure
+
+Because the comparison is always between the two classes, a feature both classes
+share scores 0.5 no matter how striking it is. The clearest case is
+[hidden-motif](../examples/hidden-motif.md#the-one-position-in-the-motif-that-passes),
+where one position holds the same base in 100% of every sequence in both classes
+and the check reports it
+<span class="flag flag-pass">Pass</span>. That is not the check missing
+something. A position that never varies cannot tell the classes apart, so it
+cannot be exploited, so there is nothing to flag.
+
+The practical consequence is that **the flagged region is usually narrower than
+the pattern causing it.** Flags mark where a difference is large enough to
+measure, not where a motif starts and stops.
+
 ## The boundaries
 
 | AU-ROC | Flag | Read it as |

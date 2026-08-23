@@ -1,16 +1,16 @@
 # The example the interactive per-position plot exists for.
 #
 # Every summary statistic passes. The entire difference between the classes is
-# an eight-nucleotide window at the centre of a 398-position sequence - the GT
-# splice donor site - which a static figure spanning 398 positions renders as a
-# hairline. This is the dataset to open the viewer on.
+# a six-position window at the centre of a 398-position sequence - the flanks of
+# the splice donor site - which a static figure spanning 398 positions renders as
+# a hairline. This is the dataset to open the viewer on.
 
 name = "hidden-motif"
-title = "A bias eight nucleotides wide"
+title = "A bias six positions wide"
 blurb = """
 Arabidopsis splice donor sites. GC content, length, duplication and vocabulary
-are all clean; the per-position check fails on its own, from ten flagged
-positions between 198 and 205 out of 398. Zoom in and the donor site is
+are all clean; the per-position check fails on its own, from six flagged
+positions between 199 and 205 out of 398. Zoom in and the donor site is
 unmistakable. Zoom out and it is invisible.
 """
 

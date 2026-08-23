@@ -1,6 +1,6 @@
 # hidden-motif
 
-**A bias eight nucleotides wide, inside a 398-position sequence.**
+**A bias six positions wide, inside a 398-position sequence.**
 
 Arabidopsis splice donor sites: 2000 sequences per class, every one 398
 nucleotides long, from
@@ -40,16 +40,51 @@ from the far end, which for fixed-length sequences finds the same thing. So the
 finding is singular: **one region of these sequences gives the class away, and
 nothing else does.**
 
-That region is the GT donor motif. These are splice sites, so of course position
-200 is a G in the positive class — the biology is the label. Six positions carry
-it:
+That region is the splice donor site, and the report locates it to the position:
 
-| Position | 199 | 200 | 202 | 203 | 204 | 205 |
-|---|---|---|---|---|---|---|
-| Worst AU-ROC | 0.683 | **0.783** | 0.672 | 0.714 | 0.641 | 0.659 |
-| Flag | <span class="flag flag-warn">Warning</span> | <span class="flag flag-fail">Fail</span> | <span class="flag flag-warn">Warning</span> | <span class="flag flag-fail">Fail</span> | <span class="flag flag-warn">Warning</span> | <span class="flag flag-warn">Warning</span> |
+--8<-- "_generated/hidden-motif-positions.md"
 
-Six positions out of 398. **The other 392 are clean.**
+Six positions out of 398. **The other 392 are clean.** The reversed table is the
+same finding read from the far end of a fixed-length sequence — 398 − 200 + 1 =
+199, and the AU-ROCs match exactly.
+
+### The one position in the motif that passes
+
+Position 201 is missing from that table, and it is the most interesting thing in
+it.
+
+Every sequence the report was built from — all 2,000 in each class — has a `G` at
+position 201, and position 202 is only ever `T` or `C`. Every window here,
+positive or negative, is centred on a `GT` or a `GC`. The positives are `GT` in
+99.0% of cases; the negatives are `GT` in 61.8% and `GC` in 38.3%. **The
+negatives are not background genome — they are decoy donor-like sites that are
+not donors**, which is what makes this dataset worth benchmarking on.
+
+And it makes position 201 carry no information whatsoever about the label. The
+check reports it <span class="flag flag-pass">Pass</span>.
+
+That is the clearest illustration in these examples of what a per-position check
+actually measures. **A position can be perfectly conserved and still pass.** The
+question is never "is this position informative about the sequence" but "does it
+differ between the classes" — and the single most conserved base in the dataset
+is the one the report has nothing to say about.
+
+What the flags mark, then, is the flanking consensus on either side of that
+shared anchor:
+
+```text
+position    198  199  200 | 201  202  203  204  205  206
+positives   A/C   A    G  |  G    T    A    A    G    T
+negatives    ·    ·    ·  |  G   T/C   ·    ·    ·    ·
+flagged           ✓    ✓  |       ✓    ✓    ✓    ✓
+                          ^ exon / intron boundary
+```
+
+Which is `(A/C)AG|GTAAGT`, the canonical U2 donor site, exactly where a dataset of
+donor sites should put it. Note that it is wider than the flagged window:
+position 198 and position 206 both differ between the classes, just not by enough
+to cross 0.6. **Flags mark where a difference is large enough to detect, not
+where the motif ends.**
 
 Whether that is a problem is a judgement the tool cannot make for you, and this
 is the example that makes the distinction concrete:
@@ -70,8 +105,8 @@ one.
 
 ## Why this is the example for the interactive plot
 
-Six flagged positions in a figure 398 positions wide is roughly one and a half
-percent of the x-axis. In the static PNG it is a hairline you would not notice
+The flagged window, positions 199 to 205, is under two percent of a figure 398
+positions wide. In the static PNG it is a hairline you would not notice
 and could not read.
 
 Open the report and use the per-position panel:
@@ -79,7 +114,7 @@ Open the report and use the per-position panel:
 1. Land on the panel. The line looks flat.
 2. Hit **Next flag**. The view jumps to position 199.
 3. Drag to zoom into 195–210. Now the donor site is unmistakable — one class is
-   almost entirely G at 200, the other is background.
+   78% G at position 200 where the other is 21%.
 4. Hover any position for the per-class base frequencies behind the flag.
 
 That is the whole argument for making the plot interactive rather than shipping

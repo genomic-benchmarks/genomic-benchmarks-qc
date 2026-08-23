@@ -26,3 +26,12 @@
 /* Generated CLI reference: Typer emits one bullet per option, which reads badly
    as a wall. Give each some air. */
 .md-typeset h2 + p + ul > li { margin-bottom: .35rem; }
+
+/* The report screenshot on the landing page. A border matters here: the report's
+   own background is near-white, so without one the image bleeds into the page
+   and stops reading as a screenshot of a separate thing. */
+.screenshot {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
+}

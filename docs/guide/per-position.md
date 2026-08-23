@@ -49,7 +49,9 @@ This works on any dataset and takes about a minute.
 
 1. **Look at the panel unzoomed.** You are asking one question: is the difference
    *spread* or *localised*? A broad elevated region is composition showing
-   through; a spike is a motif or an artefact.
+   through; a spike is a motif or an artefact. A spike at position 1, or at
+   position 1 of the reversed panel, is almost always an artefact of how the
+   sequences were cut.
 2. **Hit Next flag.** This jumps to the first flagged position, whatever the zoom.
    It is the fastest way to find out whether the flags cluster or scatter.
 3. **Drag to zoom around the first cluster** — ten or twenty positions either
@@ -122,3 +124,8 @@ anchored to the *end* of a sequence — a poly-A tail, a 3' adapter — sits at 
 different forward position in every sequence and the forward panel cannot see it.
 If the reversed check fires and the forward one does not, that is what to look
 for.
+
+[enhancers](../examples/enhancers.md#the-only-two-flagged-positions-are-the-two-ends)
+is the case where it pays off. Sequences run 4 to 568 nucleotides; both panels
+flag position 1, and they are flagging *different bases* — the first of each
+sequence and the last. Only the reversed panel could have found the second.

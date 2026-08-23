@@ -26,8 +26,8 @@ A full run takes about two and a half minutes and produces 15 reports.
 |---|---|---|---|
 | [clean-dataset](clean-dataset/) | The control: what "nothing wrong" looks like. AU-ROC 0.50–0.54 throughout | 9 Pass | 0.07% Warning |
 | [composition-bias](composition-bias/) | The worst case, and the only example that fails both kinds of report | 6 Fail, 1 Warning, 2 Pass | 6.04% **Fail** |
-| [hidden-motif](hidden-motif/) | A bias 8 nt wide inside 398 positions. Why the per-position plot is interactive | 2 Fail, 1 Warning, 6 Pass | 0.00% Pass |
-| [variable-length](variable-length/) | The `Unknown` tail and `--min-coverage`; non-ACGT bases. 20,870 positions unscored against 5,536 scored | 2 Fail, 1 Warning, 6 Pass | 0.80% Warning |
+| [hidden-motif](hidden-motif/) | A bias 6 positions wide inside 398 positions. Why the per-position plot is interactive | 2 Fail, 1 Warning, 6 Pass | 0.00% Pass |
+| [variable-length](variable-length/) | The `Unknown` tail and `--min-coverage`; an `N` that only one class has. 20,870 positions unscored against 5,536 scored | 2 Fail, 1 Warning, 6 Pass | 0.80% Warning |
 | [length-bias](length-bias/) | Length alone separating the classes, plus `--regression` and `--end-position` | 3 Warning⁻, 6 Pass | — |
 | [paired-sequences](paired-sequences/) | Two sequence columns in one row, and the extra `merged` report | duplication checks Fail, statistics Pass | — |
 | [fasta-classes](fasta-classes/) | One FASTA file per class, label from the filename | 3 Fail, 6 Pass | — |

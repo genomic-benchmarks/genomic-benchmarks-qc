@@ -99,6 +99,13 @@ markdown_extensions:
       base_path: [docs]
       check_paths: true
 
+# The snippet fragments in docs/_generated/ are include targets, not pages.
+# Without this every one of them is reported as missing from the nav on every
+# build. pymdownx.snippets reads them off disk through its own base_path, so
+# excluding them from the page collection does not affect the includes.
+exclude_docs: |
+  _generated/
+
 # --strict turns warnings into errors, so a cross-reference that stops resolving
 # fails the build. That is the point: tests/test_docstring_references.py checks
 # the targets exist, and this checks they actually render as links.

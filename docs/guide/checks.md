@@ -141,8 +141,17 @@ everything — the [interactive plot](per-position.md) exists for exactly this. 
 flagged positions clustered together is a motif; position 1 alone is a technical
 artefact; a broad smear is composition showing through.
 
+One thing this check does **not** do is reward conservation. It compares the two
+classes, so a position both classes share is a
+<span class="flag flag-pass">Pass</span> however invariant it is — see the
+[position every sequence agrees on](../examples/hidden-motif.md#the-one-position-in-the-motif-that-passes),
+where 100% of both classes carry the same base and the check has nothing to say.
+Expect the flagged window to be narrower than the motif that causes it.
+
 **See it fail:** [hidden-motif](../examples/hidden-motif.md) at 0.783, from six
-positions out of 398.
+positions out of 398. **See the artefact shape:**
+[enhancers](../examples/enhancers.md#the-only-two-flagged-positions-are-the-two-ends),
+where the only flagged position is the first base.
 
 ## Per position reversed nucleotide content
 
@@ -156,6 +165,13 @@ forward position in every sequence and the forward check cannot see it.
 
 **What to do.** If the reversed check fires and the forward one does not, look for
 something anchored to the end of your sequences.
+
+**See it earn its place:**
+[enhancers](../examples/enhancers.md#the-only-two-flagged-positions-are-the-two-ends).
+Both directions flag position 1 there, but they are not the same position — the
+forward check finds the first base of each sequence and the reversed check the
+last, and on sequences running from 4 to 568 nucleotides only the reversed check
+could have found the second one.
 
 ## Sequence Duplications within Labels
 

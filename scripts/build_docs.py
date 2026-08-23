@@ -17,11 +17,16 @@ Usage:
 `--skip-reports` is for working on prose: the example reports take about two and
 a half minutes to regenerate and rarely change while you are writing. The
 published build never skips them.
+
+Building the reports needs MMseqs2 on PATH for the four `evaluate-splits` runs.
+Both workflows in .github/workflows/ install it; locally, put its `bin` on PATH
+first or the split reports fail and the build stops.
 """
 
 import argparse
 import csv
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -188,6 +193,130 @@ def generate_flag_tables():
           f"into {GENERATED.relative_to(ROOT)}")
 
 
+POSITION_CHECKS = (
+    ('Per position nucleotide content', 'counted from the start of each sequence'),
+    ('Per position reversed nucleotide content', 'counted from the end of each sequence'),
+)
+POSITION_ROW = re.compile(r' - (?P<base>[A-Z]) position (?P<pos>\d+)$')
+POSITION_LIMIT = 20
+
+
+def _flagged_positions(report_csv: Path, check: str) -> list[tuple[int, str, float, str]]:
+    """(position, base, auroc, flag) for the positions one check flagged.
+
+    A position is scored once per base, so a single position can appear four
+    times. The headline check reports the worst of them, and so does this: one
+    row per position, carrying the base that made it the worst.
+    """
+    worst: dict[int, tuple[str, float, str]] = {}
+    with report_csv.open(newline='') as handle:
+        for row in csv.DictReader(handle):
+            if not row['Check'].startswith(check + ' - '):
+                continue
+            match = POSITION_ROW.search(row['Check'])
+            if not match or row['Flag'] not in ('Warning', 'Fail'):
+                continue
+            position, auroc = int(match['pos']), float(row['AU-ROC'])
+            if position not in worst or auroc > worst[position][1]:
+                worst[position] = (match['base'], auroc, row['Flag'])
+    return [(pos, *rest) for pos, rest in sorted(worst.items())]
+
+
+def _position_table(positions: list[tuple[int, str, float, str]]) -> str:
+    """A Markdown table of flagged positions, worst first if it has to be cut."""
+    shown = sorted(positions, key=lambda row: -row[2])[:POSITION_LIMIT]
+    table = ('| Position | Worst base | AU-ROC | Flag |\n|---|---|---|---|\n'
+             + '\n'.join(f"| {pos} | {base} | {auroc:.3f} | "
+                         f"{FLAG_SPANS.get(flag, flag)} |"
+                         for pos, base, auroc, flag in sorted(shown)))
+    omitted = len(positions) - len(shown)
+    if omitted:
+        # Say so, rather than letting a cut table read as the whole finding.
+        table += (f"\n\nThe {POSITION_LIMIT} highest-scoring of "
+                  f"{len(positions)} flagged positions; {omitted} more are in "
+                  f"the report.")
+    return table
+
+
+def generate_check_coverage():
+    """Write the check-to-example cross-reference into docs/_generated/.
+
+    A check nobody has seen fail is hard to reason about, so the examples index
+    lists where each one does. Hand-maintaining that table went wrong twice -
+    two examples missing from rows they belong in, and the reversed per-position
+    check missing altogether - so it is read off the reports instead.
+    """
+    GENERATED.mkdir(parents=True, exist_ok=True)
+    order: list[str] = []
+    where: dict[str, dict[str, set[str]]] = {}
+    for meta in sorted((ROOT / 'examples').glob('*/meta.toml')):
+        name = meta.parent.name
+        for report in sorted(tomllib.loads(meta.read_text()).get('expect', {})):
+            csv_path = REPORTS / name / report / 'gb-qc-report.csv'
+            if not csv_path.is_file():
+                continue
+            with csv_path.open(newline='') as handle:
+                for row in csv.DictReader(handle):
+                    check = row['Check']
+                    if ' - ' in check:
+                        continue
+                    if check not in where:
+                        order.append(check)
+                        where[check] = {'Fail': set(), 'Warning': set()}
+                    if row['Flag'] in where[check]:
+                        where[check][row['Flag']].add(name)
+
+    def cell(names: set[str]) -> str:
+        # Links are resolved from the including page, docs/examples/index.md.
+        return ', '.join(f"[{n}]({n}.md)" for n in sorted(names)) or '—'
+
+    if order:
+        lines = ['| Check | Fails in | Warns in |', '|---|---|---|']
+        lines += [f"| {check} | {cell(where[check]['Fail'])} | "
+                  f"{cell(where[check]['Warning'])} |" for check in order]
+    else:
+        # A --skip-reports preview has nothing to read this off.
+        lines = ['This table is built from the example reports, which this '
+                 'build skipped.']
+    (GENERATED / 'check-coverage.md').write_text('\n'.join(lines) + '\n')
+    print(f"wrote the coverage of {len(order)} check(s) "
+          f"into {(GENERATED / 'check-coverage.md').relative_to(ROOT)}")
+
+
+def generate_position_tables():
+    """Write one flagged-position table per example into docs/_generated/.
+
+    Hand-typing these is how a page ends up claiming an AU-ROC the report never
+    produced, which is what had happened to the hidden-motif page before this
+    existed. Both directions are tabulated: on fixed-length data the reversed
+    table is the forward one mirrored, but on variable-length data it is a
+    different finding - see the enhancers example, where the forward check
+    flags the first base and the reversed check the last.
+    """
+    GENERATED.mkdir(parents=True, exist_ok=True)
+    for meta in sorted((ROOT / 'examples').glob('*/meta.toml')):
+        name = meta.parent.name
+        blocks = []
+        for report in sorted(tomllib.loads(meta.read_text()).get('expect', {})):
+            csv_path = REPORTS / name / report / 'gb-qc-report.csv'
+            if not csv_path.is_file():
+                continue
+            for check, direction in POSITION_CHECKS:
+                positions = _flagged_positions(csv_path, check)
+                if positions:
+                    blocks.append(f"**`{report}` — {check}**, {direction}:\n\n"
+                                  + _position_table(positions))
+        if not blocks:
+            # Either nothing was flagged, or this is a --skip-reports preview
+            # with no report to read. Write the file either way: a page that
+            # includes it must still build, and check_paths would fail first.
+            blocks = ['No per-position check is flagged in this example, '
+                      'or the reports were not built.']
+        (GENERATED / f'{name}-positions.md').write_text('\n\n'.join(blocks) + '\n')
+    print(f"wrote {len(list(GENERATED.glob('*-positions.md')))} flagged-position "
+          f"table(s) into {GENERATED.relative_to(ROOT)}")
+
+
 PLACEHOLDER = """<!doctype html>
 <title>Report not built</title>
 <body style="font: 15px/1.6 system-ui; max-width: 34em; margin: 4em auto; padding: 0 1em">
@@ -247,6 +376,8 @@ def main():
     else:
         generate_reports()
     generate_flag_tables()
+    generate_position_tables()
+    generate_check_coverage()
 
     env = {**os.environ, 'MKDOCS_CONFIG_FILE': 'mkdocs.yml'}
     _run(['mkdocs', 'serve' if args.serve else 'build'], env=env)

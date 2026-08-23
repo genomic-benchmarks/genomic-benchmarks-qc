@@ -13,7 +13,7 @@ produced the report you can open beside it.
 ## Start here
 
 If you read one, read [hidden-motif](hidden-motif.md). Every summary statistic
-passes; the entire difference between its classes is eight nucleotides wide
+passes; the entire difference between its classes is six positions wide
 inside a 398-position sequence. It is the case the interactive per-position plot
 exists for, and the clearest demonstration that a clean-looking summary is not
 the same as a clean dataset.
@@ -27,8 +27,8 @@ If you want to know what "fine" looks like first, read
 |---|---|---|
 | [clean-dataset](clean-dataset.md) | The control. Every check passes, AU-ROC 0.50–0.54 | <span class="flag flag-pass">Pass</span> |
 | [composition-bias](composition-bias.md) | Six checks fail, and 6% of the test set is already in training | <span class="flag flag-fail">Fail</span> |
-| [hidden-motif](hidden-motif.md) | A bias eight nucleotides wide inside 398 positions | <span class="flag flag-fail">Fail</span> |
-| [variable-length](variable-length.md) | Why most positions go unscored, and non-ACGT bases | <span class="flag flag-fail">Fail</span> |
+| [hidden-motif](hidden-motif.md) | A bias six positions wide inside 398 positions | <span class="flag flag-fail">Fail</span> |
+| [variable-length](variable-length.md) | Why most positions go unscored, and an `N` that only one class has | <span class="flag flag-fail">Fail</span> |
 | [length-bias](length-bias.md) | Length alone separating the classes, on a continuous label | <span class="flag flag-warn">Warning</span> |
 | [paired-sequences](paired-sequences.md) | Two sequence columns in one row, and the `merged` report | <span class="flag flag-fail">Fail</span> |
 | [fasta-classes](fasta-classes.md) | One FASTA file per class, label from the filename | <span class="flag flag-fail">Fail</span> |
@@ -39,26 +39,20 @@ If you want to know what "fine" looks like first, read
 A check you have never seen fail is hard to reason about. This is where each one
 does.
 
-| Check | Fails in | Warns in |
-|---|---|---|
-| Unique bases | [variable-length](variable-length.md) | — |
-| Sequence lengths | *nowhere* — see below | [length-bias](length-bias.md) |
-| Per sequence GC content | [composition-bias](composition-bias.md), [fasta-classes](fasta-classes.md) | [enhancers](enhancers.md) |
-| Per sequence nucleotide content | [composition-bias](composition-bias.md), [fasta-classes](fasta-classes.md) | [length-bias](length-bias.md), [enhancers](enhancers.md) |
-| Per sequence dinucleotide content | [composition-bias](composition-bias.md), [fasta-classes](fasta-classes.md) | [hidden-motif](hidden-motif.md), [length-bias](length-bias.md) |
-| Per position nucleotide content | [composition-bias](composition-bias.md), [hidden-motif](hidden-motif.md) | [enhancers](enhancers.md) |
-| Sequence duplications within labels | [paired-sequences](paired-sequences.md) | [composition-bias](composition-bias.md), [variable-length](variable-length.md) |
-| Duplicate sequences between labels | [composition-bias](composition-bias.md), [paired-sequences](paired-sequences.md), [variable-length](variable-length.md) | — |
-| Data leakage | [composition-bias](composition-bias.md) | [enhancers](enhancers.md), [variable-length](variable-length.md), [clean-dataset](clean-dataset.md) |
+--8<-- "_generated/check-coverage.md"
 
-Two gaps in that table are worth stating rather than leaving as blanks.
+That table is read off the reports themselves, so it cannot fall out of step
+with them. Two gaps in it are worth stating rather than leaving as blanks.
 
-**Nothing fails the length check.** Not in these examples, and not anywhere in
-the 234 dataset splits surveyed for the paper — the strongest length bias on
-record among them scores AU-ROC 0.61, a <span class="flag flag-warn">Warning</span>.
+**Nothing fails the length check** — the empty cell in its row is real. Not in
+these examples, and not anywhere in the 234 dataset splits surveyed for the
+paper, where the strongest length bias on record scores AU-ROC 0.61, a
+<span class="flag flag-warn">Warning</span>.
 The README leads with "your negatives are shorter than your positives" because
 it is the easiest bias to introduce and the most embarrassing to ship, not
 because published benchmarks are riddled with it.
 
-**`Unique bases` has no Warning.** It is a yes-or-no question — either a class
-contains characters outside ACGT or it does not — so it never lands in between.
+**`Unique bases` has no Warning.** It is a yes-or-no question — either the two
+classes use the same set of characters or they do not — so it never lands in
+between. Note what it is *not*: a dataset where both classes contain `N` passes.
+What fails is the asymmetry.

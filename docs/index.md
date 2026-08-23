@@ -26,6 +26,13 @@ Every check gets a <span class="flag flag-pass">Pass</span>,
 <span class="flag flag-fail">Fail</span> flag, a standalone HTML report you can
 read or mail, and a CSV you can put in CI.
 
+[![The gb-qc HTML report: a filterable flag summary down the side, and every statistic behind it](assets/report-screenshot.png){ .screenshot }](reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html)
+
+The report for [enhancers](examples/enhancers.md), one of the eight worked
+examples below — **click it to open the real one.** Six of its nine checks want
+attention, and the side nav filters down to just those. Everything is in the one
+file: no server, no assets directory, nothing to host.
+
 !!! note "Where things are"
 
     The [README][readme] is complete and remains the place to start:
@@ -53,8 +60,8 @@ read or mail, and a CSV you can put in CI.
 -   **Show me it working**
 
     [Eight worked examples](examples/index.md) with live reports. Start with
-    [hidden-motif](examples/hidden-motif.md), whose only flaw is eight
-    nucleotides wide.
+    [hidden-motif](examples/hidden-motif.md), whose only flaw is six positions
+    wide.
 
 -   **Something is wrong**
 
@@ -74,7 +81,7 @@ straight to a report below.
 |---|---|---|
 | [`clean-dataset`](examples/clean-dataset.md) | The control: what "nothing wrong" looks like, AU-ROC 0.50–0.54 throughout | [open](reports/clean-dataset/class/sequence/0_vs_1/gb-qc-report.html) |
 | [`composition-bias`](examples/composition-bias.md) | The worst case — six checks fail, and 6% of the test set is already in training | [open](reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.html) |
-| [`hidden-motif`](examples/hidden-motif.md) | A bias eight nucleotides wide inside 398 positions. Why the per-position plot is interactive | [open](reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html) |
+| [`hidden-motif`](examples/hidden-motif.md) | A bias six positions wide inside 398 positions. Why the per-position plot is interactive | [open](reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html) |
 | [`variable-length`](examples/variable-length.md) | Sequences that stop at different places, and why most positions go unscored | [open](reports/variable-length/class/sequence/0_vs_1/gb-qc-report.html) |
 | [`length-bias`](examples/length-bias.md) | Length alone separating the classes, on a continuous label | [open](reports/length-bias/class/sequence/high_vs_low/gb-qc-report.html) |
 | [`paired-sequences`](examples/paired-sequences.md) | Two sequence columns in one row | [open](reports/paired-sequences/class/merged/0_vs_1/gb-qc-report.html) |

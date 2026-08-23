@@ -60,6 +60,44 @@ per-position checks reach position 483 but only compare positions 1–359, and
 [variable-length](variable-length.md), but the same mechanism — worth noticing
 that a report can be silently windowed without anything failing.
 
+## The only two flagged positions are the two ends
+
+Everything positional about this dataset is at its edges. The per-position checks
+flag exactly one position each, and it is the same position in both:
+
+--8<-- "_generated/enhancers-positions.md"
+
+Forward position 1 is the first base of each sequence; reversed position 1 is the
+last. In class 1 the first base is `T` in 56% of sequences and `A` in 4%, and the
+last base is `A` in 51% and `T` in 5%. Class 0 is spread across all four bases at
+both. **Nothing in between is flagged at all.**
+
+That is the shape [the checks page](../guide/checks.md#per-position-nucleotide-content)
+calls a technical artefact rather than biology: whatever produced these intervals
+put a systematic base at each end of one class, and `T` at the start against `A`
+at the end is one bias seen from two directions. It is not an artefact of the
+subsample either — run the check on the full upstream `human_enhancers_ensembl`
+splits and both ends flag there too, at the same strength, in each split
+independently.
+
+**This is also the clearest case for the reversed panel.** These sequences run 4
+to 568 nucleotides, so "the last base" sits at a different forward index in every
+one of them. The forward check cannot see an end-of-sequence bias at all; only
+the reversed check can. On [hidden-motif](hidden-motif.md), where every sequence
+is the same length, the reversed panel is the forward one mirrored and adds
+nothing. Here it adds a finding.
+
+!!! note "What a subsample can hide"
+
+    The full upstream splits also fail `Unique bases`, `Sequence Duplications
+    within Labels` and `Duplicate Sequences between Labels`. The 1,800 sequences
+    here happen not to contain the sequences responsible, so those three come
+    back clean. It is a general point worth carrying: **the three categorical
+    checks can be hidden by sampling**, because one non-ACGT character or one
+    shared sequence is enough to fail them and half the data may not include it.
+    The AU-ROC checks are far more stable — every one of them here lands within
+    0.01 of the full dataset's.
+
 ## The leakage is small and real
 
 <span class="flag flag-warn">Warning</span> at **0.67% of queries and 0.33% of

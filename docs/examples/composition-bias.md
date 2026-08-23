@@ -38,11 +38,40 @@ Read the failures as one finding, not six. GC content 0.701, base composition
 within 0.02 of each other is not four independent biases. It is **one
 compositional difference between the classes, seen four ways.**
 
-The classes are TATA-box promoters and non-promoters. A TATA box is AT-rich by
-definition, so the positive class is AT-rich, so GC content separates the
+One class is AT-rich and the other GC-rich — 45.6% GC against 54.8% — and that
+one difference is enough to produce all four flags. GC content separates the
 classes, so base composition does, so dinucleotide frequencies do, so the
-positions carrying the motif do. Each check is measuring a consequence of the
-same thing.
+positions carrying the AT-rich motif do. Each check is measuring a consequence of
+the same thing.
+
+### Where the positional part of it sits
+
+The per-position check is the one that says *where*, and it points at two short
+windows rather than at the sequence as a whole:
+
+--8<-- "_generated/composition-bias-positions.md"
+
+Six positions in two clusters, inside a 70-nucleotide window. The data behind
+them:
+
+- **Positions 3–8 of class 0** read `T A T A A A`, each base present in 70–89% of
+  the class against roughly uniform bases in class 1. A 70-nucleotide core
+  promoter window puts the TATA box at about position 3, so this is the motif the
+  dataset is named for.
+- **Positions 33–34 of class 1** are the mirror image: `C` then `A`, the pair
+  together in 39% of class 1 against 6% of class 0. That is where a window of
+  this shape puts the transcription start site.
+
+Two things follow from that. First, **both classes carry a fixed-position
+motif**, so the negative set here is not background genome. Neither the report
+nor this page can tell you how it was built; what the report does tell you is
+that it is structured, and that a model can exploit structure at a fixed offset
+without learning anything about promoters.
+
+Second, the flags are narrower than the motif. Positions 7 and 8 belong to the
+same AT-rich stretch, but both classes are A-rich there — 88% against 73% at
+position 8 — so both pass. As on [hidden-motif](hidden-motif.md), a position the
+two classes share carries no information about the label however conserved it is.
 
 What that means for a model: **a classifier that only counts bases gets AU-ROC
 0.70 on this dataset.** Whatever your model scores, subtract that as the floor.
