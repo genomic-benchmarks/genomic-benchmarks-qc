@@ -4,8 +4,11 @@
 [![PyPI](https://img.shields.io/pypi/v/genomic-benchmarks-qc)](https://pypi.org/project/genomic-benchmarks-qc/)
 [![Python](https://img.shields.io/pypi/pyversions/genomic-benchmarks-qc)](https://pypi.org/project/genomic-benchmarks-qc/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-genomic--benchmarks.github.io-1f6fd0)](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/)
 
 Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
+
+Everything you need is below. The [documentation site](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/) adds eight [worked examples](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/examples/) with live reports — a clean dataset, a badly biased one, one whose only flaw is eight nucleotides wide — plus the generated CLI and API reference.
 
 ## What it catches
 
@@ -16,7 +19,7 @@ A model that scores well on a biased dataset has learned the bias, not the biolo
 - **Position 1 is `N` in one class only**, or every sequence in one class starts with the same adapter — a per-position give-away that no summary statistic would show.
 - **The same sequence appears in both classes, or your test set repeats your training set.** `evaluate-splits` catches near-duplicates too, with an MMseqs2 similarity search.
 
-Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
+Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
 
 <img src="./assets/genomic-benchmarks-qc-html-report.webp" alt="Example gb-qc HTML report" width="1200" />
 
@@ -44,13 +47,13 @@ Point the tool at your dataset and give it somewhere to write:
 gb-qc evaluate-classes \
   --input examples/enhancers/data/enhancers_train.csv \
   --input examples/enhancers/data/enhancers_test.csv \
-  --out-folder example_outputs/enhancers_dataset
+  --out-folder qc-out
 ```
 
-It leaves you a report to open — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/class/sequence/0_vs_1/gb-qc-report.html):
+It leaves you a report to open — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html):
 
 ```text
-example_outputs/enhancers_dataset/class/sequence/0_vs_1/
+qc-out/class/sequence/0_vs_1/
 ├── gb-qc-report.html   ← open this
 ├── gb-qc-report.csv
 └── plots/
@@ -63,13 +66,13 @@ gb-qc evaluate-splits \
   --train-input examples/enhancers/data/enhancers_train.csv \
   --test-input examples/enhancers/data/enhancers_test.csv \
   --sequence-column sequence \
-  --out-folder example_outputs/enhancers_dataset
+  --out-folder qc-out
 ```
 
-with a report of its own — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html):
+with a report of its own — [this one](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html):
 
 ```text
-example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/
+qc-out/split/sequence/enhancers_train_vs_enhancers_test/
 ├── gb-qc-report.html   ← open this
 ├── gb-qc-report.csv
 └── plots/
@@ -128,7 +131,7 @@ percentage of leaked queries and targets, a histogram of the similarity distribu
 a panel listing the leaked pairs — up to the first 100, each expanding into its rendered
 alignment, so you can see what is actually shared. Every hit is exported to
 `mmseqs/mmseqs2_search_result.tsv` beside the report. The bundled enhancers example carries a little real leakage: 0.67% of queries and
-0.33% of targets — [see the report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/example_outputs/enhancers_dataset/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
+0.33% of targets — [see the report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
 
 ## Input Formats
 
@@ -155,7 +158,7 @@ Override the names with `--sequence-column` and `--label-column`. Any other colu
 gb-qc evaluate-classes \
   --input examples/fasta-classes/data/coding_seqs.fasta \
   --input examples/fasta-classes/data/intergenomic_seqs.fasta \
-  --out-folder example_outputs/coding_vs_intergenomic_dataset
+  --out-folder qc-out
 ```
 
 **Multiple sequence columns**, for datasets where one row pairs two sequences: `evaluate-classes` analyzes each column separately, then concatenates all sequences for a combined `merged` analysis. `evaluate-splits` only analyzes concatenated sequences.
@@ -166,7 +169,7 @@ gb-qc evaluate-classes \
   --sequence-column gene \
   --sequence-column noncodingRNA \
   --label-column label \
-  --out-folder example_outputs/miRNA_mRNA_dataset
+  --out-folder qc-out
 ```
 
 **Continuous labels:** `--regression` splits the label column at its median into `high`

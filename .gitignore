@@ -184,3 +184,5 @@ mmseqs/
 .DS_Store
 .prototype/
 analyses/
+# Flag tables generated from the example reports by scripts/build_docs.py.
+docs/_generated/

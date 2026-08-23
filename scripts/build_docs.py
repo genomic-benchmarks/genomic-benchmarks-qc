@@ -20,6 +20,7 @@ published build never skips them.
 """
 
 import argparse
+import csv
 import os
 import shutil
 import subprocess
@@ -115,6 +116,78 @@ def generate_reports():
     print(f"copied {copied} report(s) into {REPORTS.relative_to(ROOT)}")
 
 
+GENERATED = DOCS / '_generated'
+
+FLAG_SPANS = {
+    'Pass': '<span class="flag flag-pass">Pass</span>',
+    'Warning': '<span class="flag flag-warn">Warning</span>',
+    'Fail': '<span class="flag flag-fail">Fail</span>',
+    'Unknown': '<span class="flag flag-unknown">Unknown</span>',
+}
+
+
+def _flag_rows(report_csv: Path) -> list[tuple[str, str, str]]:
+    """(check, flag, figure) for a report's headline checks.
+
+    The figure column is whatever that report measures: AU-ROC for the class
+    checks, leaked percentages for a split report, and nothing for the checks
+    that are a yes/no rather than a score.
+    """
+    rows = []
+    with report_csv.open(newline='') as handle:
+        for row in csv.DictReader(handle):
+            if ' - ' in row['Check']:
+                continue  # per-base or per-position breakdown
+            leaked = row.get('Percentage of leaked queries')
+            if leaked:
+                figure = f"{leaked} of queries, {row['Percentage of leaked targets']} of targets"
+            elif row.get('AU-ROC'):
+                figure = f"{float(row['AU-ROC']):.3f}"
+            else:
+                figure = '—'
+            rows.append((row['Check'], row['Flag'], figure))
+    return rows
+
+
+def generate_flag_tables():
+    """Write one flag table per example into docs/_generated/.
+
+    The example pages include these rather than restating the flags, so a page
+    cannot claim a flag the tool no longer produces. Built from the reports where
+    they exist and from each `meta.toml`'s `[expect]` table otherwise, which
+    `examples/build.py --check` has already proved agree.
+    """
+    GENERATED.mkdir(parents=True, exist_ok=True)
+    for meta in sorted((ROOT / 'examples').glob('*/meta.toml')):
+        name = meta.parent.name
+        expect = tomllib.loads(meta.read_text()).get('expect', {})
+        blocks = []
+        for report in sorted(expect):
+            csv_path = REPORTS / name / report / 'gb-qc-report.csv'
+            if csv_path.is_file():
+                rows = _flag_rows(csv_path)
+                # A split report measures leaked percentages, not AU-ROC.
+                leakage = any(check == 'Data Leakage' for check, _, _ in rows)
+                measure = 'Leakage' if leakage else 'AU-ROC'
+            else:
+                # No report built (a --skip-reports preview). The declared flags
+                # are still the truth; only the figures are unavailable.
+                rows = [(check, flag, '—') for check, flag in expect[report].items()]
+                measure = 'AU-ROC'
+            # Relative to the page that includes this snippet - an example page
+            # at docs/examples/<name>.md - not to docs/_generated/ where it is
+            # written. mkdocs resolves the link from the including source file.
+            href = f"../reports/{name}/{report}/gb-qc-report.html"
+            blocks.append(
+                f"**`{report}`** — [open the report]({href})\n\n"
+                f"| Check | Flag | {measure} |\n|---|---|---|\n"
+                + '\n'.join(f"| {check} | {FLAG_SPANS.get(flag, flag)} | {figure} |"
+                            for check, flag, figure in rows))
+        (GENERATED / f'{name}-flags.md').write_text('\n\n'.join(blocks) + '\n')
+    print(f"wrote {len(list(GENERATED.glob('*-flags.md')))} flag table(s) "
+          f"into {GENERATED.relative_to(ROOT)}")
+
+
 PLACEHOLDER = """<!doctype html>
 <title>Report not built</title>
 <body style="font: 15px/1.6 system-ui; max-width: 34em; margin: 4em auto; padding: 0 1em">
@@ -173,6 +246,7 @@ def main():
               f"placeholder(s) in place so report links still resolve")
     else:
         generate_reports()
+    generate_flag_tables()
 
     env = {**os.environ, 'MKDOCS_CONFIG_FILE': 'mkdocs.yml'}
     _run(['mkdocs', 'serve' if args.serve else 'build'], env=env)

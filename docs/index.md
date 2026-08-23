@@ -26,13 +26,14 @@ Every check gets a <span class="flag flag-pass">Pass</span>,
 <span class="flag flag-fail">Fail</span> flag, a standalone HTML report you can
 read or mail, and a CSV you can put in CI.
 
-!!! note "Where things are, for now"
+!!! note "Where things are"
 
-    This site is being built out. The [README][readme] is complete and remains
-    the place to start: installation, every input format, the full output
-    layout, and the CLI options in table form. What lives here is the
-    [generated reference](reference/cli.md) and — as they land — the worked
-    examples and the longer-form guides that a README has no room for.
+    The [README][readme] is complete and remains the place to start:
+    installation, every input format, the full output layout, and the CLI
+    options in table form. This site adds what a README has no room for — the
+    [worked examples](examples/index.md) with live reports, and the
+    [generated reference](reference/cli.md). Longer-form guides are still to
+    come.
 
   [readme]: https://github.com/genomic-benchmarks/genomic-benchmarks-qc#readme
 
@@ -40,23 +41,26 @@ read or mail, and a CSV you can put in CI.
 
 Eight datasets, each the only one that shows a particular thing, with flags
 measured rather than asserted. They are the fastest way to see what a report
-actually tells you.
+actually tells you — [start with the overview](examples/index.md), or go
+straight to a report below.
 
 | Example | What it shows | Report |
 |---|---|---|
-| `clean-dataset` | The control: what "nothing wrong" looks like, AU-ROC 0.50–0.54 throughout | [open](reports/clean-dataset/class/sequence/0_vs_1/gb-qc-report.html) |
-| `composition-bias` | The worst case — six checks fail, and 6% of the test set is already in training | [open](reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.html) |
-| `hidden-motif` | A bias eight nucleotides wide inside 398 positions. Why the per-position plot is interactive | [open](reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html) |
-| `variable-length` | Sequences that stop at different places, and why most positions go unscored | [open](reports/variable-length/class/sequence/0_vs_1/gb-qc-report.html) |
-| `length-bias` | Length alone separating the classes, on a continuous label | [open](reports/length-bias/class/sequence/high_vs_low/gb-qc-report.html) |
-| `paired-sequences` | Two sequence columns in one row | [open](reports/paired-sequences/class/merged/0_vs_1/gb-qc-report.html) |
-| `fasta-classes` | One FASTA file per class | [open](reports/fasta-classes/class/sequence/coding_seqs_vs_intergenomic_seqs/gb-qc-report.html) |
-| `enhancers` | The quickstart dataset, with a little real train/test leakage | [open](reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html) |
+| [`clean-dataset`](examples/clean-dataset.md) | The control: what "nothing wrong" looks like, AU-ROC 0.50–0.54 throughout | [open](reports/clean-dataset/class/sequence/0_vs_1/gb-qc-report.html) |
+| [`composition-bias`](examples/composition-bias.md) | The worst case — six checks fail, and 6% of the test set is already in training | [open](reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.html) |
+| [`hidden-motif`](examples/hidden-motif.md) | A bias eight nucleotides wide inside 398 positions. Why the per-position plot is interactive | [open](reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html) |
+| [`variable-length`](examples/variable-length.md) | Sequences that stop at different places, and why most positions go unscored | [open](reports/variable-length/class/sequence/0_vs_1/gb-qc-report.html) |
+| [`length-bias`](examples/length-bias.md) | Length alone separating the classes, on a continuous label | [open](reports/length-bias/class/sequence/high_vs_low/gb-qc-report.html) |
+| [`paired-sequences`](examples/paired-sequences.md) | Two sequence columns in one row | [open](reports/paired-sequences/class/merged/0_vs_1/gb-qc-report.html) |
+| [`fasta-classes`](examples/fasta-classes.md) | One FASTA file per class | [open](reports/fasta-classes/class/sequence/coding_seqs_vs_intergenomic_seqs/gb-qc-report.html) |
+| [`enhancers`](examples/enhancers.md) | The quickstart dataset, with a little real train/test leakage | [open](reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html) |
 
-Their data and provenance are in
-[`examples/`](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/main/examples).
-The reports are built from that data by the same commands shown above, so what
-you read here is always what the current code produces.
+Each has [a page of its own](examples/index.md) explaining what the dataset is,
+the exact command, and what a reader should conclude. The data and its
+provenance live in
+[`examples/`](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/main/examples);
+the reports are built from it by the same commands shown there, so what you read
+is always what the current code produces.
 
 ## Flags
 

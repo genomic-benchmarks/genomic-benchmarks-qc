@@ -93,7 +93,11 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      # The example pages include their flag tables from docs/_generated/,
+      # which scripts/build_docs.py writes from the reports it just built.
+      base_path: [docs]
+      check_paths: true
 
 # --strict turns warnings into errors, so a cross-reference that stops resolving
 # fails the build. That is the point: tests/test_docstring_references.py checks
@@ -102,6 +106,16 @@ strict: true
 
 nav:
   - Home: index.md
+  - Examples:
+      - Overview: examples/index.md
+      - clean-dataset: examples/clean-dataset.md
+      - composition-bias: examples/composition-bias.md
+      - hidden-motif: examples/hidden-motif.md
+      - variable-length: examples/variable-length.md
+      - length-bias: examples/length-bias.md
+      - paired-sequences: examples/paired-sequences.md
+      - fasta-classes: examples/fasta-classes.md
+      - enhancers: examples/enhancers.md
   - Reference:
       - CLI: reference/cli.md
       - Python API:
