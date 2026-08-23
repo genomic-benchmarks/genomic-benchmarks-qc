@@ -35,7 +35,7 @@ gb-qc evaluate-splits \
 
 Read the failures as one finding, not six. GC content 0.701, base composition
 0.717, dinucleotide frequencies 0.716, per-position 0.710 — four checks landing
-within 0.02 of each other is not four independent biases. It is **one
+within two hundredths of each other is not four independent biases. It is **one
 compositional difference between the classes, seen four ways.**
 
 One class is AT-rich and the other GC-rich — 45.6% GC against 54.8% — and that

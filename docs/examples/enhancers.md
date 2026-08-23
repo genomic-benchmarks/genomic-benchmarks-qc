@@ -46,7 +46,7 @@ feature hands it the answer.
 This is the most common real-world shape, and the hardest to act on. There is no
 one thing to fix. What it tells you is that **a trivial baseline gets roughly
 0.66 on this dataset**, so a model reporting 0.70 has added very little, and one
-reporting 0.85 has genuinely learned something. Warnings are most useful read as
+in the mid-0.80s has genuinely learned something. Warnings are most useful read as
 a floor for your results, not as a defect list.
 
 `Per sequence dinucleotide content` at 0.688 is the closest to failing, and
@@ -96,7 +96,7 @@ nothing. Here it adds a finding.
     checks can be hidden by sampling**, because one non-ACGT character or one
     shared sequence is enough to fail them and half the data may not include it.
     The AU-ROC checks are far more stable — every one of them here lands within
-    0.01 of the full dataset's.
+    a hundredth of the full dataset's.
 
 ## The leakage is small and real
 

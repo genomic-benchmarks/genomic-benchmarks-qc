@@ -18,6 +18,9 @@ on:
       - 'mkdocs.yml'
       - 'scripts/build_docs.py'
       - 'src/**'
+      # A dependency floor moving can move an AU-ROC, and this workflow holds
+      # the only assertions on what the examples' flags should be.
+      - 'pyproject.toml'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
@@ -26,6 +29,9 @@ on:
       - 'mkdocs.yml'
       - 'scripts/build_docs.py'
       - 'src/**'
+      # A dependency floor moving can move an AU-ROC, and this workflow holds
+      # the only assertions on what the examples' flags should be.
+      - 'pyproject.toml'
       - '.github/workflows/docs.yml'
   # So the site can be rebuilt without a code change, e.g. after flipping the
   # Pages source over.

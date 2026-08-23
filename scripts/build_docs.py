@@ -238,6 +238,58 @@ def _position_table(positions: list[tuple[int, str, float, str]]) -> str:
     return table
 
 
+# Values that legitimately appear in prose without coming from a report: the
+# flag boundaries, the --min-coverage default, and the ends of the AU-ROC range.
+# They are constants of the tool, not measurements of an example.
+TOOL_CONSTANTS = frozenset({0.0, 0.25, 0.5, 0.6, 0.7, 0.9, 1.0})
+# Trailing \w excludes 'mid-0.80s' and the like: prose that is deliberately
+# vague is not quoting a measurement.
+PROSE_FIGURE = re.compile(r'(?<![\d.])0\.\d{2,4}(?![\w%])')
+
+
+def check_prose_figures():
+    """Fail if an example page quotes a figure its own reports do not contain.
+
+    The flag tables and position tables are generated, but the prose around them
+    is written by hand, and a hand-typed AU-ROC is exactly the kind of thing that
+    survives a change to the data it described. This catches that: every
+    report-shaped decimal on an example page has to be within rounding distance
+    of some value in one of that example's own reports.
+
+    Percentages are skipped - they are matched by the trailing `%` and read off
+    the leakage rows, which are not in the same columns.
+    """
+    wrong = []
+    for page in sorted((DOCS / 'examples').glob('*.md')):
+        if page.stem == 'index':
+            continue
+        measured = set()
+        for report in (REPORTS / page.stem).rglob('gb-qc-report.csv'):
+            with report.open(newline='') as handle:
+                for row in csv.DictReader(handle):
+                    measured.update(float(row[col]) for col in
+                                    ('AU-ROC', 'AU-PR', 'Accuracy') if row.get(col))
+        if not measured:
+            continue  # a --skip-reports preview has nothing to check against
+        for number, line in ((m, n) for n, text in
+                             enumerate(page.read_text().splitlines(), 1)
+                             for m in PROSE_FIGURE.finditer(text)):
+            quoted = float(number.group())
+            if quoted in TOOL_CONSTANTS:
+                continue
+            # Rounding distance at the precision the page chose to write, so
+            # "0.783" matches a report's 0.7835 but not its 0.7935.
+            places = len(number.group().split('.')[1])
+            if not any(abs(value - quoted) <= 0.5 * 10 ** -places + 1e-12
+                       for value in measured):
+                wrong.append(f"{page.relative_to(ROOT)}:{line}: {number.group()} "
+                             f"is in no {page.stem} report")
+    if wrong:
+        raise SystemExit('figures on example pages that no report produced:\n  '
+                         + '\n  '.join(wrong))
+    print("every figure quoted on an example page is in that example's reports")
+
+
 def generate_check_coverage():
     """Write the check-to-example cross-reference into docs/_generated/.
 
@@ -378,6 +430,7 @@ def main():
     generate_flag_tables()
     generate_position_tables()
     generate_check_coverage()
+    check_prose_figures()
 
     env = {**os.environ, 'MKDOCS_CONFIG_FILE': 'mkdocs.yml'}
     _run(['mkdocs', 'serve' if args.serve else 'build'], env=env)

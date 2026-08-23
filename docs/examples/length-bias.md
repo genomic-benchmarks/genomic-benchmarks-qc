@@ -44,8 +44,8 @@ median its translation efficiency falls on, 63% of the time.
 
 For this dataset that is biology: transcript length genuinely relates to
 translation efficiency. But it is also the single easiest thing for a model to
-learn, and a sequence model that scores 0.65 here may have learned nothing but
-length. If you are benchmarking on this, that is the number to beat, and it is
+learn, and a sequence model scoring in the mid-0.60s here may have learned
+nothing but length. If you are benchmarking on this, that is the number to beat, and it is
 worth reporting alongside your model's.
 
 **The composition warnings are downstream of it.** Base composition 0.617 and
