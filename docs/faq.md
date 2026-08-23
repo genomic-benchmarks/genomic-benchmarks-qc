@@ -47,8 +47,7 @@ It bounds only the per-position checks; length, GC and composition are still
 computed on whole sequences, so you lose less than you might think.
 
 Also worth knowing: **failures cost runtime**, because each flagged check gets an
-extra annotated figure. A first run on a messy dataset is the slow one. See
-[runtime and memory](guide/performance.md).
+extra annotated figure. A first run on a messy dataset is the slow one.
 
 ## MMseqs2 runs out of memory
 
