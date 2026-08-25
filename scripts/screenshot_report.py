@@ -66,13 +66,16 @@ DEFAULT_ANCHOR = 'per-position-nucleotide-content'
 DEFAULT_PANEL_OUT = ROOT / 'docs' / 'assets' / 'per-position-demo.webp'
 DEFAULT_SCROLL_OUT = ROOT / 'docs' / 'assets' / 'report-scroll.webp'
 
-# The tour scrolls enhancers rather than hidden-motif: it is the example the
-# README has been talking about by the time the animation appears, and it is the
-# one whose report has something to look at in most of its sections - six of its
-# nine checks come back Warning, where hidden-motif is nine near-identical
-# passes and one spike.
-DEFAULT_SCROLL_REPORT = (ROOT / 'docs' / 'reports' / 'enhancers' / 'class'
-                         / 'sequence' / '0_vs_1' / 'gb-qc-report.html')
+# The tour scrolls composition-bias, the worst case in the gallery, because it
+# is the only report that carries all three flags at once: six checks Fail, one
+# Warns, two Pass. Scrolling a cleaner one demonstrates the layout; scrolling
+# this one demonstrates what the layout is for. Note the pairing that makes it
+# the right choice rather than just the loudest - the two flags a reader most
+# needs to tell apart, Warning and Fail, appear on adjacent sections here, on
+# duplicates within a class against duplicates between them.
+DEFAULT_SCROLL_REPORT = (ROOT / 'docs' / 'reports' / 'composition-bias'
+                         / 'class' / 'sequence' / '0_vs_1'
+                         / 'gb-qc-report.html')
 
 # Wide enough to clear the report's own 900px breakpoint, below which the
 # sidebar stops being a left rail and folds into a row of chips - which would

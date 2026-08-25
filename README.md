@@ -27,9 +27,9 @@ Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genom
      report the docs build has just built; both README animations are generated
      that way rather than committed, so neither can show an older report than
      the one the site is serving. -->
-<a href="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html"><img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/report-scroll.webp" alt="The gb-qc report for the enhancers example, scrolled from top to bottom: the sidebar's flag summary stays in view - three green ticks against six orange warnings - while the page moves through the descriptive statistics, the GC-content, nucleotide and dinucleotide plots, and the two interactive per-position panels" width="1200" /></a>
+<a href="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.html"><img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/report-scroll.webp" alt="The gb-qc report for the composition-bias example, scrolled from top to bottom: the sidebar's flag summary stays in view with two green ticks, an orange warning and six red failures, while the page moves through the descriptive statistics, the duplicate-sequence tables, the GC-content, nucleotide and dinucleotide plots and the two interactive per-position panels, each headed by the flag it was given" width="1200" /></a>
 
-The report for the bundled `enhancers` example, scrolled end to end — click it to open the real one. Six of its nine checks come back **Warning**, the worst of them dinucleotide composition at AU-ROC 0.688.
+The report for the bundled `composition-bias` example, scrolled end to end — click it to open the real one. It is the worst case in the gallery, and the one report that carries all three flags at once: six checks **Fail** — the classes share sequences outright, and GC content, nucleotide and dinucleotide composition and both per-position checks all sit above the 0.7 line, the worst at AU-ROC 0.717 — one **Warning**, two **Pass**.
 
 ## Installation
 
