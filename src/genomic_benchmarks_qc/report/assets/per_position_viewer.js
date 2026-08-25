@@ -927,12 +927,26 @@
 
       if (summary) {
         var counts = {};
-        rows.forEach(function (r) { counts[r.flag] = (counts[r.flag] || 0) + 1; });
+        var places = {};
+        rows.forEach(function (r) {
+          counts[r.flag] = (counts[r.flag] || 0) + 1;
+          places[r.pos] = true;
+        });
+        var nPlaces = Object.keys(places).length;
         var parts = ['Fail', 'Warning'].filter(function (k) { return counts[k]; })
           .map(function (k) { return counts[k] + ' ' + k.toLowerCase(); });
+        /* A row is one base at one position, so a position where two bases are
+         * flagged contributes two rows. Reporting the row count as a count of
+         * positions overstates how much of the sequence is implicated - and
+         * these two numbers are read side by side, since the tables on the
+         * documentation's example pages list one row per position. Say both
+         * when they differ, and keep the shorter phrasing when they agree. */
+        var headline = rows.length === nPlaces
+          ? nPlaces + ' flagged position' + (nPlaces === 1 ? '' : 's')
+          : rows.length + ' flags across ' + nPlaces
+            + ' position' + (nPlaces === 1 ? '' : 's');
         summary.textContent = rows.length
-          ? rows.length + ' flagged position' + (rows.length === 1 ? '' : 's')
-            + (parts.length ? ' (' + parts.join(', ') + ')' : '')
+          ? headline + (parts.length ? ' (' + parts.join(', ') + ')' : '')
           : (data.compared === false ? 'Nothing was compared' : 'No flagged positions');
       }
       if (!rows.length) {
