@@ -35,30 +35,6 @@ past it is <span class="flag flag-unknown">Unknown</span>.
 reason for the rule is not sample size, and widening it changes what the numbers
 mean.
 
-## It is slow
-
-Drawing the figures, and computing the per-sequence statistics. On 10,000
-sequences of 500 bp the whole run is about seven seconds, and roughly half of
-that is the figures.
-
-So the lever is `--report-types simple`, which writes every flag and metric as a
-CSV and draws nothing:
-
-```bash
-gb-qc evaluate-classes --input long.csv --report-types simple --out-folder qc-out
-```
-
-That is 7.0 s down to 3.6 s on the same data, and 450 MB down to 170 MB.
-
-`--end-position` is no longer a speed lever — on that run it saves about a tenth
-of a second. The per-position checks used to be most of the time; they are now
-scored from per-position base counts rather than from one array per sequence, and
-cost milliseconds however wide the window is. It is still how you say the far end
-of your sequences is not worth reporting on.
-
-Also worth knowing: **failures cost runtime**, because each flagged check gets an
-extra annotated figure. A first run on a messy dataset is the slow one.
-
 ## MMseqs2 runs out of memory
 
 Cap the prefilter structures:
