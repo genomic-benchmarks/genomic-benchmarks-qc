@@ -335,11 +335,16 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{report_verdict}}",
                              verdict_html(summary_statuses, CHECK_NAMES))
     html_template = put_data(html_template, "{{sidebar_links}}", SIDEBAR_LINKS_HTML)
-    # Long enough to identify the report in a tab or a bookmark, short enough
-    # that a tab still shows the part that distinguishes it from its neighbours.
+    # Long enough to identify the report in a tab or a bookmark, ordered so that
+    # a truncated tab keeps the part that distinguishes it from its neighbours.
+    # The sequence column is last and still has to be there: a dataset with
+    # several of them produces one report per column, and paired-sequences
+    # produces three whose file and labels are identical.
+    seq_col = str(stats1.seq_column) if stats1.seq_column is not None else None
+    column = f' ({seq_col})' if seq_col else ''
     html_template = put_data(
         html_template, "{{page_title}}",
-        html.escape(f'{stats1.filename}: {label1} vs {label2} - gb-qc'))
+        html.escape(f'{stats1.filename}: {label1} vs {label2}{column} - gb-qc'))
 
     for placeholder, (page, anchor, text) in EXPLANATION_LINKS.items():
         html_template = put_data(html_template, placeholder,
