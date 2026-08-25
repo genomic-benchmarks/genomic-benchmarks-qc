@@ -245,8 +245,8 @@ def _compute_position_binary_scores(
     the sequence reaches the position) -- instead of one that also answers
     itself from sequence length, which `Sequence lengths` already scores as a
     feature of its own. It is also the definition the per-position plots use,
-    since `SequenceStatistics._normalize_per_position` normalizes each position
-    by its own total.
+    since `SequenceStatistics` divides each per-position count by the number of
+    sequences that reached the position rather than by the size of the class.
 
     The returned array is therefore shorter than `sequences` wherever some
     sequences stop before `position`, and how much shorter is what decides

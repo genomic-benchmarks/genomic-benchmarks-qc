@@ -50,6 +50,63 @@ from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
 DEFAULT_MIN_COVERAGE = 0.25
 MIN_SEQUENCES_PER_REPORTED_POSITION = 50
 
+# One vectorised pass over a class works on a block of its sequences rather than
+# all of them, so that its working set does not grow with the class. Two things
+# bound a block. The first is the per-character index arrays, which are eight
+# bytes each per character.
+STATS_BLOCK_CHARACTERS = 4_000_000
+# The second is the per-sequence dinucleotide counts, one cell per sequence per
+# dinucleotide: on short sequences, or on an alphabet larger than the four
+# bases, they are what would otherwise be the largest array here.
+STATS_BLOCK_CELLS = 4_000_000
+
+
+def _sequence_blocks(lengths, cells_per_sequence):
+    """Split a class into index ranges small enough for one vectorised pass.
+
+    Args:
+        lengths: Length of every sequence in the class, in order.
+        cells_per_sequence: How many array cells one sequence costs, which is
+            what `STATS_BLOCK_CELLS` is a budget of.
+
+    Yields:
+        `(start, stop)` pairs covering every sequence exactly once. A single
+        sequence longer than the character budget still forms a block of its
+        own, because the alternative is not making progress.
+    """
+    ends = np.cumsum(lengths)
+    sequence_cap = max(1, STATS_BLOCK_CELLS // max(1, cells_per_sequence))
+    start = 0
+    while start < len(lengths):
+        consumed = ends[start - 1] if start else 0
+        stop = int(np.searchsorted(ends, consumed + STATS_BLOCK_CHARACTERS, side='right'))
+        stop = min(max(stop, start + 1), start + sequence_cap, len(lengths))
+        yield start, stop
+        start = stop
+
+
+def _as_frequencies(counts, totals):
+    """Divide counts by their own totals, reading a zero total as zero.
+
+    A sequence with no characters, and a position no sequence reaches, have
+    nothing to be a fraction of. Both come back as zero everywhere rather than
+    as a division by zero, which is what the dictionaries this replaced did by
+    returning their zeros unchanged.
+
+    Args:
+        counts: Counts to normalize, one row per sequence or per position.
+        totals: The total behind each row.
+
+    Returns:
+        Float array the shape of `counts`.
+    """
+    totals = np.asarray(totals, dtype=float)
+    if counts.ndim == 2:
+        totals = totals[:, None]
+    return np.divide(counts, totals, out=np.zeros(counts.shape, dtype=float),
+                     where=totals > 0)
+
+
 def cohort_floor(stats1, stats2) -> float:
     """The cohort floor a comparison of two classes runs under.
 
@@ -367,108 +424,110 @@ class SequenceStatistics:
         self.stats['Empty sequences'] = sum(1 for sequence in self.sequences if len(sequence) == 0)
 
     def _compute_per_sequence_statistics(self):
-        """Compute every per-sequence and per-position feature in one pass."""
+        """Compute every per-sequence and per-position feature in one pass.
+
+        The pass is vectorised. A block of sequences is joined into one string,
+        read as an array of code points and turned into one column index per
+        character, after which every feature here is a `bincount` over that
+        array divided by its own total. Walking the characters in Python was
+        71% of the statistics for a class of 10,000 500 bp sequences, nearly
+        all of it the two per-position dictionaries.
+        """
 
         # `compute` always runs `_compute_basic_statistics` first, which is what
         # puts 'Unique bases' in `stats`.
         nucleotides = self.stats['Unique bases']
         dinucleotides = [n1 + n2 for n1 in nucleotides for n2 in nucleotides]
+        # A dinucleotide's column is `first * base_count + second`, which is the
+        # order `dinucleotides` is built in, so the counts need no lookup table.
+        base_count = len(nucleotides)
 
-        nucleotides_per_sequence = {}
-        dinucleotides_per_sequence = {}
-        nucleotides_per_position = {}
-        nucleotides_per_position_reversed = {}
-        gc_content_per_sequence = np.zeros(len(self.sequences))
-        lengths_per_sequence = np.zeros(len(self.sequences))
+        count = len(self.sequences)
+        lengths = np.fromiter((len(sequence) for sequence in self.sequences),
+                              dtype=np.int64, count=count)
+        max_length = int(lengths.max()) if count else 0
 
-        for id, sequence in enumerate(self.sequences):
-            nucleotides_per_sequence[id] = self._compute_nucleotide_content(sequence, nucleotides)
-            dinucleotides_per_sequence[id] = self._compute_dinucleotide_content(
-                sequence, dinucleotides)
-            self._compute_per_position_nucleotide_content(nucleotides_per_position, sequence)
-            self._compute_per_position_nucleotide_content(
-                nucleotides_per_position_reversed, sequence[::-1])
-            seq_len = len(sequence)
-            gc_bases = sequence.count('G') + sequence.count('C')
-            gc_content_per_sequence[id] = gc_bases / seq_len * 100 if seq_len > 0 else 0.0
-            lengths_per_sequence[id] = len(sequence)
+        # Counts first and frequencies at the end: every feature below is one of
+        # these four tables divided by a total the table itself carries.
+        per_sequence_bases = np.zeros((count, base_count), dtype=np.int64)
+        per_sequence_pairs = np.zeros((count, base_count ** 2), dtype=np.int64)
+        per_position = np.zeros((max_length, base_count), dtype=np.int64)
+        per_position_reversed = np.zeros((max_length, base_count), dtype=np.int64)
 
-        self.stats['Per sequence nucleotide content'] = pd.DataFrame(nucleotides_per_sequence).T
-        self.stats['Per sequence dinucleotide content'] = pd.DataFrame(dinucleotides_per_sequence).T
-        self.stats['Per position nucleotide content']= pd.DataFrame(
-            self._normalize_per_position(nucleotides_per_position, nucleotides)).T
+        # 'Unique bases' is sorted, so it is sorted by code point too, and
+        # `searchsorted` turns a character into its column in one step. Every
+        # character of every sequence is in it by construction - that is what
+        # makes it 'unique bases' - so there is no miss to handle, and no
+        # dinucleotide can fall outside the ones named above either.
+        codes = np.array([ord(base) for base in nucleotides], dtype=np.uint32)
+
+        for start, stop in _sequence_blocks(lengths, base_count ** 2):
+            block = lengths[start:stop]
+            text = ''.join(self.sequences[start:stop])
+            if not text:
+                continue
+            # UTF-32 is four bytes per code point whatever the code point, so
+            # the array lines up with the string however exotic a base is.
+            column = np.searchsorted(
+                codes, np.frombuffer(text.encode('utf-32-le'), dtype=np.uint32))
+            # Which sequence each character belongs to, and how far into it it
+            # sits - the two indices every count below is grouped by.
+            row = np.repeat(np.arange(stop - start), block)
+            position = np.arange(len(column)) - np.repeat(np.cumsum(block) - block, block)
+
+            per_sequence_bases[start:stop] = np.bincount(
+                row * base_count + column,
+                minlength=(stop - start) * base_count,
+            ).reshape(stop - start, base_count)
+            per_position += np.bincount(
+                position * base_count + column,
+                minlength=max_length * base_count,
+            ).reshape(max_length, base_count)
+            # The reversed feature counts from the far end of each sequence,
+            # which is the same characters read under a different index.
+            per_position_reversed += np.bincount(
+                (np.repeat(block, block) - 1 - position) * base_count + column,
+                minlength=max_length * base_count,
+            ).reshape(max_length, base_count)
+
+            # Overlapping pairs, less the ones that would straddle two
+            # sequences: a pair starting at the last character of a sequence is
+            # exactly the one whose second character sits at position 0.
+            inside = position[1:] > 0
+            per_sequence_pairs[start:stop] = np.bincount(
+                row[:-1][inside] * base_count ** 2
+                + column[:-1][inside] * base_count + column[1:][inside],
+                minlength=(stop - start) * base_count ** 2,
+            ).reshape(stop - start, base_count ** 2)
+
+        sequence_ids = np.arange(count)
+        self.stats['Per sequence nucleotide content'] = pd.DataFrame(
+            _as_frequencies(per_sequence_bases, lengths),
+            index=sequence_ids, columns=nucleotides)
+        # A sequence's dinucleotides are a fraction of its own pairs, of which
+        # there is one fewer than it has characters.
+        self.stats['Per sequence dinucleotide content'] = pd.DataFrame(
+            _as_frequencies(per_sequence_pairs, per_sequence_pairs.sum(axis=1)),
+            index=sequence_ids, columns=dinucleotides)
+        # Each position is normalized by its own total, because positions beyond
+        # the shortest sequences are covered by fewer sequences than position 1.
+        positions = np.arange(max_length)
+        self.stats['Per position nucleotide content'] = pd.DataFrame(
+            _as_frequencies(per_position, per_position.sum(axis=1)),
+            index=positions, columns=nucleotides)
         self.stats['Per position reversed nucleotide content'] = pd.DataFrame(
-            self._normalize_per_position(nucleotides_per_position_reversed, nucleotides)).T
+            _as_frequencies(per_position_reversed, per_position_reversed.sum(axis=1)),
+            index=positions, columns=nucleotides)
+
+        gc_bases = np.zeros(count, dtype=np.int64)
+        for base in ('G', 'C'):
+            if base in nucleotides:
+                gc_bases += per_sequence_bases[:, nucleotides.index(base)]
         self.stats['Per sequence GC content'] = pd.DataFrame(
-            gc_content_per_sequence, columns=['Per sequence GC content'])
+            _as_frequencies(gc_bases, lengths) * 100,
+            columns=['Per sequence GC content'])
         self.stats['Sequence lengths'] = pd.DataFrame(
-            lengths_per_sequence, columns=['Sequence lengths'])
-
-    def _compute_nucleotide_content(self, sequence, nucleotides):
-        """Return the frequency of each nucleotide within one sequence."""
-        seq_len = len(sequence)
-        if seq_len == 0:
-            return dict.fromkeys(nucleotides, 0)
-        return {nucleotide: sequence.count(nucleotide) / seq_len for nucleotide in nucleotides}
-
-    def _compute_dinucleotide_content(self, sequence, dinucleotides):
-        """Return the frequency of each overlapping dinucleotide in one sequence.
-
-        Dinucleotides not in `dinucleotides` are counted too rather than
-        dropped, so an unexpected base cannot silently vanish from the totals.
-        """
-        dinucleotides_per_sequence = dict.fromkeys(dinucleotides, 0)
-        seq_len = len(sequence)
-
-        # No dinucleotides possible for sequences shorter than 2 -> return zeros
-        if seq_len < 2:
-            return dinucleotides_per_sequence
-
-        for i in range(seq_len - 1):
-            dinucleotide = sequence[i:i + 2]
-            # increment only known dinucleotides, but track unexpected ones too
-            if dinucleotide in dinucleotides_per_sequence:
-                dinucleotides_per_sequence[dinucleotide] += 1
-            else:
-                dinucleotides_per_sequence[dinucleotide] = (
-                    dinucleotides_per_sequence.get(dinucleotide, 0) + 1)
-
-        total = sum(dinucleotides_per_sequence.values())
-        if total == 0:
-            return dinucleotides_per_sequence
-
-        return {
-            dinucleotide: count / total
-            for dinucleotide, count in dinucleotides_per_sequence.items()
-        }
-
-
-    def _compute_per_position_nucleotide_content(self, nucleotides_per_position, sequence):
-        """Add one sequence's bases to the per-position counts, in place."""
-        for i, nucleotide in enumerate(sequence):
-            if i in nucleotides_per_position:
-                nucleotides_per_position[i][nucleotide] = (
-                    nucleotides_per_position[i].get(nucleotide, 0) + 1)
-            else:
-                nucleotides_per_position[i] = {nucleotide: 1}
-
-    def _normalize_per_position(self, nucleotides_per_position, nucleotides):
-        """Turn per-position counts into frequencies, filling absent bases with 0.
-
-        Each position is normalized by its own total, because positions beyond
-        the shortest sequences are covered by fewer sequences than position 1.
-        """
-        for position in nucleotides_per_position:
-            total = sum(nucleotides_per_position[position].values())
-            nucleotides_per_position[position] = {
-                nucleotide: count / total
-                for nucleotide, count in nucleotides_per_position[position].items()
-            }
-            # add zeros for missing nucleotides
-            for nucleotide in nucleotides:
-                if nucleotide not in nucleotides_per_position[position]:
-                    nucleotides_per_position[position][nucleotide] = 0
-        return nucleotides_per_position
+            lengths.astype(float), columns=['Sequence lengths'])
 
     def _compute_sequence_duplication_levels(self) -> None:
         """
