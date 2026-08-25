@@ -121,5 +121,6 @@ base and dinucleotide frequencies — at
 
 The `gb-qc-report.csv` beside every report carries every flag and score,
 including the per-base and per-position breakdown. For leakage,
-`mmseqs/mmseqs2_search_result.tsv` has every hit. See
+`mmseqs/mmseqs2_search_result.tsv` has every pair at or above the similarity
+threshold. See
 [using it in CI](guide/ci.md) for the CSV's shape.

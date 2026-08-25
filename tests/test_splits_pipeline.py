@@ -13,6 +13,7 @@ import pytest
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
+from genomic_benchmarks_qc.utils.mmseqs_summary import MMSEQS_RESULT_COLUMNS
 from genomic_benchmarks_qc.utils.naming import TMP_PREFIX
 
 
@@ -105,6 +106,93 @@ class TestHtmlReportBundle:
         comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
         assert (comparison / 'gb-qc-report.html').is_file()
         assert (comparison / 'gb-qc-report.csv').is_file()
+
+
+class TestEveryLeakedHitIsCountedAndExported:
+    """The panel's count and the exported table both cover every leaked hit.
+
+    The page lists at most ROW_CAP of them, and used to be handed that capped
+    frame as if it were the whole finding: a split with 300 leaked pairs
+    reported 100, exported 100, and never said it had dropped anything - a
+    leakage report understating leakage.
+    """
+
+    def run_with_hits(self, tmp_path, stub_mmseqs, count, threshold=90.0):
+        train = write_csv(tmp_path / 'train.csv', ['0'], rows_per_label=count)
+        test = write_csv(tmp_path / 'test.csv', ['0'], rows_per_label=count)
+        stub_mmseqs([mmseqs_hit(f'seq_{i}_test', f'seq_{i}_train', pident=100.0,
+                                qcov=1.0, tcov=1.0)
+                     for i in range(count)])
+
+        evaluate_splits.run(
+            train_files=[train], test_files=[test], format='csv',
+            out_folder=str(tmp_path / 'out'), report_types=['html'],
+            similarity_threshold=threshold,
+        )
+        return tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
+
+    def test_the_count_is_the_leaked_hits_not_the_listed_ones(
+            self, tmp_path, stub_mmseqs):
+        comparison = self.run_with_hits(tmp_path, stub_mmseqs, 250)
+
+        page = (comparison / 'gb-qc-report.html').read_text()
+        assert '250 high-similarity alignments (first 100 shown)' in page
+
+    def test_the_export_holds_every_leaked_hit(self, tmp_path, stub_mmseqs):
+        comparison = self.run_with_hits(tmp_path, stub_mmseqs, 250)
+
+        exported = pd.read_csv(comparison / 'mmseqs' / 'mmseqs2_search_result.tsv', sep='\t')
+        assert len(exported) == 250
+        assert set(exported['query']) == {f'seq_{i}_test' for i in range(250)}
+
+    def test_the_mapped_fastas_cover_the_export_not_the_listing(
+            self, tmp_path, stub_mmseqs):
+        """Both halves of mmseqs/ describe the same hits, or the ids in the TSV
+        cannot be looked up in the FASTA beside it."""
+        comparison = self.run_with_hits(tmp_path, stub_mmseqs, 250)
+
+        mapping = comparison / 'mmseqs' / 'seq_index_mapping'
+        assert mapping.joinpath('test_sequences.fasta').read_text().count('>') == 250
+        assert mapping.joinpath('train_sequences.fasta').read_text().count('>') == 250
+
+    def test_hits_below_the_threshold_are_left_out_of_both(
+            self, tmp_path, stub_mmseqs):
+        """The export is the leaked hits, not every alignment the search made -
+        a search reports far more of the latter."""
+        train, test = (write_csv(tmp_path / 'train.csv', ['0'], rows_per_label=5),
+                       write_csv(tmp_path / 'test.csv', ['0'], rows_per_label=5))
+        stub_mmseqs([
+            mmseqs_hit('seq_0_test', 'seq_0_train', pident=100.0, qcov=1.0, tcov=1.0),
+            mmseqs_hit('seq_1_test', 'seq_1_train', pident=50.0, qcov=1.0, tcov=1.0),
+        ])
+
+        evaluate_splits.run(
+            train_files=[train], test_files=[test], format='csv',
+            out_folder=str(tmp_path / 'out'), report_types=['html'],
+        )
+
+        comparison = tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
+        exported = pd.read_csv(comparison / 'mmseqs' / 'mmseqs2_search_result.tsv', sep='\t')
+        assert list(exported['query']) == ['seq_0_test']
+        assert '1 high-similarity alignment<' in (
+            comparison / 'gb-qc-report.html').read_text()
+
+    def test_a_clean_split_still_leaves_a_table(self, tmp_path, split_inputs, stub_mmseqs):
+        """A header and no rows, so a reader who opens it sees an empty result
+        rather than wondering whether the export ran."""
+        train, test = split_inputs
+        stub_mmseqs()
+
+        evaluate_splits.run(
+            train_files=[train], test_files=[test], format='csv',
+            out_folder=str(tmp_path / 'out'), report_types=['html'],
+        )
+
+        exported = pd.read_csv(
+            tmp_path / 'out' / 'split' / 'sequence' / 'train_vs_test'
+            / 'mmseqs' / 'mmseqs2_search_result.tsv', sep='\t')
+        assert len(exported) == 0
+        assert list(exported.columns) == MMSEQS_RESULT_COLUMNS
 
 
 class TestAddAlignmentSequences:

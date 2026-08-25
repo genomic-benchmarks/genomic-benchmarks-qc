@@ -35,8 +35,8 @@ from genomic_benchmarks_qc.report.utils import (
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
 
 # Rows of the alignment listing that the page carries. The listing is evidence a
-# reader spot-checks, not a data file - every hit is exported to
-# mmseqs/mmseqs2_search_result.tsv - and each row here embeds two coloured
+# reader spot-checks, not a data file - every hit above the threshold is exported
+# to mmseqs/mmseqs2_search_result.tsv - and each row here embeds two coloured
 # sequences, which is what the page weighs.
 ROW_CAP = 100
 
@@ -60,13 +60,15 @@ def alignments_count_text(total, shown):
 
 
 def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict,
-                             tool_description=None, total_hits=None):
+                             tool_description=None, leaked_hits=None):
     """Build Train-Test Split Check HTML using shared helpers.
 
     Args:
         results_filt: The hits to list, already capped by the caller or not.
-        total_hits: How many hits there were before any cap, so the panel can say
-            what it is not showing. Defaults to the number of rows given.
+        leaked_hits: How many hits were at or above the similarity threshold, so
+            the panel can say what it is not showing. Not the number of
+            alignments the search found, which is far larger and is not what the
+            panel counts. Defaults to the number of rows given.
     """
 
     html_template = HTML_TEMPLATE
@@ -143,7 +145,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     )
 
     results_display = results_filt.head(ROW_CAP).copy()  # the page lists at most this many hits
-    total = len(results_filt) if total_hits is None else total_hits
+    total = len(results_filt) if leaked_hits is None else leaked_hits
     html_template = put_data(html_template, "{{alignments_count}}",
                              alignments_count_text(total, len(results_display)))
 

@@ -22,13 +22,14 @@ from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 
 def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path,
                                 plots_dir, query_similarity_max, target_similarity_max,
-                                total_hits=None):
+                                leaked_hits=None):
     """
     Generate an HTML report visualising data leakage.
 
-    `results_filt` holds the hits the page lists; `total_hits` is how many there
-    were before that cap, so the listing can say what it is not showing. It
-    defaults to the number of rows given, for a caller that does not cap.
+    `results_filt` holds the hits the page lists; `leaked_hits` is how many were
+    at or above the similarity threshold, so the listing can say what it is not
+    showing. It defaults to the number of rows given, for a caller that does not
+    cap.
     """
     plots_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,7 +39,7 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
         query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
 
     template = get_splits_html_template(basic_stats, threshold_stats, results_filt,
-                                        plots_paths_dict, total_hits=total_hits)
+                                        plots_paths_dict, leaked_hits=leaked_hits)
     with open(output_path, 'w') as file:
         file.write(template)
 

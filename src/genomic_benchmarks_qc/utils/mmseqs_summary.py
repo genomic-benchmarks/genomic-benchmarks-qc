@@ -8,6 +8,12 @@ threshold, and the top hits for the alignment view.
 Similarity is `min(qcov, tcov) * pident` - the coverage of the shorter of the
 two sequences scaled by how identical the aligned part is - so that a short
 exact match inside a long sequence does not count as a leak.
+
+The hits above the threshold are also written out as they go past, if the caller
+asks for it. That is a side effect in a module otherwise made of returns, and it
+is here for the same reason the rest of it is: the export holds every leaked hit,
+there can be far more of them than the report lists, and collecting them to write
+at the end would give back the bound this module exists to keep.
 """
 
 import heapq
@@ -143,7 +149,19 @@ def build_mmseqs_export_frame(results_filt):
     return export_frame.loc[:, MMSEQS_RESULT_COLUMNS]
 
 
-def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunksize=100000):
+def _append_leaked_hits(export_path, leaked, first_write):
+    """Append one chunk's above-threshold hits to the export TSV."""
+    build_mmseqs_export_frame(leaked).to_csv(
+        export_path,
+        sep="\t",
+        index=False,
+        mode="w" if first_write else "a",
+        header=first_write,
+    )
+
+
+def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunksize=100000,
+                            export_path=None):
     """Reduce an MMseqs2 hit table to the values the split report needs.
 
     Reads the table in chunks of `chunksize` rows, so memory use is bounded by
@@ -152,8 +170,17 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
 
     Returns a dict with, for each of queries (test) and targets (train), the
     per-sequence maximum similarity, the ids with any hit and the ids above
-    `similarity_threshold`; plus the total hit count and `results_filt`, the
-    `top_n` most similar hits for the alignment view.
+    `similarity_threshold`; plus `total_hits`, every alignment the search found;
+    `leaked_hits`, the ones at or above the threshold; and `results_filt`, the
+    `top_n` most similar of those for the alignment view.
+
+    `total_hits` and `leaked_hits` are easy to reach for interchangeably and are
+    not the same number: a search reports far more alignments than it finds
+    leaks, and it is the leaks the report counts.
+
+    When `export_path` is given, every leaked hit is written there as a TSV, in
+    the columns of `MMSEQS_RESULT_COLUMNS`. The file is created even when nothing
+    leaked, so a clean split leaves a header rather than a missing file.
     """
     query_similarity_max = {}
     target_similarity_max = {}
@@ -164,6 +191,8 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
     top_rows_heap = []
     row_order = 0
     total_hits = 0
+    leaked_hits = 0
+    exported_any = False
 
     try:
         chunk_iter = pd.read_csv(results_path, sep="\t", chunksize=chunksize)
@@ -194,6 +223,11 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
         if leaked.empty:
             continue
 
+        leaked_hits += len(leaked)
+        if export_path is not None:
+            _append_leaked_hits(export_path, leaked, first_write=not exported_any)
+            exported_any = True
+
         query_ids_above_threshold.update(leaked["query"].unique().tolist())
         target_ids_above_threshold.update(leaked["target"].unique().tolist())
 
@@ -201,6 +235,9 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
         row_order = _push_top_rows(top_rows_heap, leaked_top, row_order, top_n)
 
     results_filt = _finalize_results_frame(top_rows_heap)
+
+    if export_path is not None and not exported_any:
+        _append_leaked_hits(export_path, None, first_write=True)
 
     return {
         "query_similarity_max": query_similarity_max,
@@ -211,4 +248,5 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
         "target_ids_above_threshold": target_ids_above_threshold,
         "results_filt": results_filt,
         "total_hits": total_hits,
+        "leaked_hits": leaked_hits,
     }

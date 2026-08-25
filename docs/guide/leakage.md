@@ -73,9 +73,10 @@ Three things, in the order they are useful:
    broad hump in the 90s is a repeated sequence family, which is harder, because
    removing it may remove a real biological class.
 3. **The leaked-pair panel.** Up to the first 100 pairs, each expanding to its
-   rendered alignment, so you can see what is actually shared. Every hit,
-   including those past 100, is exported to
-   `mmseqs/mmseqs2_search_result.tsv` beside the report.
+   rendered alignment, so you can see what is actually shared. Every flagged
+   pair, including those past 100, is exported to
+   `mmseqs/mmseqs2_search_result.tsv` beside the report, and the panel's count is
+   of all of them, not of the ones listed.
 
 **Start with a small example.** [enhancers](../examples/enhancers.md) has four
 leaked pairs — you can expand every one and understand the whole finding in a

@@ -138,8 +138,8 @@ Full treatment, including how similarity is computed: [train/test leakage](https
 flags one when it exceeds `--similarity-threshold` (90% by default). The report gives the
 percentage of leaked queries and targets, a histogram of the similarity distribution, and
 a panel listing the leaked pairs — up to the first 100, each expanding into its rendered
-alignment, so you can see what is actually shared. Every hit is exported to
-`mmseqs/mmseqs2_search_result.tsv` beside the report. The bundled enhancers example carries a little real leakage: 0.67% of queries and
+alignment, so you can see what is actually shared. Every flagged pair, listed or
+not, is exported to `mmseqs/mmseqs2_search_result.tsv` beside the report. The bundled enhancers example carries a little real leakage: 0.67% of queries and
 0.33% of targets — [see the report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
 
 ## Input Formats

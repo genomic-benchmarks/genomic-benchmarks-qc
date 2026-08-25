@@ -33,10 +33,7 @@ from genomic_benchmarks_qc.utils.input_utils import (
     setup_logger,
     stream_files_to_sequences,
 )
-from genomic_benchmarks_qc.utils.mmseqs_summary import (
-    build_mmseqs_export_frame,
-    summarize_mmseqs_output,
-)
+from genomic_benchmarks_qc.utils.mmseqs_summary import summarize_mmseqs_output
 from genomic_benchmarks_qc.utils.naming import (
     HTML_REPORT_FILE,
     MMSEQS_DIR,
@@ -137,8 +134,6 @@ def _build_simple_report_frame(threshold_stats):
 
 def _write_mmseqs_report_bundle(
     comparison_dir,
-    outfile,
-    results_filt,
     train_files,
     test_files,
     train_stats,
@@ -151,11 +146,19 @@ def _write_mmseqs_report_bundle(
     """Generate a comprehensive report bundle for split evaluation results.
 
     Produces, inside `comparison_dir`:
-    - mmseqs/<outfile>: TSV of the MMseqs2 hits above the similarity threshold
     - mmseqs/seq_index_mapping/: FASTA files of only the sequences involved in
-      those hits, mapping the internal seq_* ids back to the input sequences
+      the leaked hits, mapping the internal seq_* ids back to the input sequences
     - plots/: similarity distribution plots
     - gb-qc-report.html: the plots, the leakage summary and the top alignments
+
+    The TSV of the leaked hits is written beside them, by `summarize_mmseqs_output`
+    while it reads the search output: there is one row per leaked hit and no cap
+    on how many that is, so it cannot be built from anything held in memory here.
+
+    Everything about the hits is taken from `summary` rather than passed
+    alongside it. The count in the report and the hits it lists are different
+    sizes - the listing is capped, the count is not - and reading them from one
+    place is what keeps them from disagreeing.
     """
     train_filenames = ",".join([Path(f).name for f in train_files])
     test_filenames = ",".join([Path(f).name for f in test_files])
@@ -163,24 +166,19 @@ def _write_mmseqs_report_bundle(
     # Define output paths for all report components
     html_report_path = comparison_dir / HTML_REPORT_FILE
     plots_dir = comparison_dir / PLOTS_DIR
-    mmseqs_dir = comparison_dir / MMSEQS_DIR
-    seq_index_mapping = mmseqs_dir / 'seq_index_mapping'
+    seq_index_mapping = comparison_dir / MMSEQS_DIR / 'seq_index_mapping'
 
-    # Export MMseqs2 search results to TSV format
-    # Contains hit pairs (test sequences that match training sequences) with similarity scores
-    mmseqs_dir.mkdir(parents=True, exist_ok=True)
-    export_results_path = mmseqs_dir / outfile
-    build_mmseqs_export_frame(results_filt).to_csv(export_results_path, sep="\t", index=False)
-
-    # Create filtered FASTA files containing only sequences involved in hits
-    # Maps the internal seq_* identifiers back to original sequences for reference
+    # Create filtered FASTA files containing only sequences involved in leaked hits
+    # Maps the internal seq_* identifiers back to original sequences for reference.
+    # Every sequence in the exported TSV, not only those of the hits the page
+    # lists, so the two sides of the mmseqs/ directory describe the same hits.
     seq_index_mapping.mkdir(parents=True, exist_ok=True)
     new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
     new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
-    query_ids = set(results_filt["query"]) if "query" in results_filt.columns else set()
-    target_ids = set(results_filt["target"]) if "target" in results_filt.columns else set()
-    filter_fasta_by_ids(test_fasta_path, new_test_fasta_path, query_ids)
-    filter_fasta_by_ids(train_fasta_path, new_train_fasta_path, target_ids)
+    filter_fasta_by_ids(test_fasta_path, new_test_fasta_path,
+                        summary["query_ids_above_threshold"])
+    filter_fasta_by_ids(train_fasta_path, new_train_fasta_path,
+                        summary["target_ids_above_threshold"])
 
     # Aggregate sequence statistics (count, length, GC content, etc.) from train and test sets
     basic_stats = get_basic_stats_from_aggregates(
@@ -190,12 +188,12 @@ def _write_mmseqs_report_bundle(
         test_stats,
     )
 
-    # Prepare the hits the report lists, with full alignment sequences; the rest
-    # are exported to TSV above and never need their alignments rendered. The cap
-    # is the report's, so the page and the count it prints cannot disagree.
-    total_hits = len(results_filt)
+    # The hits the report lists, with full alignment sequences attached. The
+    # summary already kept only ROW_CAP of them - rendering an alignment means
+    # reading two sequences back out of the staged FASTA, and the rest are in the
+    # exported TSV, where nothing has to be rendered at all.
     results_filt_for_html = add_alignment_sequences(
-        results_filt.head(ROW_CAP),
+        summary["results_filt"],
         test_fasta_path,
         train_fasta_path,
     )
@@ -212,7 +210,7 @@ def _write_mmseqs_report_bundle(
         plots_dir,
         summary["query_similarity_max"],
         summary["target_similarity_max"],
-        total_hits=total_hits,
+        leaked_hits=summary["leaked_hits"],
     )
 
 def run(
@@ -333,8 +331,24 @@ def run(
                 split_memory_limit=split_memory_limit,
             )
 
-            summary = summarize_mmseqs_output(results_path, similarity_threshold)
-            results_filt = summary["results_filt"]
+            # The exported table of the leaked hits is written while the search
+            # output is read, because it is the one output with a row per hit and
+            # no cap on how many. Its directory therefore has to exist before the
+            # summary runs, rather than being made with the rest of the bundle.
+            export_path = None
+            if 'html' in report_types:
+                mmseqs_dir = comparison_dir / MMSEQS_DIR
+                mmseqs_dir.mkdir(parents=True, exist_ok=True)
+                export_path = mmseqs_dir / outfile
+
+            # `top_n` is the report's row cap, not a second number that has to be
+            # kept in step with it: the top hits exist to be listed on the page.
+            summary = summarize_mmseqs_output(
+                results_path,
+                similarity_threshold,
+                top_n=ROW_CAP,
+                export_path=export_path,
+            )
 
             # Get threshold stats
             threshold_stats = get_threshold_stats(
@@ -351,8 +365,6 @@ def run(
             if 'html' in report_types:
                 _write_mmseqs_report_bundle(
                     comparison_dir,
-                    outfile,
-                    results_filt,
                     train_files,
                     test_files,
                     train_stats,
