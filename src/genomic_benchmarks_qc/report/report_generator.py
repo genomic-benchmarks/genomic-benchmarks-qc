@@ -12,6 +12,7 @@ paid by `gb-qc --help`, and by every run that asks only for `simple` or `json`
 reports and never draws anything. `test_startup.py` holds that line.
 """
 
+import io
 import logging
 from pathlib import Path
 
@@ -20,21 +21,43 @@ import pandas as pd
 from genomic_benchmarks_qc.report.classes_html_report import get_dataset_html_template
 from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
+from genomic_benchmarks_qc.report.utils import DISPLAY_DPI, FIGURE_DPI, SavedPlot
 from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 
 
-def save_plot(fig, path):
-    """Write one figure to `path`, and return where it went.
+def save_plot(fig, path, embed=True):
+    """Write one figure to `path`, and return it with the copy the page embeds.
 
-    One call per file a figure becomes, which is two for a figure that flags:
-    the callers below draw it, save it, mark the flags on it and save it again.
+    Two renderings of the same figure and no second build of it: the file, at
+    print resolution, and the smaller copy that goes into the report's data
+    URI. See `SavedPlot` for why the page does not simply embed the file.
+
+    Args:
+        fig: The figure to write.
+        path: Where to write it.
+        embed: Whether the page shows this figure. The per-position PNGs are
+            written for whoever wants the file, but the page draws those two
+            with the interactive viewer instead, so there is nothing to embed.
 
     Returns:
-        `path`, so the caller can record it as the plot the page will show.
+        A `SavedPlot`.
     """
-    fig.savefig(path, bbox_inches='tight')
-    return path
+    # Deferred, for the reason in the module docstring.
+    import matplotlib
+
+    # `bbox_inches='tight'` makes savefig lay the figure out to measure it and
+    # then again to draw it, once per file. Measuring here instead and handing
+    # both writes the box turns three layout passes into one. The box is the
+    # figure as it stands at this call, so nothing about it has to hold across
+    # calls - the padding is the one thing savefig would have added itself.
+    crop = fig.get_tightbbox().padded(matplotlib.rcParams['savefig.pad_inches'])
+    fig.savefig(path, dpi=FIGURE_DPI, bbox_inches=crop)
+    if not embed:
+        return SavedPlot(path, None)
+    display = io.BytesIO()
+    fig.savefig(display, format='png', dpi=DISPLAY_DPI, bbox_inches=crop)
+    return SavedPlot(path, display.getvalue())
 
 
 def validate_report_types(report_types, valid_types, command):
@@ -82,7 +105,7 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
         file.write(template)
 
 def generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir):
-    """Save the split figures and return {plot title: path} for the template."""
+    """Save the split figures and return {plot title: SavedPlot} for the template."""
     # Deferred, for the reason in the module docstring.
     import matplotlib.pyplot as plt
 
@@ -219,7 +242,7 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
             Read off the statistics when not given.
 
     Returns:
-        Dictionary mapping plot names to file paths, or to None for a figure
+        Dictionary mapping plot names to `SavedPlot`, or to None for a figure
         that could not be drawn.
     """
 
@@ -325,13 +348,13 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
                 x_label=x_label
             )
             plots_paths[stats_name] = save_plot(
-                fig, output_path / f'{file_stem}.png')
+                fig, output_path / f'{file_stem}.png', embed=False)
 
             if failed_positions:
                 classes_plots.mark_failed_positions(
                     fig, bases_overlap, end_position, failed_positions)
                 plots_paths[stats_name] = save_plot(
-                    fig, output_path / f'{file_stem}_with_flags.png')
+                    fig, output_path / f'{file_stem}_with_flags.png', embed=False)
             plt.close(fig)
 
     # Plot length distribution

@@ -3,10 +3,14 @@
 A report is one standalone file, so everything it shows is inlined into it and
 every byte of a figure is a byte of the file. What keeps that from running away
 is invisible in the output, which is what this file is for: a flagged figure is
-drawn once and saved twice rather than built twice.
+drawn once and saved twice rather than built twice, and the copy the page
+embeds is half the resolution of the one written to plots/, which is the copy
+to reuse elsewhere.
 """
 
 import base64
+import io
+import re
 
 import numpy as np
 import pandas as pd
@@ -14,6 +18,7 @@ import pytest
 from PIL import Image
 
 from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
+from genomic_benchmarks_qc.report.utils import DISPLAY_DPI, FIGURE_DPI
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 
@@ -47,6 +52,13 @@ def report(tmp_path_factory):
     return out
 
 
+def embedded_images(page):
+    """Every inlined PNG in the page, decoded, largest first."""
+    found = re.findall(r'data:image/png;base64,\s*([A-Za-z0-9+/=\s]+?)["\')]', page)
+    images = [base64.b64decode(raw.strip()) for raw in found]
+    return sorted(images, key=len, reverse=True)
+
+
 class TestBothVersionsComeFromOneFigure:
     """The clean file and the flagged one are the same figure, saved twice."""
 
@@ -69,4 +81,27 @@ class TestBothVersionsComeFromOneFigure:
         page = (report / 'gb-qc-report.html').read_text()
         flagged = report / 'plots' / 'per_sequence_nucleotide_content_with_flags.png'
 
-        assert base64.b64encode(flagged.read_bytes()).decode('utf-8') in page
+        # Not by bytes - the page carries the smaller copy - but the flagged
+        # figure is the wider of the two, so it is the one with more ink.
+        assert flagged.stat().st_size > (
+            report / 'plots' / 'per_sequence_nucleotide_content.png').stat().st_size
+        assert len(embedded_images(page)) >= 3
+
+
+class TestTheEmbeddedCopyIsSmallerThanTheFile:
+    def test_the_file_is_at_print_resolution_and_the_page_at_half(self, report):
+        page = (report / 'gb-qc-report.html').read_text()
+        on_disk = Image.open(report / 'plots' / 'per_sequence_dinucleotide_content_with_flags.png')
+        # The dinucleotide figure is the tallest thing in the report, so it is
+        # the largest inlined image.
+        in_page = Image.open(io.BytesIO(embedded_images(page)[0]))
+
+        assert on_disk.width / in_page.width == pytest.approx(FIGURE_DPI / DISPLAY_DPI, abs=0.02)
+        assert on_disk.height / in_page.height == pytest.approx(FIGURE_DPI / DISPLAY_DPI, abs=0.02)
+
+    def test_no_inlined_figure_is_larger_than_its_file(self, report):
+        page = (report / 'gb-qc-report.html').read_text()
+        largest_embedded = len(embedded_images(page)[0])
+        largest_file = max(png.stat().st_size for png in (report / 'plots').glob('*.png'))
+
+        assert largest_embedded < largest_file

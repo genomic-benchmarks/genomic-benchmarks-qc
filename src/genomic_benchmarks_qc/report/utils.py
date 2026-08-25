@@ -3,6 +3,7 @@
 import base64
 import html
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,34 @@ from genomic_benchmarks_qc.report.colors import (  # noqa: F401
     UNKNOWN_COLOR,
     WARN_COLOR,
 )
+
+# A figure is written to plots/ at print resolution and embedded in the page at
+# half of it. The images are most of a report's bytes - the four a class report
+# shows were 65% of an 890 KB one at 300 dpi - and nothing on the page is drawn
+# wider than 92% of a column, so the embedded copy was carrying about four times
+# the pixels it could use. The file on disk keeps the resolution a figure in a
+# paper needs, and is the one to reuse elsewhere.
+FIGURE_DPI = 300
+DISPLAY_DPI = 150
+
+
+@dataclass(frozen=True)
+class SavedPlot:
+    """One figure, as the file it was written to and as the copy the page shows.
+
+    The two are the same figure at the two resolutions above. Everything that
+    embeds an image takes either this or a path, so a plot that is only ever
+    read back off disk - the split report's histogram, say - can stay a path.
+
+    Attributes:
+        path: The PNG in plots/, at `FIGURE_DPI`.
+        embedded: The same figure at `DISPLAY_DPI`, as PNG bytes, or None for a
+            figure the page does not show - the file is read instead, so a
+            figure that later grows a place on the page still appears.
+    """
+
+    path: Path
+    embedded: bytes | None
 
 
 def put_file_details(html_template, filename):
@@ -96,29 +125,35 @@ def icon_html(summary_statuses, key):
     # Otherwise assume the value is an HTML snippet or a custom symbol and return as-is
     return s
 
-def encode_image_to_base64(image_path):
+def encode_image_to_base64(image):
     """
-    Read an image file and return its base64-encoded string.
+    Return an image's base64-encoded string, ready for a data URI.
 
     Args:
-        image_path: Path to the image file
+        image: A `SavedPlot`, whose display-resolution copy is used, or a path
+            to an image file, which is read.
 
     Returns:
         Base64-encoded string of the image
 
     Raises:
-        FileNotFoundError: If the image file doesn't exist
+        FileNotFoundError: If a path was given and there is no file at it
     """
-    if not Path(image_path).is_file():
-        raise FileNotFoundError(f"Image file not found: {image_path}")
-    with open(image_path, "rb") as image_file:
+    if isinstance(image, SavedPlot):
+        if image.embedded is not None:
+            return base64.b64encode(image.embedded).decode('utf-8')
+        image = image.path
+    if not Path(image).is_file():
+        raise FileNotFoundError(f"Image file not found: {image}")
+    with open(image, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 def image_or_message(image_path, alt, css_class, message):
     """Return an <img> element for a plot, or a text message when there is none.
 
     Args:
-        image_path: Path to the plot image, or None when no plot was generated.
+        image_path: The plot, as a `SavedPlot` or a path, or None when no plot
+            was generated.
         alt: Alt text / label for the image.
         css_class: Class for the <img>: 'plot-wide' for the figures whose axes
             line up down the page, 'plot-half' for the narrower centred ones.
