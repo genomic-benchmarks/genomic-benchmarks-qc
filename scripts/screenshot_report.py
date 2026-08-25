@@ -14,11 +14,15 @@ report that prose alongside it cannot stand in for: 398 positions of flat noise
 with a six-position spike in the middle of it. The report's sidebar is
 `position: fixed`, so it stays in shot and brings the flag summary with it.
 
-It also records the README's animation, with --animate. That one is a
-committed file rather than a built one, because GitHub and PyPI both render the
-README from the repository and neither will wait for a docs build; generating it
-from a script anyway is what stops it going the way of the hand-made version it
-replaces, which was still showing a tool description three revisions old.
+It also records the README's animation, with --animate. That one is committed
+rather than built: no page on the site links it, so a build has no reason to
+drive a multi-step interaction to produce it. It still lives under docs/assets/
+so that mkdocs publishes it, because the README has to name an absolute URL -
+PyPI does not resolve a relative path at all, and a repository path is pinned to
+one branch - and the published site is the same place the landing-page shot is
+already served from. Generating it from a script rather than by hand is what
+stops it going the way of the version it replaces, which was still showing a
+tool description three revisions old.
 
 Usage:
 
@@ -51,9 +55,10 @@ DEFAULT_REPORT = (ROOT / 'docs' / 'reports' / 'hidden-motif' / 'class'
 DEFAULT_OUT = ROOT / 'docs' / 'assets' / 'report-screenshot.png'
 DEFAULT_ANCHOR = 'per-position-nucleotide-content'
 
-# Under assets/ rather than docs/assets/ because this one is committed: see the
-# module docstring.
-DEFAULT_ANIM_OUT = ROOT / 'assets' / 'per-position-demo.webp'
+# Beside the landing-page shot, so that the site publishes it and the README can
+# point at the published copy. Unlike that shot it is committed rather than
+# built, so it is not in .gitignore: see the module docstring.
+DEFAULT_ANIM_OUT = ROOT / 'docs' / 'assets' / 'per-position-demo.webp'
 
 # Wide enough to clear the report's own 900px breakpoint, below which the
 # sidebar stops being a left rail and folds into a row of chips - which would

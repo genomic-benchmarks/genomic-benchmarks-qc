@@ -117,7 +117,7 @@ For long sequences a static plot cannot show much: a single flagged position is 
 
 <!-- Recorded by `python scripts/screenshot_report.py --animate`, not by hand:
      re-run it whenever the panel's toolbar, plot or tooltip changes. -->
-<img src="https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/assets/per-position-demo.webp?raw=True" alt="The per-position panel being driven: a drag across the flagged region takes 398 positions down to 48, the tooltip at position 200 reads G at 0.217 in one class against 0.784 in the other with a Fail flag beside it, and one press of Next flag returns to the same window without the drag" width="800" />
+<img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/per-position-demo.webp" alt="The per-position panel being driven: a drag across the flagged region takes 398 positions down to 48, the tooltip at position 200 reads G at 0.217 in one class against 0.784 in the other with a Fail flag beside it, and one press of Next flag returns to the same window without the drag" width="800" />
 
 - **Drag** to zoom, shift-drag to pan, double-click to reset.
 - **Hover** for the per-class base frequencies and flags at a position.
