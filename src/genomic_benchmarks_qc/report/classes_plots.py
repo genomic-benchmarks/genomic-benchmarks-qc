@@ -2,8 +2,14 @@
 
 Each `plot_*` builds and returns a matplotlib figure; saving them is the
 report generator's job. Features that were flagged are marked in the figure
-itself - underlines under failing positions, colored legend entries - so a plot
-carries the same verdict as the table it sits next to in the report.
+itself - underlines under failing positions, colored bands over them - so a
+plot carries the same verdict as the table it sits next to in the report.
+
+Marking is a step of its own rather than an argument to the drawing, because
+the report keeps both versions of every flagged figure. The generator draws
+once, saves the clean file, calls the matching `mark_*` and saves again;
+passing the flags in meant building the whole figure a second time to get the
+second file, on exactly the datasets that have one.
 """
 
 import logging
@@ -110,8 +116,7 @@ def add_failed_outline(ax: Axes, failed_positions: dict[int, str],
             )
 
 def plot_nucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
-                     nucleotides: list[str], plot_type: str,
-                     failed_nucleotides: dict[str, str] | None = None) -> Figure:
+                     nucleotides: list[str], plot_type: str) -> Figure:
     """
     Plot the nucleotide content of two sets of sequences.
 
@@ -120,12 +125,9 @@ def plot_nucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
         stats2: Statistics for the second set of sequences.
         nucleotides: List of nucleotides to plot.
         plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-        failed_nucleotides: Dict mapping nucleotide -> flag status
-            (e.g., `{'A': 'Warning', 'G': 'Fail'}`). Used to add colored underlines
-            beneath the failed nucleotides.
 
     Returns:
-        Matplotlib figure object.
+        Matplotlib figure object. `mark_failed_nucleotides` adds the flags to it.
     """
 
     df = melt_stats(stats1, stats2, 'Per sequence nucleotide content',
@@ -167,11 +169,6 @@ def plot_nucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
 
     # Reserve the underline margin so flagged/unflagged plots share geometry
     reserve_flag_margin(ax, len(nucleotides))
-    # Add colored outlines to failed nucleotides if provided
-    if failed_nucleotides:
-        add_failed_outline(ax, {i: failed_nucleotides[nt]
-                                for i, nt in enumerate(nucleotides)
-                                if nt in failed_nucleotides})
 
     ax.set_xlabel('Nucleotide', fontsize=14)
     ax.set_ylabel('Frequency', fontsize=14)
@@ -181,9 +178,22 @@ def plot_nucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
 
     return fig
 
+def mark_failed_nucleotides(fig: Figure, nucleotides: list[str],
+                            failed_nucleotides: dict[str, str]) -> None:
+    """Underline the flagged nucleotides on a figure `plot_nucleotides` drew.
+
+    Args:
+        fig: The figure to mark, modified in place.
+        nucleotides: The nucleotides it was drawn for, in the order it drew them.
+        failed_nucleotides: Dict mapping nucleotide -> flag status
+            (e.g., `{'A': 'Warning', 'G': 'Fail'}`).
+    """
+    add_failed_outline(fig.axes[0], {index: failed_nucleotides[nt]
+                                     for index, nt in enumerate(nucleotides)
+                                     if nt in failed_nucleotides})
+
 def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
-                       nucleotides: list[str], plot_type: str,
-                       failed_dinucleotides: dict[str, str] | None = None) -> Figure:
+                       nucleotides: list[str], plot_type: str) -> Figure:
     """
     Plot the dinucleotide content of two sets of sequences.
 
@@ -192,12 +202,9 @@ def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
         stats2: Statistics for the second set of sequences.
         nucleotides: List of nucleotides to generate dinucleotides from.
         plot_type: Type of plot to create (e.g., 'boxen', 'violin').
-        failed_dinucleotides: Dict mapping dinucleotide -> flag status
-            (e.g., `{'AA': 'Warning', 'GG': 'Fail'}`). Used to add red outlines
-            to failed dinucleotides in boxen plots.
 
     Returns:
-        Matplotlib figure object.
+        Matplotlib figure object. `mark_failed_dinucleotides` adds the flags to it.
     """
 
     df = melt_stats(stats1, stats2, 'Per sequence dinucleotide content',
@@ -246,11 +253,6 @@ def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
         axs[index].set_ylim(-0.1, 1.1)
         # Reserve the underline margin so flagged/unflagged plots share geometry
         reserve_flag_margin(axs[index], len(dinucleotides))
-        # Add colored outlines to failed dinucleotides if provided
-        if failed_dinucleotides:
-            add_failed_outline(axs[index], {i: failed_dinucleotides[dn]
-                                            for i, dn in enumerate(dinucleotides)
-                                            if dn in failed_dinucleotides})
 
         axs[index].set_xlabel('')
         axs[index].legend().set_visible(False)
@@ -262,6 +264,25 @@ def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
     axs[index].set_xlabel('Dinucleotide', fontsize=14)
 
     return fig
+
+def mark_failed_dinucleotides(fig: Figure, nucleotides: list[str],
+                              failed_dinucleotides: dict[str, str]) -> None:
+    """Underline the flagged dinucleotides on a `plot_dinucleotides` figure.
+
+    One panel per first base, which is the order `plot_dinucleotides` lays them
+    out in, so a panel's axis is `fig.axes[index]` for that base.
+
+    Args:
+        fig: The figure to mark, modified in place.
+        nucleotides: The nucleotides it was drawn for, in the order it drew them.
+        failed_dinucleotides: Dict mapping dinucleotide -> flag status
+            (e.g., `{'AA': 'Warning', 'GG': 'Fail'}`).
+    """
+    for index, nt in enumerate(nucleotides):
+        dinucleotides = [nt + nt2 for nt2 in nucleotides]
+        add_failed_outline(fig.axes[index], {i: failed_dinucleotides[dn]
+                                             for i, dn in enumerate(dinucleotides)
+                                             if dn in failed_dinucleotides})
 
 def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
     """
@@ -325,8 +346,8 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
 
 
 def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, end_position,
-                                      x_label='', title='', failed_positions=None):
-    """Plot per-base sequence comparison with optional failure shading.
+                                      x_label='', title=''):
+    """Plot the per-position composition of two classes, base by base.
 
     The curves run to `end_position`, which callers set to the compared window:
     every position drawn is a position that was scored, so an unflagged stretch
@@ -342,12 +363,9 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
         nucleotides: List of nucleotides to plot (e.g., ['A', 'C', 'G', 'T']).
         end_position: Maximum position to plot.
         x_label, title: Plot labels.
-        failed_positions: Dict mapping nucleotide -> dict of position -> flag status
-            (e.g., {'A': {52: 'Warning', 66: 'Fail'}, 'G': {70: 'Fail'}}).
-            If None or empty, no shading applied.
 
     Returns:
-        Matplotlib figure object.
+        Matplotlib figure object. `mark_failed_positions` adds the flags to it.
     """
 
     df1 = stats1.stats[stats_name]
@@ -369,15 +387,6 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
                         color=HuePalette()[0], alpha=0.7)
         axs[index].plot(df2.index[:end_position] + 1, df2_base, label=f"{stats2.label}",
                         color=HuePalette()[1], alpha=0.7)
-
-        # Add shading for failed positions with color based on flag type
-        if failed_positions and nt in failed_positions:
-            for pos, flag in failed_positions[nt].items():
-                if 1 <= pos <= end_position:
-                    color = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
-                    # axvspan uses inclusive bounds, so shade from pos-0.5 to pos+0.5
-                    # for a 1-wide band
-                    axs[index].axvspan(pos - 0.5, pos + 0.5, color=color, alpha=0.5, linewidth=0)
 
         axs[index].set_ylim(-0.1, 1.1)
         axs[index].set_ylabel('Frequency', fontsize=14)
@@ -438,6 +447,34 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     axs[last_index] = prepare_legend(axs[index], box_to_anchor=(0.5, -1))
 
     return fig
+
+def mark_failed_positions(fig, nucleotides, end_position, failed_positions):
+    """Shade the flagged positions on a `plot_per_base_sequence_comparison` figure.
+
+    One panel per nucleotide, which is the order the figure lays them out in, so
+    a panel's axis is `fig.axes[index]` for that nucleotide. The coverage panel
+    below them takes no bands: it says how much data reaches a position, which
+    is the same whether or not the position was flagged.
+
+    The bands go behind the curves whenever they are added, because `axvspan`
+    draws at a lower z-order than a line.
+
+    Args:
+        fig: The figure to mark, modified in place.
+        nucleotides: The nucleotides it was drawn for, in the order it drew them.
+        end_position: The last position it drew; a flag past it has no panel to
+            sit on and is left off.
+        failed_positions: Dict mapping nucleotide -> dict of position -> flag status
+            (e.g., {'A': {52: 'Warning', 66: 'Fail'}, 'G': {70: 'Fail'}}).
+    """
+    for index, nt in enumerate(nucleotides):
+        for position, flag in failed_positions.get(nt, {}).items():
+            if 1 <= position <= end_position:
+                color = FAIL_COLOR if flag == 'Fail' else WARN_COLOR
+                # axvspan uses inclusive bounds, so shade from pos-0.5 to pos+0.5
+                # for a 1-wide band
+                fig.axes[index].axvspan(position - 0.5, position + 0.5,
+                                        color=color, alpha=0.5, linewidth=0)
 
 def _compute_duplication_bins(stats1, stats2):
     """Compute normalized duplication bin distributions for both datasets.

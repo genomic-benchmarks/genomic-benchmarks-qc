@@ -24,6 +24,19 @@ from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 
 
+def save_plot(fig, path):
+    """Write one figure to `path`, and return where it went.
+
+    One call per file a figure becomes, which is two for a figure that flags:
+    the callers below draw it, save it, mark the flags on it and save it again.
+
+    Returns:
+        `path`, so the caller can record it as the plot the page will show.
+    """
+    fig.savefig(path, bbox_inches='tight')
+    return path
+
+
 def validate_report_types(report_types, valid_types, command):
     """Reject a report type a command does not produce.
 
@@ -79,8 +92,8 @@ def generate_split_plots(query_similarity_max, target_similarity_max, threshold_
 
     fig = splits_plots.plot_similarity_histograms(
         query_similarity_max, target_similarity_max, threshold_stats)
-    plots_paths_dict['Similarity histograms'] = plots_dir / 'similarity_histograms.png'
-    fig.savefig(plots_dir / 'similarity_histograms.png', bbox_inches='tight')
+    plots_paths_dict['Similarity histograms'] = save_plot(
+        fig, plots_dir / 'similarity_histograms.png')
     plt.close(fig)
 
     return plots_paths_dict
@@ -206,7 +219,8 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
             Read off the statistics when not given.
 
     Returns:
-        Dictionary mapping plot names to file paths.
+        Dictionary mapping plot names to file paths, or to None for a figure
+        that could not be drawn.
     """
 
     logging.info(f"Generating PNG plots at: {output_path}")
@@ -252,59 +266,36 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
 
     else:
 
-        # Plot per sequence nucleotide content - create both versions
-        # No-flags version
+        # Both files come from one figure: it is saved clean, the flags are
+        # marked on it, and it is saved again. `reserve_flag_margin` keeps the
+        # two crops identical, so the pair differs only by the marks.
         fig = classes_plots.plot_nucleotides(
             stats1,
             stats2,
             nucleotides = bases_overlap,
-            plot_type=plot_type,
-            failed_nucleotides=None
+            plot_type=plot_type
         )
-        no_flags_path = output_path / 'per_sequence_nucleotide_content.png'
-        fig.savefig(no_flags_path, bbox_inches='tight')
-        plt.close(fig)
+        plots_paths['Per sequence nucleotide content'] = save_plot(
+            fig, output_path / 'per_sequence_nucleotide_content.png')
         if failed_nucleotides:
-            fig = classes_plots.plot_nucleotides(
-                stats1,
-                stats2,
-                nucleotides = bases_overlap,
-                plot_type=plot_type,
-                failed_nucleotides=failed_nucleotides
-            )
-            with_flags_path = output_path / 'per_sequence_nucleotide_content_with_flags.png'
-            fig.savefig(with_flags_path, bbox_inches='tight')
-            plt.close(fig)
-            plots_paths['Per sequence nucleotide content'] = with_flags_path
-        else:
-            plots_paths['Per sequence nucleotide content'] = no_flags_path
+            classes_plots.mark_failed_nucleotides(fig, bases_overlap, failed_nucleotides)
+            plots_paths['Per sequence nucleotide content'] = save_plot(
+                fig, output_path / 'per_sequence_nucleotide_content_with_flags.png')
+        plt.close(fig)
 
-        # Plot per sequence dinucleotide content - create both versions
-        # No-flags version
         fig = classes_plots.plot_dinucleotides(
             stats1,
             stats2,
             nucleotides = bases_overlap,
-            plot_type=plot_type,
-            failed_dinucleotides=None
+            plot_type=plot_type
         )
-        no_flags_path = output_path / 'per_sequence_dinucleotide_content.png'
-        fig.savefig(no_flags_path, bbox_inches='tight')
-        plt.close(fig)
+        plots_paths['Per sequence dinucleotide content'] = save_plot(
+            fig, output_path / 'per_sequence_dinucleotide_content.png')
         if failed_dinucleotides:
-            fig = classes_plots.plot_dinucleotides(
-                stats1,
-                stats2,
-                nucleotides = bases_overlap,
-                plot_type=plot_type,
-                failed_dinucleotides=failed_dinucleotides
-            )
-            with_flags_path = output_path / 'per_sequence_dinucleotide_content_with_flags.png'
-            fig.savefig(with_flags_path, bbox_inches='tight')
-            plt.close(fig)
-            plots_paths['Per sequence dinucleotide content'] = with_flags_path
-        else:
-            plots_paths['Per sequence dinucleotide content'] = no_flags_path
+            classes_plots.mark_failed_dinucleotides(fig, bases_overlap, failed_dinucleotides)
+            plots_paths['Per sequence dinucleotide content'] = save_plot(
+                fig, output_path / 'per_sequence_dinucleotide_content_with_flags.png')
+        plt.close(fig)
 
         # The per-position figures, one per direction, drawn over the window
         # `drawn_window` resolves: what was compared, or - when nothing was - the
@@ -325,35 +316,23 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
                 plots_paths[stats_name] = None
                 continue
 
-            # No-flags version
             fig = classes_plots.plot_per_base_sequence_comparison(
                 stats1,
                 stats2,
                 stats_name=stats_name,
                 nucleotides = bases_overlap,
                 end_position=end_position,
-                x_label=x_label,
-                failed_positions=None
+                x_label=x_label
             )
-            no_flags_path = output_path / f'{file_stem}.png'
-            fig.savefig(no_flags_path, bbox_inches='tight')
-            plt.close(fig)
-            plots_paths[stats_name] = no_flags_path
+            plots_paths[stats_name] = save_plot(
+                fig, output_path / f'{file_stem}.png')
 
             if failed_positions:
-                fig = classes_plots.plot_per_base_sequence_comparison(
-                    stats1,
-                    stats2,
-                    stats_name=stats_name,
-                    nucleotides = bases_overlap,
-                    end_position=end_position,
-                    x_label=x_label,
-                    failed_positions=failed_positions
-                )
-                with_flags_path = output_path / f'{file_stem}_with_flags.png'
-                fig.savefig(with_flags_path, bbox_inches='tight')
-                plt.close(fig)
-                plots_paths[stats_name] = with_flags_path
+                classes_plots.mark_failed_positions(
+                    fig, bases_overlap, end_position, failed_positions)
+                plots_paths[stats_name] = save_plot(
+                    fig, output_path / f'{file_stem}_with_flags.png')
+            plt.close(fig)
 
     # Plot length distribution
     fig = classes_plots.plot_lengths(
@@ -361,10 +340,8 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
         stats2,
         plot_type=plot_type
     )
-    lengths_path = output_path / 'sequence_lengths.png'
-    fig.savefig(lengths_path, bbox_inches='tight')
+    plots_paths['Sequence lengths'] = save_plot(fig, output_path / 'sequence_lengths.png')
     plt.close(fig)
-    plots_paths['Sequence lengths'] = lengths_path
 
     # Plot per sequence GC content
     fig = classes_plots.plot_gc_content(
@@ -372,10 +349,9 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
         stats2,
         plot_type=plot_type
     )
-    gc_path = output_path / 'per_sequence_gc_content.png'
-    fig.savefig(gc_path, bbox_inches='tight')
+    plots_paths['Per sequence GC content'] = save_plot(
+        fig, output_path / 'per_sequence_gc_content.png')
     plt.close(fig)
-    plots_paths['Per sequence GC content'] = gc_path
 
     # Plot sequence duplications within classes - only if some sequences were removed
     # by deduplication
@@ -385,9 +361,8 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
             stats2,
             percent_remaining_after_dedup=percent_remaining
         )
-        dup_path = output_path / 'sequence_duplications_within_labels.png'
-        fig.savefig(dup_path, bbox_inches='tight')
+        plots_paths['Sequence Duplications within Labels'] = save_plot(
+            fig, output_path / 'sequence_duplications_within_labels.png')
         plt.close(fig)
-        plots_paths['Sequence Duplications within Labels'] = dup_path
 
     return plots_paths
