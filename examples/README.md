@@ -33,13 +33,6 @@ A full run takes about two and a half minutes and produces 15 reports.
 | [fasta-classes](fasta-classes/) | One FASTA file per class, label from the filename | 3 Fail, 6 Pass | — |
 | [enhancers](enhancers/) | The README's quickstart dataset. GC content alone separates the classes at AU-ROC 0.66 | 6 Warning, 3 Pass | 0.67% Warning |
 
-⁻ `length-bias` reaches Warning on the length check, not Fail, and that is the
-strongest available: across all 234 dataset splits surveyed for the paper, **no
-dataset fails the length check outright**. The strongest length bias on record
-among them is AU-ROC 0.61; the sample here scores 0.63. So the README's first
-claim — that a length classifier can beat your model — is demonstrated at
-Warning severity, because in this corpus that is as far as it goes.
-
 ## Layout
 
 ```text
@@ -53,13 +46,6 @@ collection and dataset the data came from and how to cite it, how the committed
 files were derived from it, the exact commands to run, and the flags those
 commands are expected to produce. `build.py` reads it, and so should the docs
 pages.
-
-The derivation is documented, not scripted. The committed files are the
-artefact: each `meta.toml` says which upstream dataset and split it came from
-and how much was taken, which is what you need to go back to the source. It is
-not enough to reproduce the exact draw, and deliberately so — regenerating the
-data is not a thing anyone should be doing casually, because two examples have
-published numbers measured on exactly these bytes (see below).
 
 ## Sources and attribution
 

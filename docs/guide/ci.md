@@ -25,9 +25,7 @@ Data Leakage,Fail,6.04%,0.98%
 ```
 
 Rows whose `Check` contains ` - ` are the per-base and per-position breakdown of
-the check above them. **Filter those out for a gate** — there are thousands of
-them on a long dataset, and one flagged position out of 1,500 is not the same
-event as a headline check failing.
+the check above them. **Filter those out for a gate**.
 
 ## A gate
 
