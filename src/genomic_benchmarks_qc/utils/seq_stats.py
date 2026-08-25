@@ -77,6 +77,22 @@ def cohort_floor(stats1, stats2) -> float:
     return binding
 
 
+def _coverage_from_lengths(lengths, positions):
+    """Fraction of `lengths` reaching each of `positions`, which are 1-based.
+
+    A sequence reaches position p exactly when its length is at least p, so the
+    count is the size of the sorted tail from p onwards - one binary search per
+    position, rather than a positions-by-sequences comparison for every one of
+    them. A class with no sequences reaches nothing.
+    """
+    lengths = np.asarray(lengths)
+    positions = np.asarray(positions)
+    if lengths.size == 0:
+        return np.zeros(positions.shape, dtype=float)
+    ordered = np.sort(lengths)
+    return (ordered.size - np.searchsorted(ordered, positions, side='left')) / ordered.size
+
+
 class SequenceStatistics:
     """The sequences of one class, and the statistics computed from them.
 
@@ -307,6 +323,21 @@ class SequenceStatistics:
             return 0
         return int(np.sort(lengths)[-required])
 
+    def coverage_curve(self, end_position: int) -> np.ndarray:
+        """Fraction reaching each 1-based position up to and including `end_position`.
+
+        The denominator behind every per-position statistic, as a curve. The
+        report needs it three times over - the figure draws it, the interactive
+        viewer carries it, and the prose quotes single points of it - and it used
+        to be worked out three ways, one of them a Python loop over the class per
+        position. One answer, so the figure and the viewer cannot come to draw
+        different curves.
+        """
+        return _coverage_from_lengths(
+            self.stats['Sequence lengths'].values.flatten(),
+            np.arange(1, end_position + 1),
+        )
+
     def coverage_at(self, position: int) -> float:
         """Fraction of this class's sequences that reach `position` (1-based).
 
@@ -315,9 +346,7 @@ class SequenceStatistics:
         data stands behind the far end of the per-position plots.
         """
         lengths = self.stats['Sequence lengths'].values.flatten()
-        if len(lengths) == 0:
-            return 0.0
-        return float(np.mean(lengths >= position))
+        return float(_coverage_from_lengths(lengths, np.array([position]))[0])
 
     def _compute_basic_statistics(self):
         """Compute the whole-class counts shown in the report header."""

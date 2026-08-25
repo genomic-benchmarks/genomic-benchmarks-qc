@@ -14,6 +14,7 @@ questions, and the figures draw the second.
 import numpy as np
 import pytest
 
+from genomic_benchmarks_qc.report.per_position_payload import _coverage
 from genomic_benchmarks_qc.utils.seq_stats import (
     DEFAULT_MIN_COVERAGE,
     MIN_SEQUENCES_PER_REPORTED_POSITION,
@@ -527,3 +528,32 @@ class TestFailedFeatureExtraction:
 
         assert failed['Per position nucleotide content'] == {'G': {7: 'Fail'}}
         assert failed['Per position reversed nucleotide content'] == {'T': {2: 'Warning'}}
+
+    def test_the_curve_is_the_same_answer_at_every_point(self):
+        """One question, one answer.
+
+        The figure draws the curve, the interactive viewer carries it, and the
+        prose quotes single points of it. These were three implementations, one
+        of them a Python loop over the class per position; what a test can hold
+        is that they cannot come apart again.
+        """
+        stats = make_stats(['A' * 7] * 3 + ['A' * 15] * 4 + ['A' * 40] * 2)
+
+        curve = stats.coverage_curve(40)
+
+        assert len(curve) == 40
+        for position in range(1, 41):
+            assert curve[position - 1] == pytest.approx(stats.coverage_at(position)), position
+
+    def test_the_payload_carries_the_curve_the_figure_draws(self):
+        """Rounded for JSON, and otherwise the same numbers."""
+        stats = make_stats(['A' * 5] * 4 + ['A' * 12] * 6)
+
+        curve = stats.coverage_curve(12)
+        carried = _coverage(stats, 12)
+
+        assert carried == [pytest.approx(round(float(value), 4)) for value in curve]
+
+    def test_an_empty_class_has_a_curve_of_zeros_rather_than_no_curve(self):
+        """The panel still gets drawn for a degenerate class."""
+        assert list(make_stats([]).coverage_curve(3)) == [0.0, 0.0, 0.0]

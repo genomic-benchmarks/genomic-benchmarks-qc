@@ -9,6 +9,7 @@ carries the same verdict as the table it sits next to in the report.
 import logging
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
@@ -407,17 +408,13 @@ def plot_per_base_sequence_comparison(stats1, stats2, stats_name, nucleotides, e
     # from 0 would shift the whole curve one position right and start it at a
     # trivial 100%.
     positions = list(range(1, end_position + 1))
-    coverage = []
-    for stats in (stats1, stats2):
-        # Normalized against every sequence in the class, not against the first
-        # plotted position, so the axis reads as a proportion of the class even
-        # when sequences are empty.
-        lengths = list(stats.stats['Sequence lengths'].values.flatten())
-        coverage.append([sum(1 for length in lengths if length >= pos) / len(lengths)
-                         if lengths else 0.0
-                         for pos in positions])
+    # Normalized against every sequence in the class, not against the first
+    # plotted position, so the axis reads as a proportion of the class even when
+    # sequences are empty. `coverage_curve` is what the interactive viewer draws
+    # from as well, so the two figures cannot disagree.
+    coverage = [stats.coverage_curve(end_position) for stats in (stats1, stats2)]
     # The cohort a comparison at a position actually has is the smaller of the two.
-    binding = [min(pair) for pair in zip(*coverage, strict=True)]
+    binding = np.minimum(coverage[0], coverage[1])
 
     # plot coverage in the last subplot
     last_index = len(nucleotides)

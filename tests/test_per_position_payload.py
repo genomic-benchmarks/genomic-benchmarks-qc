@@ -94,10 +94,7 @@ class TestShape:
 
     def test_coverage_of_nothing_is_zero_rather_than_an_error(self):
         """A class with no sequences has no coverage; the curve is still drawn."""
-        class Empty:
-            stats = {'Sequence lengths': pd.DataFrame({'Sequence lengths': []})}
-
-        assert _coverage(Empty(), 4) == [0.0, 0.0, 0.0, 0.0]
+        assert _coverage(make_stats([]), 4) == [0.0, 0.0, 0.0, 0.0]
 
 
 class TestFlags:

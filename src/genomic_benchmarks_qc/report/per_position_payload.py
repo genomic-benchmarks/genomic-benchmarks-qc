@@ -135,17 +135,7 @@ def _coverage(stats, end_position):
     window - which happens where the *lower* of the two curves drops through the
     coverage floor, something a pooled curve cannot show.
     """
-    lengths = np.asarray(stats.stats['Sequence lengths']).flatten()
-    if lengths.size == 0:
-        return [0.0] * end_position
-    positions = np.arange(1, end_position + 1)
-    # A sequence reaches position p iff its length is >= p, so the count is the
-    # size of the sorted tail from p onwards - one binary search per position
-    # rather than a positions-by-sequences comparison matrix, which for a wide
-    # window and a large cohort is the biggest allocation in the payload.
-    ordered = np.sort(lengths)
-    reaching = (ordered.size - np.searchsorted(ordered, positions, side='left')) / ordered.size
-    return [round(float(value), DECIMALS) for value in reaching]
+    return [round(float(value), DECIMALS) for value in stats.coverage_curve(end_position)]
 
 
 def _label(stats):
