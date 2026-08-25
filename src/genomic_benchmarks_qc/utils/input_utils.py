@@ -135,6 +135,40 @@ def _table_read_options(file_path, input_format):
     return delimiter, compression
 
 
+def _check_columns_present(file_path, delimiter, compression, seq_columns, label_column=None):
+    """Raise unless every column asked for is in the file's header.
+
+    `usecols` refuses a column it cannot find, but its message names only the
+    column: not the file it was looked for in, and not what that file does
+    have. Getting a column name wrong is the ordinary way to mistype this
+    command - the defaults are 'sequence' and 'label', and a real dataset calls
+    them almost anything - so the message that comes back has to be the one
+    that fixes it. It names the file, the columns that are missing, the option
+    each was read from, and everything the header does offer.
+
+    Reading the header costs one line of the file, which for a gzip is the
+    first block, and happens once per file.
+    """
+    option_of = dict.fromkeys(seq_columns, '--sequence-column')
+    if label_column is not None:
+        option_of[label_column] = '--label-column'
+
+    header = pd.read_csv(
+        file_path, delimiter=delimiter, compression=compression, nrows=0)
+    present = list(header.columns)
+    missing = [column for column in option_of if column not in present]
+    if not missing:
+        return
+
+    named = ', '.join(f"{column!r} ({option_of[column]})" for column in missing)
+    options = sorted({option_of[column] for column in missing})
+    raise ValueError(
+        f"Column{'s' if len(missing) > 1 else ''} not found in {file_path}: {named}. "
+        f"The file has: {', '.join(repr(column) for column in present)}. "
+        f"Set {' and '.join(options)} to the name{'s' if len(options) > 1 else ''} used here."
+    )
+
+
 def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     """Read CSV/TSV data and normalize sequence columns to uppercase strings.
 
@@ -143,6 +177,8 @@ def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     silently retyped on the way in.
     """
     delim, compression = _table_read_options(file_path, input_format)
+
+    _check_columns_present(file_path, delim, compression, seq_columns, label_column)
 
     columns = seq_columns.copy()
     if label_column is not None:
@@ -205,6 +241,7 @@ def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
 def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000):
     """Yield sequences from CSV/TSV files in chunks to limit memory usage."""
     delim, compression = _table_read_options(file_path, input_format)
+    _check_columns_present(file_path, delim, compression, seq_columns)
 
     reader = pd.read_csv(
         file_path,
