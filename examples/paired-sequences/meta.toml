@@ -1,0 +1,75 @@
+# Two sequence columns in one row, and the extra `merged` report.
+#
+# The only example where one input produces three class reports: one per column
+# plus the concatenation of both.
+
+name = "paired-sequences"
+title = "One row, two sequences"
+blurb = """
+miRNA and target-mRNA pairs. evaluate-classes analyses each sequence column on
+its own and then both together, so a single input file yields three reports -
+gene, noncodingrna, and merged. Both columns repeat sequences within and between
+the classes, so this is where the duplication checks fail while the statistical
+checks pass.
+"""
+
+[source]
+collection = "miRBench"
+dataset = "AGO2_CLASH_Hejret2023"
+citation = "Hejret et al., via miRBench. AGO2 CLASH dataset AGO2_CLASH_Hejret2023."
+url = "https://github.com/katarinagresova/miRBench"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+1200 miRNA-mRNA pairs sampled from the dataset. Both sequence columns
+(gene, noncodingRNA) are kept, with the label column.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = [
+    "--input", "data/miRNA_mRNA_pairs_dataset.tsv",
+    "--sequence-column", "gene",
+    "--sequence-column", "noncodingRNA",
+    "--label-column", "label",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/gene/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Fail"
+"Duplicate Sequences between Labels" = "Fail"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Pass"
+"Per sequence dinucleotide content" = "Pass"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"
+
+[expect."class/merged/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Pass"
+"Duplicate Sequences between Labels" = "Pass"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Pass"
+"Per sequence dinucleotide content" = "Pass"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"
+
+[expect."class/noncodingrna/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Fail"
+"Duplicate Sequences between Labels" = "Fail"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Pass"
+"Per sequence dinucleotide content" = "Pass"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"

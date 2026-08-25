@@ -1,0 +1,143 @@
+# Documentation site config.
+#
+# Two things here are generated rather than written, and both are generated at
+# build time so they cannot drift from the code:
+#
+#   docs/reference/cli.md   from the Typer app, by scripts/build_docs.py
+#   docs/reference/api/     from the docstrings, by mkdocstrings
+#
+# The example reports are generated too - by examples/build.py - and copied into
+# docs/reports/ before this runs, along with the landing page's screenshot of
+# one of them. None of those are committed; see scripts/build_docs.py.
+
+site_name: genomic-benchmarks-qc
+site_description: >-
+  Find the shortcut. Learn the biology. Automated quality control for genomic
+  machine learning datasets: scores the biases, duplicates and data leakage a
+  classifier could exploit before you train on it.
+site_url: https://genomic-benchmarks.github.io/genomic-benchmarks-qc/
+repo_url: https://github.com/genomic-benchmarks/genomic-benchmarks-qc
+repo_name: genomic-benchmarks-qc
+edit_uri: edit/main/docs/
+copyright: MIT licensed
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+  palette:
+    # The accent tracks the reports' own --accent (#1f6fd0), set in
+    # docs/stylesheets/extra.css, so the docs and the thing they document look
+    # related rather than merely adjacent.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            # The module-level constants carry no attribute docstring of their
+            # own - they are explained in the module docstring - but they must
+            # still be rendered, because the cross-references in other
+            # docstrings point at them and would otherwise not resolve.
+            show_if_no_docstring: true
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            filters: ["!^_"]
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      # The example pages include their flag tables from docs/_generated/,
+      # which scripts/build_docs.py writes from the reports it just built.
+      base_path: [docs]
+      check_paths: true
+
+# The snippet fragments in docs/_generated/ are include targets, not pages.
+# Without this every one of them is reported as missing from the nav on every
+# build. pymdownx.snippets reads them off disk through its own base_path, so
+# excluding them from the page collection does not affect the includes.
+exclude_docs: |
+  _generated/
+
+# --strict turns warnings into errors, so a cross-reference that stops resolving
+# fails the build. That is the point: tests/test_docstring_references.py checks
+# the targets exist, and this checks they actually render as links.
+strict: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Examples:
+      - Overview: examples/index.md
+      - clean-dataset: examples/clean-dataset.md
+      - composition-bias: examples/composition-bias.md
+      - hidden-motif: examples/hidden-motif.md
+      - variable-length: examples/variable-length.md
+      - length-bias: examples/length-bias.md
+      - paired-sequences: examples/paired-sequences.md
+      - fasta-classes: examples/fasta-classes.md
+      - enhancers: examples/enhancers.md
+  - Guide:
+      - How a flag is decided: guide/how-it-works.md
+      - The checks: guide/checks.md
+      - The per-position plot: guide/per-position.md
+      - Train/test leakage: guide/leakage.md
+      - Using it in CI: guide/ci.md
+      - Python API: guide/python-api.md
+      - Running at scale: guide/at-scale.md
+  - Troubleshooting: faq.md
+  - Reference:
+      - CLI: reference/cli.md
+      - Python API:
+          - evaluate_classes: reference/api/evaluate-classes.md
+          - evaluate_splits: reference/api/evaluate-splits.md
+          - Sequence statistics: reference/api/seq-stats.md
+          - Flagging: reference/api/testing.md

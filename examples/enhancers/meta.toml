@@ -1,0 +1,65 @@
+# The example the README leads with, and the one analyses/ reads.
+#
+# Two reasons it cannot be retired or moved casually: the README's headline claim
+# that GC content alone separates these classes at AU-ROC 0.66 is measured here,
+# and analyses/null_coverage_window.py reads data/ by path. Both are measured on
+# exactly these bytes, so this is the one example whose data must not be
+# resampled - a different draw would change the 0.66 the README quotes and the
+# coverage-window figures the analysis reports.
+
+name = "enhancers"
+title = "Human enhancers, and a little real leakage"
+blurb = """
+The dataset the README's quickstart uses. GC content alone separates the two
+classes at AU-ROC 0.66, and the train/test split carries a small amount of
+genuine leakage - 0.67% of queries - which is enough to show what the alignment
+panel looks like without overwhelming it.
+"""
+
+[source]
+collection = "genomic-benchmarks_v1"
+dataset = "human_enhancers_ensembl"
+citation = "Gresova et al. Genomic benchmarks: a collection of datasets for genomic sequence classification. BMC Genomic Data 24, 25 (2023)"
+url = "https://doi.org/10.1186/s12863-023-01123-8"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+1200 training and 600 test sequences sampled from the dataset's train and test
+splits. Lengths run from 4 to 568 nt, so the per-position checks reach position
+483 while only positions 1-359 are compared - and 1-359 is what the figures
+draw.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = ["--input", "data/enhancers_train.csv", "--input", "data/enhancers_test.csv"]
+
+[[run]]
+id = "split"
+command = "evaluate-splits"
+args = [
+    "--train-input", "data/enhancers_train.csv",
+    "--test-input", "data/enhancers_test.csv",
+    "--sequence-column", "sequence",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Warning"
+"Duplicate Sequences between Labels" = "Pass"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Warning"
+"Per sequence nucleotide content" = "Warning"
+"Per sequence dinucleotide content" = "Warning"
+"Per position nucleotide content" = "Warning"
+"Per position reversed nucleotide content" = "Warning"
+
+[expect."split/sequence/enhancers_train_vs_enhancers_test"]
+"Data Leakage" = "Warning"

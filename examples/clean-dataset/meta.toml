@@ -1,0 +1,60 @@
+# What a dataset with nothing wrong with it looks like.
+#
+# The control for the other six. Without it a reader has no way to tell whether
+# gb-qc flags everything, or whether the failures elsewhere mean something.
+
+name = "clean-dataset"
+title = "A dataset that passes"
+blurb = """
+Mouse transcription-factor binding sites. Every check passes, with AU-ROC
+between 0.50 and 0.54 - which is what "the classes are not distinguishable by
+this feature" actually looks like in the numbers.
+"""
+
+[source]
+collection = "GUE_v2"
+dataset = "transcription_factor_prediction_mouse_1"
+citation = "Zhou et al. DNABERT-2: Efficient Foundation Model and Benchmark For Multi-Species Genome. arXiv:2306.15006"
+url = "https://arxiv.org/abs/2306.15006"
+# Confirmed with the maintainer 2026-08-23: redistribution of a subsample is
+# permitted. Attribution is the citation above, carried on the docs page too.
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+train split, 3000 sequences per class; test split, 1500 per class.
+Only the label and sequence columns were kept.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = ["--input", "data/train.csv"]
+
+[[run]]
+id = "split"
+command = "evaluate-splits"
+args = [
+    "--train-input", "data/train.csv",
+    "--test-input", "data/test.csv",
+    "--sequence-column", "sequence",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Pass"
+"Duplicate Sequences between Labels" = "Pass"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Pass"
+"Per sequence dinucleotide content" = "Pass"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"
+
+[expect."split/sequence/train_vs_test"]
+"Data Leakage" = "Warning"

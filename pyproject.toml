@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "genomic-benchmarks-qc"
 dynamic = ["version"]
-description = "Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets"
+description = "Automated quality control for genomic machine learning datasets: scores the biases, duplicates and data leakage a classifier could exploit before you train on it."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
@@ -51,6 +51,7 @@ develop = ["pytest>=8.4", "pytest-cov>=7.0", "ruff>=0.16,<0.17"]
 
 [project.urls]
 Homepage = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+Documentation = "https://genomic-benchmarks.github.io/genomic-benchmarks-qc/"
 Repository = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
 Issues = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues"
 
@@ -79,7 +80,7 @@ version = {attr = "genomic_benchmarks_qc.__version__"}
 line-length = 100
 target-version = "py312"
 # Generated reports and the bundled example data are outputs, not source.
-extend-exclude = ["example_datasets", "example_outputs"]
+extend-exclude = ["examples/*/data", "example_outputs"]
 
 [tool.ruff.lint]
 select = [

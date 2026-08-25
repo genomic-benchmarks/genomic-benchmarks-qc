@@ -15,6 +15,8 @@ from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
     LOGO_BASE64,
     REPORT_HEADER_HTML,
+    TOOL_DESCRIPTION,
+    TOOL_TAGLINE,
     encode_image_to_base64,
     escape_str,
     icon_html,
@@ -510,16 +512,14 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # populate header placeholders: tool description, generated timestamp and input paths
     # Provide sensible defaults when values are not supplied
     if tool_description is None:
-        tool_description = \
-            """
-            Toolkit for automated quality control of genomic datasets used in machine learning.
-            """
+        tool_description = TOOL_DESCRIPTION
     if stats1.filepath == stats2.filepath:
         input_paths = stats1.filepath
     else:
         input_paths = f"{stats1.filepath}, {stats2.filepath}"
     generated_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    html_template = put_data(html_template, "{{tool_tagline}}", TOOL_TAGLINE)
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)

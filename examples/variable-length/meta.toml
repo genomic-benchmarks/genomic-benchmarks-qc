@@ -1,0 +1,74 @@
+# The only example with variable-length sequences, and the clearest illustration
+# of why the per-position checks stop where they do.
+#
+# Three different boundaries are visible in one report, which is what makes this
+# dataset worth the slot:
+#
+#   position  541  the default --min-coverage window: 25% of each class still
+#                  reaches here, so this is as far as positions can be flagged,
+#                  and as far as the figures draw
+#   position 1358  as far as 250 sequences per class reach, which is as far as
+#                  the checks are scored at all
+#   position 5964  the longest sequence in the dataset
+#
+# Everything past 541 is reported as Unknown rather than Pass, and this is the
+# example that makes the difference between those two concrete.
+#
+# Small enough to ship whole. That matters: no subsampling means the flags here
+# are the flags for the published dataset, with no "on our subsample" caveat.
+
+name = "variable-length"
+title = "Sequences that stop at different places"
+blurb = """
+Tomato long non-coding RNAs, from 105 to 5964 nucleotides. Most of each sequence
+is past the point where enough of the class reaches it to compare anything, so
+the per-position checks score the first 1358 positions, flag within the first
+541, and report the rest as Unknown. A handful of sequences contain non-ACGT
+bases, which fails the vocabulary check.
+"""
+
+[source]
+collection = "OmniGenBench"
+dataset = "lncrna_s_lycopersicum"
+citation = "Yang et al. OmniGenBench: A Modular Platform for Reproducible Genomic Foundation Models Benchmarking. arXiv:2505.14402"
+url = "https://doi.org/10.48550/arXiv.2505.14402"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+train and test splits in full, 7274 and 1000 sequences.
+Only the label and sequence columns were kept.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = ["--input", "data/train.csv"]
+
+[[run]]
+id = "split"
+command = "evaluate-splits"
+args = [
+    "--train-input", "data/train.csv",
+    "--test-input", "data/test.csv",
+    "--sequence-column", "sequence",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/0_vs_1"]
+"Unique bases" = "Fail"
+"Sequence Duplications within Labels" = "Warning"
+"Duplicate Sequences between Labels" = "Fail"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Pass"
+"Per sequence nucleotide content" = "Pass"
+"Per sequence dinucleotide content" = "Pass"
+"Per position nucleotide content" = "Pass"
+"Per position reversed nucleotide content" = "Pass"
+
+[expect."split/sequence/train_vs_test"]
+"Data Leakage" = "Warning"

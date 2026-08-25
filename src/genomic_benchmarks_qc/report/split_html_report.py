@@ -22,6 +22,8 @@ from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
     LOGO_BASE64,
     REPORT_HEADER_HTML,
+    TOOL_DESCRIPTION,
+    TOOL_TAGLINE,
     encode_image_to_base64,
     icon_html,
     put_data,
@@ -253,10 +255,11 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
 
     # header info
     if tool_description is None:
-        tool_description = "Toolkit for automated quality control of genomic datasets used in machine learning."
+        tool_description = TOOL_DESCRIPTION
     input_paths = f"{basic_stats['train_filename']}, {basic_stats['test_filename']}" if basic_stats['train_filename'] != basic_stats['test_filename'] else basic_stats['train_filename']
     generated_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    html_template = put_data(html_template, "{{tool_tagline}}", TOOL_TAGLINE)
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
     html_template = put_data(html_template, "{{input_paths}}", input_paths)
