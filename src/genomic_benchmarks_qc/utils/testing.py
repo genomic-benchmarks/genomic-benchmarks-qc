@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import auc, precision_recall_curve, roc_auc_score
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 if TYPE_CHECKING:
     # Imported for annotations only: seq_stats imports this module, so a real
@@ -141,8 +141,15 @@ def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> 
         scores = -scores
         auroc = 1 - auroc
 
-    precision, recall, _ = precision_recall_curve(labels, scores)
-    aupr = auc(recall, precision)
+    # Average precision, not the trapezoidal area under the precision-recall
+    # curve. They differ by how the gap between two curve points is filled, and
+    # trapezoidal interpolation fills it with a straight line drawn from a point
+    # no classifier achieves - which for the per-position checks, where the score
+    # takes two values and the curve has two points, is most of the curve. A
+    # position whose base is equally common in both classes scores 0.625 that
+    # way, next to an AU-ROC of 0.500. Average precision gives it 0.500, the same
+    # answer `_chance_metrics` gives a feature that says nothing.
+    aupr = average_precision_score(labels, scores)
     accuracy = _compute_best_threshold_accuracy(labels, scores)
 
     return {
@@ -246,6 +253,13 @@ def _compute_position_binary_scores(
         position: Position index (0-based).
         reverse: If True, count from end of sequence.
 
+    This is the definition, not the route production takes. For a score with two
+    values the metrics are functions of the 2x2 table alone, so
+    `_score_position_features` counts the table and closes the form; building
+    these arrays walks the class once per base and position. It stays because a
+    definition worth trusting is worth being able to run: `test_metrics.py` scores
+    both ways and asserts they agree.
+
     Returns:
         Array holding 1.0 where the base matches and 0.0 where it does not, with
         one entry per sequence that reaches `position`.
@@ -261,6 +275,130 @@ def _compute_position_binary_scores(
         values.append(1.0 if seq[index] == base else 0.0)
 
     return np.asarray(values, dtype=float)
+
+
+# How much of a character matrix `_position_base_counts` holds at a time. NumPy's
+# fixed-width text is 4 bytes per character, so this bounds the working set no
+# matter how many sequences there are.
+POSITION_COUNT_CHUNK_BYTES = 64 * 1024 * 1024
+
+
+def _position_base_counts(
+    sequences: list[str], bases: list[str], end_position: int, reverse: bool
+) -> np.ndarray:
+    """Count how many sequences carry each base at each position.
+
+    One pass over the sequences answers this for every base and every position at
+    once. That is what makes the per-position checks affordable: asking per
+    (base, position) instead walks the whole class `len(bases) * end_position`
+    times over, which was 82% of a run.
+
+    A sequence that stops before a position does not count towards it, the same
+    rule `_compute_position_binary_scores` follows - short sequences pad with
+    NUL here, and NUL is not a base.
+
+    Args:
+        sequences: The class's sequences.
+        bases: Bases to count, one character each. Anything longer cannot sit at
+            a single position and counts zero, which is what comparing it
+            against one character already did.
+        end_position: How many positions to count.
+        reverse: If True, position 0 is the last character of each sequence.
+
+    Returns:
+        Integer array of shape (len(bases), end_position).
+    """
+    counts = np.zeros((len(bases), end_position), dtype=np.int64)
+    if end_position <= 0 or not sequences:
+        return counts
+
+    wanted = [(index, ord(base)) for index, base in enumerate(bases) if len(base) == 1]
+    if not wanted:
+        return counts
+
+    rows_per_chunk = max(1, POSITION_COUNT_CHUNK_BYTES // (4 * end_position))
+    for start in range(0, len(sequences), rows_per_chunk):
+        block = sequences[start:start + rows_per_chunk]
+        if reverse:
+            windows = [seq[max(0, len(seq) - end_position):][::-1] for seq in block]
+        else:
+            windows = [seq[:end_position] for seq in block]
+        # Fixed-width text viewed as integers is a rectangle of code points, NUL
+        # where a sequence had already ended.
+        codes = np.array(windows, dtype=f'U{end_position}').view(np.uint32)
+        codes = codes.reshape(len(windows), end_position)
+        for index, code in wanted:
+            counts[index] += np.count_nonzero(codes == code, axis=0)
+
+    return counts
+
+
+def _binary_feature_metrics(matches_1, cohorts_1, matches_2, cohorts_2):
+    """AU-ROC, AU-PR and best-threshold accuracy for a 0/1 feature, in closed form.
+
+    A per-position check gives every sequence one of two scores - it has this
+    base here, or it does not - and for a two-valued score all three metrics are
+    functions of the 2x2 table. Writing p1 and p2 for the fraction of each class
+    carrying the base:
+
+    - AU-ROC is `(1 + |p1 - p2|) / 2`. Every cross-class pair of sequences either
+      ties, counting a half, or separates the one way the difference in rates
+      allows.
+    - Average precision is one term per point of the precision-recall curve, and
+      two distinct scores make two points.
+    - The best threshold is one of three cuts: everything positive, everything
+      negative, or the boundary between the two scores.
+
+    The degenerate cases need no branch of their own. A base that never occurs,
+    one that always occurs, and one equally common in both classes all come out
+    at `_chance_metrics` - AU-ROC 0.5, AU-PR at the prevalence - because that is
+    what the formulas say, not because they are checked for.
+
+    Args:
+        matches_1: Sequences of class 1 carrying the base, per position.
+        cohorts_1: Sequences of class 1 reaching the position, per position.
+        matches_2: As `matches_1`, for class 2.
+        cohorts_2: As `cohorts_1`, for class 2.
+
+    Returns:
+        Tuple of (AU-ROC, AU-PR, Accuracy) arrays over the broadcast inputs.
+        Every cohort must be non-empty; the caller decides which positions have
+        enough sequences to score at all.
+    """
+    matches_1 = np.asarray(matches_1, dtype=float)
+    matches_2 = np.asarray(matches_2, dtype=float)
+    cohorts_1 = np.asarray(cohorts_1, dtype=float)
+    cohorts_2 = np.asarray(cohorts_2, dtype=float)
+
+    total = cohorts_1 + cohorts_2
+    prevalence = cohorts_1 / total
+    rate_1 = matches_1 / cohorts_1
+    rate_2 = matches_2 / cohorts_2
+
+    # `_compute_metrics_from_arrays` inverts a score that runs the wrong way, so
+    # that a difference either way reads the same. Inverted, "carries the base"
+    # becomes "does not", which is this swap.
+    inverted = rate_1 < rate_2
+    high_1 = np.where(inverted, cohorts_1 - matches_1, matches_1)
+    high_2 = np.where(inverted, cohorts_2 - matches_2, matches_2)
+
+    auroc = 0.5 + 0.5 * np.abs(rate_1 - rate_2)
+
+    # The curve's two points are the cut keeping only the higher score and the
+    # cut keeping everything; average precision weights each point's precision by
+    # the recall it adds. Nothing scores high only when the base is absent from
+    # both classes, and there the second point is the whole curve.
+    scored = high_1 + high_2
+    recall = high_1 / cohorts_1
+    precision = np.divide(high_1, scored, out=np.zeros_like(scored), where=scored > 0)
+    aupr = np.where(scored > 0,
+                    precision * recall + prevalence * (1.0 - recall),
+                    prevalence)
+
+    accuracy = np.maximum(np.maximum(cohorts_1, cohorts_2),
+                          high_1 + cohorts_2 - high_2) / total
+
+    return auroc, aupr, accuracy
 
 
 def _position_cohorts(sequences: list[str], end_position: int) -> np.ndarray:
@@ -347,15 +485,34 @@ def _score_position_features(
     within_window = np.arange(end_position) < scored_end_position
     scorable = within_window & (np.minimum(cohorts_1, cohorts_2) >= max(min_cohort, 1))
 
-    for base in bases:
+    # Every scored position, for every base, in one pass over each class and one
+    # vectorised evaluation of the closed forms in `_binary_feature_metrics`.
+    # Counting stops at the last position anything is scored at - the rows past
+    # it read Unknown whatever the sequences hold there.
+    scored_positions = np.flatnonzero(scorable)
+    counted_end = int(scored_positions[-1]) + 1 if scored_positions.size else 0
+    matches_1 = _position_base_counts(sequences_1, bases, counted_end, reverse)
+    matches_2 = _position_base_counts(sequences_2, bases, counted_end, reverse)
+    auroc, aupr, accuracy = _binary_feature_metrics(
+        matches_1[:, scored_positions], cohorts_1[scored_positions],
+        matches_2[:, scored_positions], cohorts_2[scored_positions],
+    )
+    # Which column of those arrays each scorable position landed in.
+    column_of = np.full(end_position, -1, dtype=int)
+    column_of[scored_positions] = np.arange(scored_positions.size)
+
+    for base_index, base in enumerate(bases):
         pos_metrics_list = []
         for position in range(end_position):
             if not scorable[position]:
                 metrics = _unknown_metrics()
             else:
-                vals1 = _compute_position_binary_scores(sequences_1, base, position, reverse)
-                vals2 = _compute_position_binary_scores(sequences_2, base, position, reverse)
-                metrics = _compute_metrics_from_arrays(vals1, vals2)
+                column = column_of[position]
+                metrics = {
+                    'AU-ROC': float(auroc[base_index, column]),
+                    'AU-PR': float(aupr[base_index, column]),
+                    'Accuracy': float(accuracy[base_index, column]),
+                }
             metrics['Flag'] = _flag_on_score(metrics['AU-ROC'])
             result_name = f'{prefix} - {base} position {position + 1}'
             results[result_name] = metrics

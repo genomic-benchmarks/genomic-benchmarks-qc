@@ -30,7 +30,8 @@ below 0.5 the scores are inverted and it is reported as `1 − auroc`. "Class A 
 more GC" and "class A has less GC" are the same finding — a difference either way
 is exploitable — so the reported value is always ≥ 0.5.
 
-Alongside AU-ROC the report gives AU-PR and the accuracy at the best threshold.
+Alongside AU-ROC the report gives AU-PR (average precision) and the accuracy at
+the best threshold.
 They are there for context; **the flag comes from AU-ROC alone.**
 
 ### It measures difference, not structure
