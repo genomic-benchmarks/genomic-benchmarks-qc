@@ -125,10 +125,21 @@ def image_or_message(image_path, alt, css_class, message):
 # <body>.
 COMMON_CSS = assets.stylesheet('report.css', 'report_design.css')
 
+# The tagline and the one-line description. Both strings also appear on the README,
+# the docs landing page and PyPI; this is the copy the reports use, and the one
+# place to change when the wording changes.
+TOOL_TAGLINE = "Find the shortcut. Learn the biology."
+TOOL_DESCRIPTION = (
+    "Automated quality control for genomic machine learning datasets: scores the "
+    "biases, duplicates and data leakage a classifier could exploit before you "
+    "train on it."
+)
+
 # Standard report header HTML fragment (uses placeholders)
 REPORT_HEADER_HTML = """
 <div class="report-header" style="text-align: left; margin-bottom: 30px;">
     <img src="{{logo_base64}}" alt="Genomic Benchmarks QC Logo" style="max-width: 350px; height: auto; margin: 10px 0 10px;">
+    <div style="font-size: 1.15em; font-weight: 600; color: var(--ink, #10151c); margin-bottom: 4px;">{{tool_tagline}}</div>
     <div style="font-size: 1.05em; color: #333; margin-bottom: 6px;">{{tool_description}}</div>
     <div style="font-size: 0.9em; color: #666;">Report generated on {{generated_on}} based on data: {{input_paths}}</div>
 </div>

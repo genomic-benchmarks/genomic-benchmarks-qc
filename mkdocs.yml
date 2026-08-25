@@ -12,8 +12,9 @@
 
 site_name: genomic-benchmarks-qc
 site_description: >-
-  Automated quality control for genomic machine learning datasets. Detects
-  biases, inconsistencies, and data leakage before model training.
+  Find the shortcut. Learn the biology. Automated quality control for genomic
+  machine learning datasets: scores the biases, duplicates and data leakage a
+  classifier could exploit before you train on it.
 site_url: https://genomic-benchmarks.github.io/genomic-benchmarks-qc/
 repo_url: https://github.com/genomic-benchmarks/genomic-benchmarks-qc
 repo_name: genomic-benchmarks-qc

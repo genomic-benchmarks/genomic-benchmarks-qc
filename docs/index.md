@@ -1,8 +1,11 @@
-# genomic-benchmarks-qc
+# ![genomic-benchmarks-qc](assets/logo.png){ .hero-logo }
 
-Automated quality control for genomic machine learning datasets. Finds the
-biases, inconsistencies and data leakage that make a benchmark easier than it
-looks — before you train on it.
+Find the shortcut. Learn the biology.
+{ .tagline }
+
+Automated quality control for genomic machine learning datasets: scores the
+biases, duplicates and data leakage a classifier could exploit before you train
+on it.
 
 A model that scores well on a biased dataset has learned the bias, not the
 biology. `gb-qc` looks for the differences a classifier could exploit without
@@ -32,14 +35,6 @@ The report for [enhancers](examples/enhancers.md), one of the eight worked
 examples below — **click it to open the real one.** Six of its nine checks want
 attention, and the side nav filters down to just those. Everything is in the one
 file: no server, no assets directory, nothing to host.
-
-!!! note "Where things are"
-
-    The [README][readme] is complete and remains the place to start:
-    installation, every input format, the full output layout, and the CLI
-    options in table form. This site adds what a README has no room for.
-
-  [readme]: https://github.com/genomic-benchmarks/genomic-benchmarks-qc#readme
 
 ## Start here
 

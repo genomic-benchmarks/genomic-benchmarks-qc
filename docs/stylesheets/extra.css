@@ -35,3 +35,79 @@
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
 }
+
+/* The tagline under the site title. A classed paragraph rather than a heading,
+   so it does not appear in the table of contents. */
+.tagline {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--md-default-fg-color);
+  margin: -0.4rem 0 1rem;
+}
+
+/* The wordmark stands in for the landing page's heading. The page keeps a title
+   through front matter, since there is no longer an H1 to take it from. */
+.md-typeset h1 .hero-logo {
+  display: block;
+  width: 100%;
+  max-width: 420px;   /* the wordmark is 1462x514; this lands it ~148px tall */
+  height: auto;
+  margin: 0;
+}
+
+/* The image carries the spacing, so the heading around it should not add its own. */
+.md-typeset h1:has(.hero-logo) {
+  margin: 0.2rem 0 1.2rem;
+  padding: 0;
+}
+
+/* The heading has no text to anchor, so its permalink would land under the
+   wordmark on its own line. */
+.md-typeset h1:has(.hero-logo) .headerlink {
+  display: none;
+}
+
+/* The wordmark's darker half is navy on transparent, close to the slate page
+   background: #1f4394 on #2b2e3b is 1.47:1, effectively invisible. Both tones
+   only need to get lighter here, so plain brightness is the right tool - unlike
+   the header bar below, where the background sits between the two tones.
+   brightness(1.7) puts the navy on ~3.1:1 and the lighter tone near white. The
+   light scheme needs nothing: unfiltered they are 9.18:1 and 2.79:1 on white. */
+[data-md-color-scheme="slate"] .hero-logo {
+  filter: brightness(1.7) saturate(1.05);
+}
+
+/* The header logo.
+ *
+ * Colour: the header bar is --md-primary-fg-color, the brand blue in both
+ * schemes, and the wordmark is two blues - #779dd2 and #1f4394 - with each bar
+ * sitting between them in lightness. So the two schemes need opposite treatments,
+ * and on the light bar brightness alone is the wrong tool: lifting one tone clear
+ * of the bar pushes the other straight through it (at brightness(1.4) the navy
+ * lands on 1.18:1, invisible). contrast() is the tool there, because it spreads
+ * the tones apart around mid-grey - one goes lighter than the bar, one darker.
+ *
+ * The dark bar #6ba6ea is the light one of the two, so it just wants the mark
+ * darkened; no spreading needed.
+ *
+ * Neither is fully legible and that is accepted here - the site name sits beside
+ * it in the bar, so the wordmark is decoration rather than the only label. These
+ * values favour keeping the blues recognisable over maximising contrast.
+ */
+.md-header__button.md-logo img,
+.md-nav__button.md-logo img {
+  /* Light bar #1f6fd0: #779dd2 -> #7bc6ff (2.68:1), #1f4394 -> #0013b5 (2.41:1) */
+  filter: brightness(1.05) contrast(1.9);
+
+  /* Size: Material sets this img to a 1.2rem square, which squashes a wide
+     two-line wordmark. Free the width and give it enough height to read. */
+  width: auto;
+  height: 1.6rem;
+}
+
+/* Dark bar #6ba6ea: #779dd2 -> #314766 (3.72:1), #1f4394 -> #001342 (7.06:1) */
+[data-md-color-scheme="slate"] .md-header__button.md-logo img,
+[data-md-color-scheme="slate"] .md-nav__button.md-logo img {
+  filter: brightness(0.5) contrast(1.15);
+}

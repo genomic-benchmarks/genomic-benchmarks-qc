@@ -6,7 +6,9 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-genomic--benchmarks.github.io-1f6fd0)](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/)
 
-Automated quality control for genomic machine learning datasets. Detects biases, inconsistencies, and data leakage before model training.
+### Find the shortcut. Learn the biology.
+
+Automated quality control for genomic machine learning datasets: scores the biases, duplicates and data leakage a classifier could exploit before you train on it.
 
 Everything you need is below. The [documentation site](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/) adds what a README has no room for: eight [worked examples](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/examples/) with live reports — a clean dataset, a badly biased one, one whose only flaw is six positions wide — a guide to [what to do about each check](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/checks/) and [why the thresholds sit where they do](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/how-it-works/), and the generated CLI and API reference.
 

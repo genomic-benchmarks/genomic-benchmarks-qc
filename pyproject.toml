@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "genomic-benchmarks-qc"
 dynamic = ["version"]
-description = "Genomic Benchmarks QC: Automated Quality Control for Genomic Machine Learning Datasets"
+description = "Automated quality control for genomic machine learning datasets: scores the biases, duplicates and data leakage a classifier could exploit before you train on it."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
