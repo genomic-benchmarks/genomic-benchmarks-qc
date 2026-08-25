@@ -21,7 +21,7 @@ When the classes differ in something trivial, a high score no longer tells you w
 - **Position 1 is `N` in one class only**, or every sequence in one class starts with the same adapter — a per-position give-away that no summary statistic would show.
 - **The same sequence appears in both classes, or your test set repeats your training set.** `evaluate-splits` catches near-duplicates too, with an MMseqs2 similarity search.
 
-Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
+Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
 
 <!-- Recorded by `python scripts/screenshot_report.py --mode scroll`, from a
      report the docs build has just built; both README animations are generated
