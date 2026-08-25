@@ -32,6 +32,12 @@ app = typer.Typer(no_args_is_help=True)
 # _normalize_format, which collapses the gzip and 'fa' variants before the check.
 VALID_FORMATS = ['fasta', 'fasta.gz', 'fa', 'fa.gz', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
 VALID_PLOT_TYPES = ['boxen', 'violin']
+
+# Each command's --report-types help. Built from the lists the pipelines declare,
+# rather than spelled out here: a command that cannot write a report type must
+# not be able to offer it.
+CLASSES_REPORT_TYPES_HELP = f"Types of reports to generate ({', '.join(CLASSES_REPORT_TYPES)})."
+SPLITS_REPORT_TYPES_HELP = f"Types of reports to generate ({', '.join(SPLITS_REPORT_TYPES)})."
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 # MMseqs2 byte sizes: 0, or a non-zero integer with an optional unit suffix.
@@ -148,7 +154,7 @@ def evaluate_classes(
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: list[str] = typer.Option(
         ['html', 'simple'],
-        help=f"Types of reports to generate ({', '.join(CLASSES_REPORT_TYPES)})."),
+        help=CLASSES_REPORT_TYPES_HELP),
     end_position: int | None = typer.Option(
         None, help=(
             "Last position the per-position checks reach. Defaults to the last position at "
@@ -217,7 +223,7 @@ def evaluate_splits(
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: list[str] = typer.Option(
         ['html', 'simple'],
-        help=f"Types of reports to generate ({', '.join(SPLITS_REPORT_TYPES)})."),
+        help=SPLITS_REPORT_TYPES_HELP),
     similarity_threshold: float = typer.Option(
         90.0, help="Similarity threshold for data leakage detection (%)."),
     threads: int | None = typer.Option(
