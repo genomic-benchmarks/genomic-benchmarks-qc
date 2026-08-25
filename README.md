@@ -14,7 +14,7 @@ Everything you need is below. The [documentation site](https://genomic-benchmark
 
 ## What it catches
 
-A model that scores well on a biased dataset has learned the bias, not the biology. `gb-qc` looks for the differences a classifier could exploit without understanding anything:
+When the classes differ in something trivial, a high score no longer tells you what a model learned — the biology, or the shortcut. `gb-qc` looks for the differences a classifier could exploit without understanding anything:
 
 - **Your negatives are shorter than your positives.** A length classifier now beats your model.
 - **Your classes differ in GC content, base composition or dinucleotide frequencies.** In the bundled enhancers example, GC content alone separates the two classes at AU-ROC 0.66.

@@ -7,11 +7,11 @@ Automated quality control for genomic machine learning datasets: scores the
 biases, duplicates and data leakage a classifier could exploit before you train
 on it.
 
-A model that scores well on a biased dataset has learned the bias, not the
-biology. `gb-qc` looks for the differences a classifier could exploit without
-understanding anything: classes that differ in length or base composition, a
-give-away at a single position, the same sequence in both classes, a test set
-that repeats the training set.
+When the classes differ in something trivial, a high score no longer tells you
+what a model learned — the biology, or the shortcut. `gb-qc` looks for the
+differences a classifier could exploit without understanding anything: classes
+that differ in length or base composition, a give-away at a single position, the
+same sequence in both classes, a test set that repeats the training set.
 
 ```bash
 pip install genomic-benchmarks-qc
