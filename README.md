@@ -23,9 +23,13 @@ When the classes differ in something trivial, a high score no longer tells you w
 
 Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
 
-<a href="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html"><img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/report-screenshot.png" alt="The gb-qc report's per-position panel: nucleotide frequencies flat across 398 positions until they diverge sharply in the middle, with a filterable flag summary down the side" width="1200" /></a>
+<!-- Recorded by `python scripts/screenshot_report.py --mode scroll`, from a
+     report the docs build has just built; both README animations are generated
+     that way rather than committed, so neither can show an older report than
+     the one the site is serving. -->
+<a href="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html"><img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/report-scroll.webp" alt="The gb-qc report for the enhancers example, scrolled from top to bottom: the sidebar's flag summary stays in view - three green ticks against six orange warnings - while the page moves through the descriptive statistics, the GC-content, nucleotide and dinucleotide plots, and the two interactive per-position panels" width="1200" /></a>
 
-The report for the bundled `hidden-motif` example — click it to open the real one. Six of its nine checks pass, and the whole finding is that spike halfway along.
+The report for the bundled `enhancers` example, scrolled end to end — click it to open the real one. Six of its nine checks come back **Warning**, the worst of them dinucleotide composition at AU-ROC 0.688.
 
 ## Installation
 
@@ -115,8 +119,7 @@ Full walkthrough: [the per-position plot](https://genomic-benchmarks.github.io/g
 
 For long sequences a static plot cannot show much: a single flagged position is lost in a figure spanning hundreds of them. The per-position panels are therefore interactive, so you can zoom in and explore the individual failing positions.
 
-<!-- Recorded by `python scripts/screenshot_report.py --animate`, not by hand:
-     re-run it whenever the panel's toolbar, plot or tooltip changes. -->
+<!-- Recorded by `python scripts/screenshot_report.py --mode panel`. -->
 <img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/per-position-demo.webp" alt="The per-position panel being driven: a drag across the flagged region takes 398 positions down to 48, the tooltip at position 200 reads G at 0.217 in one class against 0.784 in the other with a Fail flag beside it, and one press of Next flag returns to the same window without the drag" width="800" />
 
 - **Drag** to zoom, shift-drag to pan, double-click to reset.

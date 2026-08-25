@@ -148,6 +148,11 @@ docs/reports/
 # reason: taken by hand it drifted, and a stale screenshot of a report is a
 # claim about the current output that nothing checks.
 docs/assets/report-screenshot.png
+# The README's two animations, recorded from those reports by the same script
+# and for the same reason. The README points at the copies the site publishes,
+# so nothing has to be committed for them to render.
+docs/assets/report-scroll.webp
+docs/assets/per-position-demo.webp
 
 # mypy
 .mypy_cache/

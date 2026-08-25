@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Assemble the generated parts of the documentation site, then build it.
 
-Four things are generated rather than committed, so that none of them can drift
+Six things are generated rather than committed, so that none of them can drift
 from the code they describe:
 
     docs/reference/cli.md              the CLI reference, from the Typer app
     docs/reports/<name>/               the example reports, from examples/build.py
     docs/assets/report-screenshot.png  the landing page's shot of one of those
+    docs/assets/report-scroll.webp     the README's tour of a whole report
+    docs/assets/per-position-demo.webp the README's per-position demo
     site/reference/api/                the API reference, by mkdocstrings
+
+The last three need Playwright and its Chromium build; see
+scripts/screenshot_report.py for what happens when they are missing.
 
 Usage:
 
@@ -487,6 +492,24 @@ def generate_screenshot(require: bool):
     _run(argv)
 
 
+def generate_animations():
+    """Record the README's two animations from the reports this build produced.
+
+    Full builds only. `--skip-reports` leaves placeholder HTML in docs/reports/,
+    and a placeholder has no sections to scroll and no panel to drive.
+
+    Nothing on the site links either file, so `mkdocs --strict` cannot notice
+    one missing or standing in as a placeholder - which is why the script
+    refuses to fake these two, and why they are generated here rather than
+    committed: the README points at them on the published site, so a build that
+    quietly skipped them would show two broken images to everyone who opens the
+    repository.
+    """
+    script = str(ROOT / 'scripts' / 'screenshot_report.py')
+    for mode in ('scroll', 'panel'):
+        _run([sys.executable, script, '--mode', mode])
+
+
 def placeholder_reports():
     """Stand in for the reports so links to them still resolve.
 
@@ -522,6 +545,8 @@ def main():
     else:
         generate_reports()
     generate_screenshot(require=not args.skip_reports)
+    if not args.skip_reports:
+        generate_animations()
     generate_flag_tables()
     generate_position_tables()
     generate_check_coverage()
