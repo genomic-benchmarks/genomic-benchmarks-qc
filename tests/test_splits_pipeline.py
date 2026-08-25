@@ -5,15 +5,18 @@ the HTML report bundle, alignment lookup, input validation, and the failure and
 cleanup paths.
 """
 
+import io
 import logging
 import shutil
 
 import pandas as pd
 import pytest
+from Bio import SeqIO
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
-from genomic_benchmarks_qc.utils.mmseqs_summary import MMSEQS_RESULT_COLUMNS
+from genomic_benchmarks_qc.utils.input_utils import append_fasta_record
+from genomic_benchmarks_qc.utils.mmseqs_summary import MMSEQS_RESULT_COLUMNS, sequence_id
 from genomic_benchmarks_qc.utils.naming import TMP_PREFIX
 
 
@@ -209,6 +212,35 @@ class TestEveryLeakedHitIsCountedAndExported:
             / 'mmseqs' / 'mmseqs2_search_result.tsv', sep='\t')
         assert len(exported) == 0
         assert list(exported.columns) == MMSEQS_RESULT_COLUMNS
+
+
+class TestStagedFasta:
+    """MMseqs2 reads FASTA, so a CSV half is written out as one before the
+    search starts. The records are numbered here and the sequences already
+    uppercased, so they are written as their two lines rather than built into a
+    Biopython record first - which was a record object per sequence, on inputs
+    of several million, before any search had begun."""
+
+    def test_a_record_is_two_lines_however_long_the_sequence(self):
+        handle = io.StringIO()
+
+        append_fasta_record(handle, 'ACGT' * 40, sequence_id(7, 'train'))
+
+        assert handle.getvalue() == '>seq_7_train\n' + 'ACGT' * 40 + '\n'
+
+    def test_biopython_reads_back_what_was_written(self):
+        """The staged file is parsed again to attach sequences to the hits, so
+        whatever is written here has to survive that round trip."""
+        handle = io.StringIO()
+        sequences = {sequence_id(i, 'test'): seq
+                     for i, seq in enumerate(['ACGT' * 30, '', 'TT'])}
+        for seq_id, sequence in sequences.items():
+            append_fasta_record(handle, sequence, seq_id)
+
+        parsed = {record.id: str(record.seq)
+                  for record in SeqIO.parse(io.StringIO(handle.getvalue()), 'fasta')}
+
+        assert parsed == sequences
 
 
 class TestAddAlignmentSequences:

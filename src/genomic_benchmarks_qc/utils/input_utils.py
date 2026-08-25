@@ -14,8 +14,6 @@ from pathlib import Path
 
 import pandas as pd
 from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 
 
 @contextmanager
@@ -115,12 +113,19 @@ def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
 
 
 def append_fasta_record(file_handle, sequence, seq_id):
-    """Append one sequence to an open FASTA handle as a SeqRecord."""
-    SeqIO.write(
-        SeqRecord(Seq(sequence), id=seq_id, description=""),
-        file_handle,
-        "fasta"
-    )
+    """Append one sequence to an open FASTA handle, as its two lines.
+
+    Written straight out rather than through a `SeqRecord` and the FASTA
+    writer, which is what produced the same two lines before. The ids are
+    numbers `sequence_id` generates and the sequences are already uppercased,
+    so nothing Biopython offers on the way is being used, and one record object
+    per sequence is a large share of staging a multi-million-sequence split -
+    work that happens before MMseqs2 has started.
+
+    The sequence goes on one line where the writer wrapped it at 60 characters.
+    Both are FASTA; `stream_fasta_records_by_ids` reads either back.
+    """
+    file_handle.write(f">{seq_id}\n{sequence}\n")
 
 
 def _table_read_options(file_path, input_format):
