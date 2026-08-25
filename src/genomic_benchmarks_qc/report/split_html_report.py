@@ -29,6 +29,7 @@ from genomic_benchmarks_qc.report.utils import (
     encode_image_to_base64,
     icon_html,
     put_data,
+    put_text,
     verdict_html,
 )
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
@@ -116,8 +117,8 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{link_leakage}}",
                              docs_link('leakage', text='What to do about it'))
 
-    html_template = put_data(html_template, "{{train_filename}}", str(basic_stats['train_filename']))
-    html_template = put_data(html_template, "{{test_filename}}", str(basic_stats['test_filename']))
+    html_template = put_text(html_template, "{{train_filename}}", basic_stats['train_filename'])
+    html_template = put_text(html_template, "{{test_filename}}", basic_stats['test_filename'])
     html_template = put_data(html_template, "{{number_of_sequences_train}}", str(basic_stats['number_of_sequences_train']))
     html_template = put_data(html_template, "{{number_of_sequences_test}}", str(basic_stats['number_of_sequences_test']))
     html_template = put_data(html_template, "{{min_length_train}}", str(basic_stats['min_length_train']))
@@ -182,8 +183,8 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
             )
         rows.append(f"""
     <tr>
-        <td class="qc-mono">{row['query']}</td>
-        <td class="qc-mono">{row['target']}</td>
+        <td class="qc-mono">{html.escape(str(row['query']))}</td>
+        <td class="qc-mono">{html.escape(str(row['target']))}</td>
         <td class="qc-num">{row['qcov']:.2f}</td>
         <td class="qc-num">{row['tcov']:.2f}</td>
         <td class="qc-num">{row['pident']:.1f}</td>

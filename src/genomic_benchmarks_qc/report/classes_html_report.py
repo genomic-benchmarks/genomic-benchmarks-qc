@@ -24,6 +24,7 @@ from genomic_benchmarks_qc.report.utils import (
     icon_html,
     image_or_message,
     put_data,
+    put_text,
     verdict_html,
 )
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, position_windows
@@ -112,7 +113,7 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
 
         flags_html += f'''<div class="nucleotide-flag-item">
                 <span class="status-icon-small {status_class}">{symbol}</span>
-                <span class="nucleotide-label">{nt}</span>
+                <span class="nucleotide-label">{html.escape(nt)}</span>
             </div>
             '''
 
@@ -356,12 +357,12 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
         docs_link('checks', 'per-position-nucleotide-content', 'What to do about it')
         + docs_link('viewer', text='Reading the figure'))
 
-    html_template = put_data(html_template, "{{filename1}}", stats1.filename)
-    html_template = put_data(html_template, "{{filename2}}", stats2.filename)
-    html_template = put_data(html_template, "{{label1}}", label1)
-    html_template = put_data(html_template, "{{label2}}", label2)
-    html_template = put_data(html_template, "{{seq_col1}}", str(stats1.seq_column) if stats1.seq_column is not None else "N/A")
-    html_template = put_data(html_template, "{{seq_col2}}", str(stats2.seq_column) if stats2.seq_column is not None else "N/A")
+    html_template = put_text(html_template, "{{filename1}}", stats1.filename)
+    html_template = put_text(html_template, "{{filename2}}", stats2.filename)
+    html_template = put_text(html_template, "{{label1}}", label1)
+    html_template = put_text(html_template, "{{label2}}", label2)
+    html_template = put_text(html_template, "{{seq_col1}}", str(stats1.seq_column) if stats1.seq_column is not None else "N/A")
+    html_template = put_text(html_template, "{{seq_col2}}", str(stats2.seq_column) if stats2.seq_column is not None else "N/A")
     html_template = put_data(html_template, "{{number_of_sequences1}}", str(stats1.stats['Number of sequences']))
     html_template = put_data(html_template, "{{number_of_sequences2}}", str(stats2.stats['Number of sequences']))
     html_template = put_data(html_template, "{{dedup_sequences1}}", str(stats1.stats['Number of sequences left after deduplication']))
@@ -374,8 +375,8 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{max_length2}}", str(int(stats2.stats['Sequence lengths']['Sequence lengths'].max())))
     html_template = put_data(html_template, "{{number_of_bases1}}", str(stats1.stats['Number of bases']))
     html_template = put_data(html_template, "{{number_of_bases2}}", str(stats2.stats['Number of bases']))
-    html_template = put_data(html_template, "{{unique_bases1}}", ', '.join(x for x in stats1.stats['Unique bases']))
-    html_template = put_data(html_template, "{{unique_bases2}}", ', '.join(x for x in stats2.stats['Unique bases']))
+    html_template = put_text(html_template, "{{unique_bases1}}", ', '.join(x for x in stats1.stats['Unique bases']))
+    html_template = put_text(html_template, "{{unique_bases2}}", ', '.join(x for x in stats2.stats['Unique bases']))
     html_template = put_data(html_template, "{{gc_content1}}", f"{(stats1.stats['%GC content']*100):.2f}")
     html_template = put_data(html_template, "{{gc_content2}}", f"{(stats2.stats['%GC content']*100):.2f}")
 
@@ -490,7 +491,10 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(html_template, "{{sequence_duplication_levels_rest}}", "")
 
         if duplicate_seqs_file is not None:
-            html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", f"All {len(duplicate_seqs)} duplicate sequences saved to {duplicate_seqs_file}.")
+            html_template = put_data(
+                html_template, "{{sequence_duplication_levels_file}}",
+                f"All {len(duplicate_seqs)} duplicate sequences saved to "
+                f"{html.escape(str(duplicate_seqs_file))}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
 

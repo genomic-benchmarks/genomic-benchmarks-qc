@@ -253,6 +253,23 @@ class TestSplitReport:
         assert alignments_count_text(250, 100) == (
             '250 high-similarity alignments (first 100 shown)')
 
+    def test_the_filenames_are_text_not_markup(self, tmp_path, monkeypatch):
+        """File names are as much input as the sequences are, and land in the
+        same page someone else opens."""
+        train = write_csv(tmp_path / '<img src=x onerror=alert(1)>.csv', ['0'], rows_per_label=5)
+        test = write_csv(tmp_path / 'test.csv', ['0'], rows_per_label=5)
+
+        def fake_run_search(query_fasta, target_fasta, output_path, tmp_dir, **kwargs):
+            return write_mmseqs_output(output_path, [mmseqs_hit('seq_0_test', 'seq_0_train')])
+
+        monkeypatch.setattr(evaluate_splits.mmseqs_runtime, 'run_search', fake_run_search)
+        evaluate_splits.run(train_files=[train], test_files=[test], format='csv',
+                            out_folder=str(tmp_path / 'out'), report_types=['html'])
+        page = next((tmp_path / 'out').rglob('gb-qc-report.html')).read_text()
+
+        assert '<img src=x onerror=alert(1)>' not in page
+        assert '&lt;img src=x onerror=alert(1)&gt;' in page
+
     def test_a_clean_split_says_so_in_the_panel(self, tmp_path, monkeypatch):
         """An empty listing has to read as 'nothing leaked', not as a table that
         failed to build - the same distinction the flag panel draws."""
@@ -261,3 +278,33 @@ class TestSplitReport:
         assert 'No high-similarity alignments' in page
         assert 'qc-empty' in page
         assert '{{results_body}}' not in page
+
+
+class TestUserDataIsEscaped:
+    """Nothing read out of the input files may reach the page as markup.
+
+    A report is a single file that gets mailed on and opened by someone who did
+    not run the tool, so a label or a base is untrusted text by the time it is
+    rendered - and a stray `<` swallowing the rest of a cell is the quiet half
+    of the same bug.
+    """
+
+    def test_a_label_carrying_markup_stays_text(self, tmp_path):
+        payload = '<img src=x onerror=alert(1)>'
+        page = render(tmp_path,
+                      make_stats(random_sequences(30, 20, seed=5), label=payload),
+                      make_stats(random_sequences(30, 20, seed=6), label='b'))
+
+        assert payload not in page
+        assert '&lt;img src=x onerror=alert(1)&gt;' in page
+
+    def test_a_base_that_is_a_metacharacter_stays_text(self, tmp_path):
+        """Unusual bases are exactly what the Unique bases check exists to
+        report, so the check must survive being handed one."""
+        page = render(tmp_path,
+                      make_stats(['AC<GT' * 4] * 30, label='a'),
+                      make_stats(['ACGT' * 5] * 30, label='b'))
+
+        # the cell listing the bases survives intact, with the odd one escaped
+        assert '<td style="text-align: center;">&lt;, A, C, G, T</td>' in page
+        assert '<td style="text-align: center;"><, A, C, G, T</td>' not in page

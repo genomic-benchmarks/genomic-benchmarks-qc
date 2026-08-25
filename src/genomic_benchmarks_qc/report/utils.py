@@ -33,10 +33,28 @@ def put_file_details(html_template, filename):
 def put_data(html_template, placeholder, data):
     """
     Replaces all occurrences of a placeholder in the HTML template with the provided data.
+
+    The data goes in as-is, so this is for HTML the report built itself. Anything
+    that came out of the input files goes through `put_text` instead.
     """
     if placeholder not in html_template:
         raise ValueError(f"Placeholder not found: {placeholder}")
     return html_template.replace(placeholder, str(data))
+
+
+def put_text(html_template, placeholder, data):
+    """Fill a placeholder with text from the data, escaped.
+
+    Class labels, column names, file names and the bases themselves are read out
+    of files the report has no say over, and a report is a page someone else
+    opens. A label of `<img src=x onerror=...>` would otherwise be markup by the
+    time it reached them, and a sequence containing `<` would silently swallow
+    the rest of the cell.
+
+    The counterpart of `put_data`: which one a call site uses says where the
+    value came from.
+    """
+    return put_data(html_template, placeholder, html.escape(str(data)))
 
 
 def escape_str(s):
@@ -114,7 +132,7 @@ def image_or_message(image_path, alt, css_class, message):
     if image_path is None:
         return f'<p class="no-plot-message">{html.escape(message)}</p>'
     return (f'<img src="data:image/png;base64, {encode_image_to_base64(image_path)}" '
-            f'alt="{alt}" class="{css_class}">')
+            f'alt="{html.escape(str(alt))}" class="{css_class}">')
 
 # The stylesheets, inlined into every report. report.css is the original shared
 # stylesheet; the other two are layered on top of it, so their rules win where
