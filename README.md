@@ -23,7 +23,9 @@ When the classes differ in something trivial, a high score no longer tells you w
 
 Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html) you can read, and a [CSV](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/class/sequence/0_vs_1/gb-qc-report.csv) you can put in CI.
 
-<img src="./assets/genomic-benchmarks-qc-html-report.webp" alt="Example gb-qc HTML report" width="1200" />
+<a href="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html"><img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/report-screenshot.png" alt="The gb-qc report's per-position panel: nucleotide frequencies flat across 398 positions until they diverge sharply in the middle, with a filterable flag summary down the side" width="1200" /></a>
+
+The report for the bundled `hidden-motif` example — click it to open the real one. Six of its nine checks pass, and the whole finding is that spike halfway along.
 
 ## Installation
 
@@ -113,11 +115,9 @@ Full walkthrough: [the per-position plot](https://genomic-benchmarks.github.io/g
 
 For long sequences a static plot cannot show much: a single flagged position is lost in a figure spanning hundreds of them. The per-position panels are therefore interactive, so you can zoom in and explore the individual failing positions.
 
-<!-- TODO(gif): add the file, then uncomment the <img> below.
-      assets/per-position-demo.gif — 5-10s screen capture of the Per Position
-     Nucleotide Content panel: drag to zoom into a flagged region, hover to show the
-     tooltip, click Next flag to step to the next one. ~900px wide, no audio. -->
-<!-- <img src="assets/per-position-demo.gif" alt="Interactive per-position plot" width="800" /> -->
+<!-- Recorded by `python scripts/screenshot_report.py --animate`, not by hand:
+     re-run it whenever the panel's toolbar, plot or tooltip changes. -->
+<img src="https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/assets/per-position-demo.webp?raw=True" alt="The per-position panel being driven: a drag across the flagged region takes 398 positions down to 48, the tooltip at position 200 reads G at 0.217 in one class against 0.784 in the other with a Fail flag beside it, and one press of Next flag returns to the same window without the drag" width="800" />
 
 - **Drag** to zoom, shift-drag to pan, double-click to reset.
 - **Hover** for the per-class base frequencies and flags at a position.
