@@ -71,7 +71,7 @@ version = {attr = "genomic_benchmarks_qc.__version__"}
 # loads every one of them through the loader, which is what catches a file added
 # here and forgotten below.
 [tool.setuptools.package-data]
-"genomic_benchmarks_qc.report.assets" = ["*.css", "*.js"]
+"genomic_benchmarks_qc.report.assets" = ["*.html", "*.css", "*.js"]
 
 # Linting and formatting. Ruff replaces flake8/isort/pyupgrade in one tool; the
 # rule set is deliberately pragmatic rather than exhaustive, so that a warning

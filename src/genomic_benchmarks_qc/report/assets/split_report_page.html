@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{page_title}}</title>
+    <style>
+    {{common_css}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo" style="text-align: center; margin-bottom: 20px;">
+                <img src="{{logo_base64}}" alt="Genomic Benchmarks QC Logo" style="max-width: 150px; height: auto;">
+                <span style="display: block; font-size: 14px; color: #555;">v{{version}}</span>
+            </div>
+            <h2>Summary</h2>
+            <div class="sidebar-item">
+                <span class="sidebar-spacer" style="display: inline-block; width: 40px"></span>
+                <a href="#basic-descriptive-statistics">Basic Descriptive Statistics</a>
+            </div>
+            <div class="sidebar-item">
+                {{icon_data_leakage}}
+                <a href="#similarity-section">Data Leakage</a>
+            </div>
+{{sidebar_links}}
+        </div>
+
+        <div class="content">
+            {{report_header}}
+
+            <section id="basic-descriptive-statistics" class="table-section">
+                <div class="section-header">
+                    <h2>Basic Descriptive Statistics</h2>
+                </div>
+                <table>
+                    <tr id="leakage-filename">
+                        <td><span>Filename</span></td>
+                        <td style="text-align: center;">{{test_filename}}</td>
+                        <td style="text-align: center;">{{train_filename}}</td>
+                    </tr>
+                    <tr id="num-sequences">
+                        <td><span>Number of sequences</span></td>
+                        <td style="text-align: center;">{{number_of_sequences_test}}</td>
+                        <td style="text-align: center;">{{number_of_sequences_train}}</td>
+                    </tr>
+                    <tr id="min-length">
+                        <td><span>Minimum length</span></td>
+                        <td style="text-align: center;">{{min_length_test}}</td>
+                        <td style="text-align: center;">{{min_length_train}}</td>
+                    </tr>
+                    <tr id="mean-length">
+                        <td><span>Mean length</span></td>
+                        <td style="text-align: center;">{{mean_length_test}}</td>
+                        <td style="text-align: center;">{{mean_length_train}}</td>
+                    </tr>
+                    <tr id="max-length">
+                        <td><span>Maximum length</span></td>
+                        <td style="text-align: center;">{{max_length_test}}</td>
+                        <td style="text-align: center;">{{max_length_train}}</td>
+                    </tr>
+                </table>
+            </section>
+
+            <section id="similarity-section" class="table-section">
+                <div class="sidebar-item">
+                    {{icon_data_leakage}}
+                    <div class="section-header">
+                        <h2>Data Leakage</h2>
+                        <button class="toggle-btn" onclick="toggleExplanation('data-leakage-explanation')" title="Show explanation">?</button>
+                    </div>
+                </div>
+                <div id="data-leakage-explanation" class="explanation-text">
+                    <p>
+                        Every test sequence searched against the train set with
+                        <a href="https://github.com/soedinglab/MMseqs2" target="_blank" rel="noopener">MMseqs2</a>,
+                        and scored on its best hit. Similarity is
+                        min(query coverage, target coverage) × percent identity: how much of
+                        the shorter sequence the alignment spans, times how much of that matches.
+                        The histogram is the distribution of those best hits.
+                    </p>
+                    <p>
+                        The flag is the percentage of <em>test</em> sequences at or above the
+                        threshold: Pass at 0%, Warning below 2%, Fail at 2% or more. A test
+                        sequence that near-duplicates a training one is one the model has
+                        already seen, so the accuracy it earns there is not evidence.
+                        {{link_leakage}}
+                    </p>
+                    <p>
+                        The panel under the histogram lists those alignments, up to the first
+                        {{row_cap}}; every hit is exported to
+                        <code>mmseqs/mmseqs2_search_result.tsv</code> beside this report. Its columns are:
+                    </p>
+                    <dl class="explanation-defs">
+                        <dt>Query (Q)</dt>
+                        <dd>Identifier of the test sequence: <code>seq_&lt;i&gt;_test</code>, where i is its 0-based position in the input test file.</dd>
+
+                        <dt>Target (T)</dt>
+                        <dd>Identifier of the train sequence: <code>seq_&lt;i&gt;_train</code>, where i is its 0-based position in the input train file.</dd>
+
+                        <dt>Q Cov.</dt>
+                        <dd>Fraction of the query sequence covered by the alignment (0–1).</dd>
+
+                        <dt>T Cov.</dt>
+                        <dd>Fraction of the target sequence covered by the alignment (0–1).</dd>
+
+                        <dt>% Identity</dt>
+                        <dd>Percent identical aligned positions in the aligned region.</dd>
+
+                        <dt>% Similarity</dt>
+                        <dd>Similarity score used for leakage detection, calculated as min(Q Cov., T Cov.) × % Identity.</dd>
+
+                        <dt>E-value</dt>
+                        <dd>MMseqs2 E-value (lower is more "significant").</dd>
+
+                        <dt>Alignment</dt>
+                        <dd>Click “Show” to expand the alignment visualisation for a row.</dd>
+                    </dl>
+                </div>
+                <table>
+                    <tr id="filename">
+                        <td><span>Filename</span></td>
+                        <td style="text-align: center;">{{test_filename}}</td>
+                        <td style="text-align: center;">{{train_filename}}</td>
+                    </tr>
+                    <tr id="leakage-percentage">
+                        <td><span>Data Leakage (percentage)</span></td>
+                        <td style="text-align: center;">{{perc_queries_above_thr}}%</td>
+                        <td style="text-align: center;">{{perc_targets_above_thr}}%</td>
+                    </tr>
+                    <tr id="leakage-count">
+                        <td><span>Data Leakage (count)</span></td>
+                        <td style="text-align: center;">{{num_queries_above_thr}}</td>
+                        <td style="text-align: center;">{{num_targets_above_thr}}</td>
+                    </tr>
+                </table>
+
+                <img src="data:image/png;base64, {{histogram_similarity_base64}}" alt="Similarity Histogram" class="plot-wide">
+
+                <details class="qc-panel" id="results-section">
+                    <summary>{{alignments_count}}</summary>
+                    <div class="qc-panel-body">
+                        {{results_body}}
+                    </div>
+                </details>
+            </section>
+
+        </div>
+    </div>
+
+{{report_scripts}}
+
+</body>
+</html>

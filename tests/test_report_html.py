@@ -130,6 +130,22 @@ class TestInteractivePerPosition:
         assert "toggleExplanation('per-position-explanation')" in page
 
 
+class TestTemplates:
+    """The page templates are .html files in report.assets, so they can be
+    edited with an editor's help. put_data raises when the code fills a
+    placeholder the template does not have; nothing was catching the other
+    direction - a slot added to the markup that no code ever fills."""
+
+    def test_no_placeholder_survives_into_a_class_report(self, page):
+        assert re.findall(r'\{\{\w+\}\}', page) == []
+
+    def test_no_placeholder_survives_into_a_split_report(self, tmp_path, monkeypatch):
+        rendered = split_page(tmp_path, monkeypatch,
+                              [mmseqs_hit('seq_0_test', 'seq_0_train')])
+
+        assert re.findall(r'\{\{\w+\}\}', rendered) == []
+
+
 class TestStandalone:
     def test_nothing_is_loaded_from_outside_the_file(self, page):
         """A report opens complete with no network. Subresources only - an <a>

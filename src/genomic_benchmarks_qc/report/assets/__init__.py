@@ -1,9 +1,10 @@
-"""The report's CSS and JavaScript, and the loader that inlines them.
+"""The report's markup, CSS and JavaScript, and the loader that inlines them.
 
-The styling and the client-side behaviour live in real .css/.js files in this
-package rather than in Python string literals, so an editor can highlight
-them, a linter can read them, and `node --check` can be run over the scripts in
-CI. They are still *inlined* into the generated page: a report has to be one
+The page templates, the styling and the client-side behaviour live in real
+.html/.css/.js files in this package rather than in Python string literals, so an
+editor can highlight them, a linter can read them, `node --check` can be run over
+the scripts in CI, and the templates can be parsed for a tag that is never
+closed. They are still *inlined* into the generated page: a report has to be one
 self-contained HTML file that can be mailed, archived or opened from a share
 without dragging assets along behind it.
 
@@ -50,6 +51,17 @@ def read_asset(name: str) -> str:
     for placeholder, color in COLOR_PLACEHOLDERS.items():
         text = text.replace(placeholder, color)
     return text
+
+
+def template(name: str) -> str:
+    """Return one HTML page template, ready for report.utils.put_data to fill.
+
+    A template is markup with `{{placeholder}}` slots, and it is the whole page:
+    the class report is one file, the split report another. Kept out of the
+    Python for the same reason as the stylesheets - 260 lines of HTML in a triple
+    quoted string is 260 lines no tool can read.
+    """
+    return read_asset(name)
 
 
 def stylesheet(*names: str) -> str:
