@@ -9,6 +9,12 @@ Similarity is `min(qcov, tcov) * pident` - the coverage of the shorter of the
 two sequences scaled by how identical the aligned part is - so that a short
 exact match inside a long sequence does not count as a leak.
 
+Sequences are carried through the search by number - `seq_<n>_<half>`, written
+by the staging in `evaluate_splits` and read back here - so that joining a hit
+to a sequence is an array index. Keyed by the id string instead, the two
+per-sequence maxima were 240 MB at 300,000 sequences a half, which is the same
+scale as the search itself and for two floats per sequence.
+
 The hits above the threshold are also written out as they go past, if the caller
 asks for it. That is a side effect in a module otherwise made of returns, and it
 is here for the same reason the rest of it is: the export holds every leaked hit,
@@ -18,9 +24,52 @@ at the end would give back the bound this module exists to keep.
 
 import heapq
 import logging
+import re
 
+import numpy as np
 import pandas as pd
 from pandas.errors import EmptyDataError
+
+# How a staged sequence is named in the FASTA both halves go into. MMseqs2
+# carries only the name through the search, so this is the whole of the join
+# between a hit and the sequence it is about.
+SEQUENCE_ID_PATTERN = re.compile(r"seq_(\d+)_(?:train|test)\Z")
+
+
+def sequence_id(index, half):
+    """The FASTA id the sequence at `index` of `half` is staged under."""
+    return f"seq_{index}_{half}"
+
+
+def staged_ids(mask, half):
+    """The FASTA ids of the sequences a boolean mask selects.
+
+    The counterpart of `sequence_id`, for the one thing that still wants ids
+    rather than positions: pulling records back out of a FASTA by name. It is
+    built from the mask at the point of use rather than carried alongside it,
+    because the mask is a bit per sequence and the ids are a string each.
+    """
+    return {sequence_id(int(index), half) for index in np.flatnonzero(mask)}
+
+
+def _staged_indices(ids, count, source_name):
+    """Turn staged ids into positions, refusing anything this did not stage."""
+    extracted = pd.Index(ids).str.extract(SEQUENCE_ID_PATTERN, expand=False)
+    if extracted.isna().any():
+        unknown = pd.Index(ids)[extracted.isna()][0]
+        raise RuntimeError(
+            f"MMSeqs2 output in {source_name} names a sequence this run did not "
+            f"stage: {unknown!r}. The hit table has to come from the FASTA files "
+            f"staged alongside it."
+        )
+    indices = extracted.to_numpy(dtype=np.int64)
+    if indices.size and (indices.max() >= count or indices.min() < 0):
+        raise RuntimeError(
+            f"MMSeqs2 output in {source_name} names sequence number "
+            f"{int(indices.max())} of {count} staged."
+        )
+    return indices
+
 
 MMSEQS_REQUIRED_COLS = [
     "query",
@@ -81,16 +130,16 @@ def _score_mmseqs_chunk(chunk):
     return scored_chunk
 
 
-def _update_similarity_max(current_max, grouped_max):
+def _update_similarity_max(current_max, grouped_max, source_name):
     """Merge a chunk's per-sequence maxima into the running maxima, in place.
 
     Hits for one sequence can be spread over several chunks, so the maximum has
-    to be carried across them rather than computed per chunk.
+    to be carried across them rather than computed per chunk. `fmax` rather than
+    `maximum` because a sequence with no hit yet holds NaN, which is what tells
+    it apart from one whose best hit scored zero.
     """
-    for sequence_id, similarity_value in grouped_max.items():
-        similarity_value = float(similarity_value)
-        if similarity_value > current_max.get(sequence_id, float("-inf")):
-            current_max[sequence_id] = similarity_value
+    indices = _staged_indices(grouped_max.index, current_max.size, source_name)
+    np.fmax.at(current_max, indices, grouped_max.to_numpy(dtype=np.float32))
 
 
 def _push_top_rows(top_rows_heap, rows, row_order, top_n):
@@ -160,19 +209,29 @@ def _append_leaked_hits(export_path, leaked, first_write):
     )
 
 
-def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunksize=100000,
-                            export_path=None):
+def summarize_mmseqs_output(results_path, similarity_threshold, query_count, target_count,
+                            top_n=100, chunksize=100000, export_path=None):
     """Reduce an MMseqs2 hit table to the values the split report needs.
 
     Reads the table in chunks of `chunksize` rows, so memory use is bounded by
-    the chunk size and the number of distinct sequences rather than by the
+    the chunk size and by four bytes and a bit per sequence, rather than by the
     number of hits. An empty table is not an error - it means nothing matched.
 
+    Args:
+        results_path: The hit table MMseqs2 wrote.
+        similarity_threshold: Percentage at or above which a hit counts as a leak.
+        query_count: Sequences staged as queries, which is the test half.
+        target_count: Sequences staged as targets, which is the train half.
+        top_n: How many of the leaked hits to keep for the alignment view.
+        chunksize: Rows read at a time.
+        export_path: Where to write every leaked hit, if anywhere.
+
     Returns a dict with, for each of queries (test) and targets (train), the
-    per-sequence maximum similarity, the ids with any hit and the ids above
-    `similarity_threshold`; plus `total_hits`, every alignment the search found;
-    `leaked_hits`, the ones at or above the threshold; and `results_filt`, the
-    `top_n` most similar of those for the alignment view.
+    per-sequence maximum similarity as an array in staging order - NaN for a
+    sequence the search returned nothing for - and a boolean array of which are
+    at or above `similarity_threshold`; plus `total_hits`, every alignment the
+    search found; `leaked_hits`, the ones at or above the threshold; and
+    `results_filt`, the `top_n` most similar of those for the alignment view.
 
     `total_hits` and `leaked_hits` are easy to reach for interchangeably and are
     not the same number: a search reports far more alignments than it finds
@@ -182,12 +241,12 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
     the columns of `MMSEQS_RESULT_COLUMNS`. The file is created even when nothing
     leaked, so a clean split leaves a header rather than a missing file.
     """
-    query_similarity_max = {}
-    target_similarity_max = {}
-    query_ids_with_hits = set()
-    target_ids_with_hits = set()
-    query_ids_above_threshold = set()
-    target_ids_above_threshold = set()
+    # NaN, not zero: a sequence the search said nothing about has to stay
+    # distinguishable from one whose best alignment scored nothing.
+    query_similarity_max = np.full(query_count, np.nan, dtype=np.float32)
+    target_similarity_max = np.full(target_count, np.nan, dtype=np.float32)
+    query_above_threshold = np.zeros(query_count, dtype=bool)
+    target_above_threshold = np.zeros(target_count, dtype=bool)
     top_rows_heap = []
     row_order = 0
     total_hits = 0
@@ -207,16 +266,17 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
         scored_chunk = _score_mmseqs_chunk(chunk)
         total_hits += len(scored_chunk)
 
-        query_ids_with_hits.update(scored_chunk["query"].unique().tolist())
-        target_ids_with_hits.update(scored_chunk["target"].unique().tolist())
-
+        # Which sequences had a hit at all falls out of the maxima: the entries
+        # that are no longer NaN.
         _update_similarity_max(
             query_similarity_max,
             scored_chunk.groupby("query")["min_cov*pident"].max(),
+            results_path,
         )
         _update_similarity_max(
             target_similarity_max,
             scored_chunk.groupby("target")["min_cov*pident"].max(),
+            results_path,
         )
 
         leaked = scored_chunk[scored_chunk["min_cov*pident"] >= similarity_threshold]
@@ -228,8 +288,12 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
             _append_leaked_hits(export_path, leaked, first_write=not exported_any)
             exported_any = True
 
-        query_ids_above_threshold.update(leaked["query"].unique().tolist())
-        target_ids_above_threshold.update(leaked["target"].unique().tolist())
+        query_above_threshold[
+            _staged_indices(pd.Index(leaked["query"].unique()), query_count, results_path)
+        ] = True
+        target_above_threshold[
+            _staged_indices(pd.Index(leaked["target"].unique()), target_count, results_path)
+        ] = True
 
         leaked_top = leaked.nlargest(top_n, "min_cov*pident")
         row_order = _push_top_rows(top_rows_heap, leaked_top, row_order, top_n)
@@ -242,10 +306,8 @@ def summarize_mmseqs_output(results_path, similarity_threshold, top_n=100, chunk
     return {
         "query_similarity_max": query_similarity_max,
         "target_similarity_max": target_similarity_max,
-        "query_ids_with_hits": query_ids_with_hits,
-        "target_ids_with_hits": target_ids_with_hits,
-        "query_ids_above_threshold": query_ids_above_threshold,
-        "target_ids_above_threshold": target_ids_above_threshold,
+        "query_above_threshold": query_above_threshold,
+        "target_above_threshold": target_above_threshold,
         "results_filt": results_filt,
         "total_hits": total_hits,
         "leaked_hits": leaked_hits,

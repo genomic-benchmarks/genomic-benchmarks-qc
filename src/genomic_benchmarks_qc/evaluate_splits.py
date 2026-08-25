@@ -34,7 +34,11 @@ from genomic_benchmarks_qc.utils.input_utils import (
     setup_logger,
     stream_files_to_sequences,
 )
-from genomic_benchmarks_qc.utils.mmseqs_summary import summarize_mmseqs_output
+from genomic_benchmarks_qc.utils.mmseqs_summary import (
+    sequence_id,
+    staged_ids,
+    summarize_mmseqs_output,
+)
 from genomic_benchmarks_qc.utils.naming import (
     HTML_REPORT_FILE,
     MMSEQS_DIR,
@@ -107,7 +111,7 @@ def _stage_sequences_to_fasta(fasta_path, files, input_format, sequence_column, 
     with fasta_path.open("w", encoding="utf-8") as fasta_handle:
         stream = stream_files_to_sequences(files, input_format, sequence_column)
         for i, sequence in enumerate(stream):
-            append_fasta_record(fasta_handle, sequence, f"seq_{i}_{seq_suffix}")
+            append_fasta_record(fasta_handle, sequence, sequence_id(i, seq_suffix))
             acc.add(sequence)
 
     return acc.finalize()
@@ -183,9 +187,9 @@ def _write_mmseqs_report_bundle(
     new_test_fasta_path = seq_index_mapping / 'test_sequences.fasta'
     new_train_fasta_path = seq_index_mapping / 'train_sequences.fasta'
     filter_fasta_by_ids(test_fasta_path, new_test_fasta_path,
-                        summary["query_ids_above_threshold"])
+                        staged_ids(summary["query_above_threshold"], 'test'))
     filter_fasta_by_ids(train_fasta_path, new_train_fasta_path,
-                        summary["target_ids_above_threshold"])
+                        staged_ids(summary["target_above_threshold"], 'train'))
 
     # Aggregate sequence statistics (count, length, GC content, etc.) from train and test sets
     basic_stats = get_basic_stats_from_aggregates(
@@ -356,6 +360,8 @@ def run(
             summary = summarize_mmseqs_output(
                 results_path,
                 similarity_threshold,
+                query_count=num_test_seqs,
+                target_count=num_train_seqs,
                 top_n=ROW_CAP,
                 export_path=export_path,
             )

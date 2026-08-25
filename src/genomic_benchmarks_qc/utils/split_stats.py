@@ -1,5 +1,7 @@
 """Turning the raw search summary into the numbers the split report shows."""
 
+import numpy as np
+
 
 def _calculate_percentage(part, whole):
     """Return part as a percentage of whole, treating an empty whole as 0%."""
@@ -45,10 +47,12 @@ def get_threshold_stats(summary, similarity_threshold, num_train_seqs, num_test_
     if summary is None:
         raise ValueError("summary is required for threshold statistics computation")
 
-    num_queries_with_hits = len(summary["query_ids_with_hits"])
-    num_queries_above_thr = len(summary["query_ids_above_threshold"])
-    num_targets_with_hits = len(summary["target_ids_with_hits"])
-    num_targets_above_thr = len(summary["target_ids_above_threshold"])
+    # A sequence with a hit is one the summariser recorded a similarity for; the
+    # rest of its array is still the NaN it started as.
+    num_queries_with_hits = int(np.count_nonzero(~np.isnan(summary["query_similarity_max"])))
+    num_queries_above_thr = int(np.count_nonzero(summary["query_above_threshold"]))
+    num_targets_with_hits = int(np.count_nonzero(~np.isnan(summary["target_similarity_max"])))
+    num_targets_above_thr = int(np.count_nonzero(summary["target_above_threshold"]))
 
     return {
         "similarity_threshold": similarity_threshold,

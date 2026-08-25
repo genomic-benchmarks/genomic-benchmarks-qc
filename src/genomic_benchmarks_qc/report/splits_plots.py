@@ -2,13 +2,38 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import seaborn as sns
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from genomic_benchmarks_qc.report.classes_plots import HuePalette, prepare_legend
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR
+
+# The similarity axis: ten bins of ten percent, the last closed at both ends so
+# a perfect 100% match lands in it rather than off the end.
+BIN_WIDTH = 10
+BIN_EDGES = np.arange(0, 110, BIN_WIDTH)
+
+
+def _binned_counts(similarity_max, without_hits):
+    """Count one half's sequences into the similarity bins.
+
+    Sequences with no hit at all are absent from the search output and from
+    `similarity_max`, but leaving them out would hide how much of the half is
+    unrelated to the other one, so they are counted into the first bin.
+
+    Args:
+        similarity_max: Best similarity per sequence, NaN where there was no hit.
+        without_hits: How many sequences the search returned nothing for.
+
+    Returns:
+        Array of `len(BIN_EDGES) - 1` counts.
+    """
+    values = np.asarray(similarity_max, dtype=float)
+    values = values[~np.isnan(values)]
+    counts, _ = np.histogram(values, bins=BIN_EDGES)
+    counts = counts.astype(float)
+    counts[0] += without_hits
+    return counts
 
 
 def plot_similarity_histograms(query_similarity_max, target_similarity_max, threshold_stats):
@@ -17,65 +42,27 @@ def plot_similarity_histograms(query_similarity_max, target_similarity_max, thre
     One bar pair per similarity bin, with the leakage threshold marked. The
     count axis is logarithmic because leakage is usually a small tail next to a
     large bulk of unrelated sequences, which a linear axis would flatten away.
+
+    Ten bars are counted rather than drawn from the observations. Handing the
+    per-sequence maxima to a plotting library meant one Python object per
+    sequence on the way in - 257 MB and a second at 300,000 sequences a half,
+    for a figure that is ten numbers wide.
     """
-
-    unique_queries = pd.Series(query_similarity_max, dtype=float)
-    unique_targets = pd.Series(target_similarity_max, dtype=float)
-
-    # Get counts of missing data (queries/targets without hits) to add to histogram
-    missing_data_query = threshold_stats["num_queries_without_hits"]
-    missing_data_target = threshold_stats["num_targets_without_hits"]
-
-    def _build_hist_arrays(values: pd.Series, missing_data: int):
-        """Return (values, weights) with the sequences that had no hit at all.
-
-        Those sequences are absent from the search output, but leaving them out
-        would hide how much of the half is unrelated to the other one, so they
-        are added as a single weighted observation at 0% similarity.
-        """
-        data = values.to_numpy(dtype=float)
-        weights = np.ones_like(data, dtype=float)
-        if missing_data > 0:
-            data = np.concatenate([data, np.array([0.0], dtype=float)])
-            weights = np.concatenate([weights, np.array([missing_data], dtype=float)])
-        return data, weights
-
-    qcov, qweights = _build_hist_arrays(unique_queries, missing_data_query)
-    tcov, tweights = _build_hist_arrays(unique_targets, missing_data_target)
-
-    bins = list(range(0, 110, 10))
+    counts_train = _binned_counts(target_similarity_max,
+                                  threshold_stats["num_targets_without_hits"])
+    counts_test = _binned_counts(query_similarity_max,
+                                 threshold_stats["num_queries_without_hits"])
 
     fig, ax = plt.subplots(figsize=(12, 4), dpi=300)
     palette = HuePalette()
 
-    # Combine data into single DataFrame for hue-based plotting
-    hist_data = []
-    if tcov.size:
-        for val, w in zip(tcov, tweights, strict=True):
-            hist_data.append({"similarity": val, "type": "Train", "weight": w})
-    if qcov.size:
-        for val, w in zip(qcov, qweights, strict=True):
-            hist_data.append({"similarity": val, "type": "Test", "weight": w})
-
-    if hist_data:
-        df = pd.DataFrame(hist_data)
-        # bars next to each other instead of stacked
-        sns.histplot(
-            data=df,
-            x="similarity",
-            weights="weight",
-            bins=bins,
-            stat="count",
-            hue="type",
-            hue_order=["Train", "Test"],
-            multiple="dodge",
-            element="bars",
-            shrink=0.8,
-            ax=ax,
-            palette=[palette[0], palette[1]],
-            legend=False,
-            linewidth=0,
-        )
+    # Train and test share each bin rather than stacking, so each takes half of
+    # it, and each bar is drawn at 0.8 of the half it has.
+    centres = BIN_EDGES[:-1] + BIN_WIDTH / 4
+    bar_width = BIN_WIDTH / 2 * 0.8
+    ax.bar(centres, counts_train, width=bar_width, color=palette[0], linewidth=0)
+    ax.bar(centres + BIN_WIDTH / 2, counts_test, width=bar_width,
+           color=palette[1], linewidth=0)
 
     # Build legend handles for hue categories (Train, Test)
     legend_handles = [
