@@ -132,7 +132,6 @@ nav:
       - Train/test leakage: guide/leakage.md
       - Using it in CI: guide/ci.md
       - Python API: guide/python-api.md
-      - Running at scale: guide/at-scale.md
   - Troubleshooting: faq.md
   - Reference:
       - CLI: reference/cli.md

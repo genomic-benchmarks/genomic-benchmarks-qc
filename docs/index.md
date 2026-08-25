@@ -122,5 +122,3 @@ from all the data either way, so a small dataset can still be compared by eye.
   to do about it
 - [Using it in CI](guide/ci.md) — the CSV as a build gate
 - [Python API](guide/python-api.md) — both commands are one function call
-- [Running at scale](guide/at-scale.md) — notes from a survey of 234 dataset
-  splits
