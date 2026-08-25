@@ -13,8 +13,9 @@ from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.per_position_payload import viewer_html
 from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
-    LOGO_BASE64,
+    LOGO_CSS,
     REPORT_HEADER_HTML,
+    REPORT_LOGO_HTML,
     SIDEBAR_LINKS_HTML,
     TOOL_DESCRIPTION,
     TOOL_TAGLINE,
@@ -303,11 +304,13 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
 
     # insert shared CSS and header fragment
     html_template = put_data(html_template, "{{common_css}}",
-                             COMMON_CSS + assets.stylesheet('per_position_viewer.css'))
+                             COMMON_CSS + assets.stylesheet('per_position_viewer.css')
+                             + LOGO_CSS)
     html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
 
-    # insert logo
-    html_template = put_data(html_template, "{{logo_base64}}", LOGO_BASE64)
+    # The nav's logo is in the template; this is the header's. Both read the one
+    # copy of the picture that LOGO_CSS put in the stylesheet above.
+    html_template = put_data(html_template, "{{logo}}", REPORT_LOGO_HTML)
 
     # populate header placeholders: tool description, generated timestamp and input paths
     # Provide sensible defaults when values are not supplied

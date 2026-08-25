@@ -152,11 +152,6 @@ pre {
      white-space: pre;
      box-sizing: border-box;
 }
-.report-header img { 
-    max-width: 350px; 
-    height: auto;
-    margin: 0 0 10px; 
-}
 
 /* Toggle button styles */
 .section-header {

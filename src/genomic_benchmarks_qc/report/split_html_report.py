@@ -20,8 +20,9 @@ from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
 from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
-    LOGO_BASE64,
+    LOGO_CSS,
     REPORT_HEADER_HTML,
+    REPORT_LOGO_HTML,
     SIDEBAR_LINKS_HTML,
     TOOL_DESCRIPTION,
     TOOL_TAGLINE,
@@ -76,15 +77,16 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     # insert shared CSS and header fragment; split_report.css is layered on top,
     # the way per_position_viewer.css is in the class report
     html_template = put_data(html_template, "{{common_css}}",
-                             COMMON_CSS + assets.stylesheet('split_report.css'))
+                             COMMON_CSS + assets.stylesheet('split_report.css') + LOGO_CSS)
     # The shared behaviour, plus this report's own alignment toggles. At the end
     # of the body so it runs against a complete page.
     html_template = put_data(html_template, "{{report_scripts}}",
                              assets.script('report_ui.js', 'split_report.js'))
     html_template = put_data(html_template, "{{report_header}}", REPORT_HEADER_HTML)
 
-    # insert logo
-    html_template = put_data(html_template, "{{logo_base64}}", LOGO_BASE64)
+    # The nav's logo is in the template; this is the header's. Both read the one
+    # copy of the picture that LOGO_CSS put in the stylesheet above.
+    html_template = put_data(html_template, "{{logo}}", REPORT_LOGO_HTML)
 
     # header info
     if tool_description is None:

@@ -70,7 +70,14 @@ a:hover { text-decoration: underline; }
 
 /* ---------------- nav ---------------- */
 .sidebar .logo { text-align: center; padding: 0 8px; }
-.sidebar .logo img { max-width: 132px !important; }
+/* The picture itself is one rule, written into the page by LOGO_CSS and shared
+ * by both places a report shows it; each site sets only its width. The ratio
+ * stands in for the intrinsic size an <img> would have carried. */
+.gb-qc-logo {
+  background-repeat: no-repeat; background-position: center;
+  background-size: contain; aspect-ratio: 500 / 176;
+}
+.sidebar .logo .gb-qc-logo { width: 132px; margin: 0 auto; }
 .sidebar h2 {
   font-size: 11px; text-transform: uppercase; letter-spacing: .09em;
   color: var(--ink-3); font-weight: 650; margin: 18px 0 10px 8px;
@@ -114,9 +121,7 @@ section {
  * report's title block rather than a second logo, and is sized for that.
  */
 .report-header { margin: 0 0 18px; }
-.report-header img.report-logo {
-  display: block; max-width: 250px; height: auto; margin: 4px 0 12px;
-}
+.report-header .report-logo { width: 250px; margin: 4px 0 12px; }
 .report-tagline { font-size: 16px; font-weight: 650; color: var(--ink); }
 .report-lede { font-size: 14.5px; color: var(--ink-2); margin: 4px 0 0; max-width: 70ch; }
 .report-subject { font-size: 14.5px; color: var(--ink); margin: 14px 0 0; }

@@ -1,11 +1,12 @@
 """Tests for what a report carries, and what it leaves on disk beside it.
 
 A report is one standalone file, so everything it shows is inlined into it and
-every byte of a figure is a byte of the file. What keeps that from running away
-is invisible in the output, which is what this file is for: a flagged figure is
-drawn once and saved twice rather than built twice, and the copy the page
-embeds is half the resolution of the one written to plots/, which is the copy
-to reuse elsewhere.
+every byte of a figure is a byte of the file. Three things keep that from
+running away, and all three are invisible in the output: a flagged figure is
+drawn once and saved twice rather than built twice; the copy the page embeds is
+half the resolution of the one written to plots/, which is the copy to reuse
+elsewhere; and the logo is written into the stylesheet once instead of into
+each of the two elements that show it.
 """
 
 import base64
@@ -18,9 +19,13 @@ import pytest
 from PIL import Image
 
 from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
-from genomic_benchmarks_qc.report.utils import DISPLAY_DPI, FIGURE_DPI
+from genomic_benchmarks_qc.report.utils import DISPLAY_DPI, FIGURE_DPI, LOGO_BASE64
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
+
+# The widest a report ever shows the logo: the header's copy, sized in
+# report_design.css. The nav's is 132px.
+WIDEST_LOGO_DISPLAY = 250
 
 
 def make_stats(sequences, label='cls'):
@@ -105,3 +110,21 @@ class TestTheEmbeddedCopyIsSmallerThanTheFile:
         largest_file = max(png.stat().st_size for png in (report / 'plots').glob('*.png'))
 
         assert largest_embedded < largest_file
+
+
+class TestTheLogo:
+    def test_it_is_written_into_the_page_once(self, report):
+        page = (report / 'gb-qc-report.html').read_text()
+
+        # Two elements show it, and both read the one copy in the stylesheet.
+        # `put_data` fills every occurrence of a placeholder, so a data URI in
+        # the markup was embedded once per element.
+        assert page.count(LOGO_BASE64) == 1
+        assert len(re.findall(r'class="gb-qc-logo[^"]*"', page)) == 2
+
+    def test_it_is_stored_near_the_size_it_is_shown_at(self):
+        logo = Image.open(io.BytesIO(base64.b64decode(LOGO_BASE64.split(',', 1)[1])))
+
+        # Twice the widest display, which is what a 2x screen asks for. It was
+        # nearly six times that, in a report that showed it twice.
+        assert logo.width == 2 * WIDEST_LOGO_DISPLAY
