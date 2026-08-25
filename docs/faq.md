@@ -104,12 +104,6 @@ that is signal or leakage is your call. Either way the useful move is the same:
 treat the flagged feature's AU-ROC as the floor your model has to beat, and report
 it.
 
-## The report is enormous
-
-The per-position payload is most of a report's bytes, and it scales with the
-window. `--end-position` is the lever. Reports on the bundled examples run
-850 KB to 1.1 MB, which is normal for a standalone file with its plots inlined.
-
 ## Can I get the raw numbers?
 
 Add `json` to `--report-types` for per-class statistics — counts, GC, lengths,
