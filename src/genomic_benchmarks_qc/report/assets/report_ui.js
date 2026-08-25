@@ -80,12 +80,21 @@
     var queued = false;
     function mark() {
       queued = false;
-      // The current check is the last one whose top has passed the top of the
-      // viewport. A line further down the page marks whatever sits a third of
-      // the way in, which reads as the wrong entry when the check you are
-      // looking at is the one at the top; the few pixels of slack only absorb
-      // sub-pixel scroll positions after clicking a nav link.
-      var line = 8;
+      // The current check is the last one whose top has passed a line just
+      // below the top of the viewport. The line is not at the very top because
+      // a section resting a few pixels below it is plainly the one being read,
+      // while the nav would still be pointing at the one above - which is what
+      // a reader notices as the nav lagging behind the page.
+      //
+      // 72px is where a section's heading has fully arrived: sections are 18px
+      // apart and put their heading 21px in, 30px tall, so its bottom edge
+      // clears 69px. It has to stay well under the shortest section too - at
+      // 130px here - or a short section between two others would never be the
+      // last one past the line, and so would never be marked at all. A line a
+      // third of the way down the page, the other obvious choice, fails that
+      // and also reads as the wrong entry whenever the section being read is
+      // the one at the top.
+      var line = 72;
       var active = rows[0];
       rows.forEach(function (row) {
         if (row.target.getBoundingClientRect().top <= line) active = row;
