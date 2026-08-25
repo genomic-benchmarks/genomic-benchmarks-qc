@@ -40,6 +40,12 @@ def check_mmseqs_preflight():
     newer CPU dies with SIGILL rather than a readable error, so the CPU flags
     are checked up front. Only x86_64 Linux can be checked this way; elsewhere
     the check is skipped with a warning.
+
+    Skipped, not refused. The flags this looks for are x86_64 ones, so on ARM
+    there is nothing here to check - but MMSeqs2 runs on ARM, and a check that
+    exists to turn a SIGILL into a sentence must not become the reason the search
+    never starts. On an architecture it cannot vouch for, letting MMSeqs2 speak
+    for itself is the better answer.
     """
     mmseqs_path = shutil.which("mmseqs")
     if mmseqs_path is None:
@@ -60,10 +66,15 @@ def check_mmseqs_preflight():
 
     arch = platform.machine().lower()
     if arch not in ("x86_64", "amd64"):
-        raise RuntimeError(
-            f"Unsupported architecture for MMSeqs2 preflight checks: {arch}. "
-            "Expected x86_64."
+        logging.warning(
+            "Skipping CPU feature checks on %s: %s are x86_64 instruction sets and "
+            "this machine is not x86_64. MMSeqs2 ships builds for other "
+            "architectures, so this is not a reason to stop - if the binary here is "
+            "the wrong one, MMSeqs2 says so itself.",
+            arch,
+            ", ".join(SUPPORTED_CPU_FLAGS),
         )
+        return
 
     flags = _read_linux_cpu_flags()
     if flags is None:
