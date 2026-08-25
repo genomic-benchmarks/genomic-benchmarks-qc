@@ -48,6 +48,17 @@ from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 # the CLI cannot offer one that never arrives.
 REPORT_TYPES = ('json', 'html', 'simple')
 
+# How many classes `--label-list infer` will accept before deciding the column it
+# was pointed at is not a label column.
+#
+# Every pair of classes is compared, so the work is quadratic: 50 classes is
+# already 1,225 comparisons, each with its own directory, statistics and report.
+# A real class column has a handful of values; a column with more than this is
+# almost always a continuous target or free text, and the failure has no floor -
+# a sequence column read as labels produced one class per row, and wrote 26,761
+# directories before it was killed.
+MAX_INFERRED_LABELS = 50
+
 
 def run_analysis(input_statistics, report_dir, report_types, plot_type):
     """Analyse each class, then every pair of classes, writing reports under `report_dir`.
@@ -162,6 +173,12 @@ def _regression_labels(df, label_column):
     return df, labels
 
 
+def _abbreviate(value, width=30):
+    """Shorten one label for an error message; a stray label can be a sequence."""
+    text = str(value)
+    return text if len(text) <= width else text[:width - 1] + '\u2026'
+
+
 def _resolve_labels(df, label_column, label_list, regression):
     """Work out which classes to compare, returning (dataframe, labels).
 
@@ -184,6 +201,22 @@ def _resolve_labels(df, label_column, label_list, regression):
         if not labels:
             raise ValueError(
                 f"No usable labels found in column '{label_column}'."
+            )
+        if len(labels) > MAX_INFERRED_LABELS:
+            # Refused before anything is computed or written. The comparisons are
+            # quadratic and each one writes a directory, so left to run this fills
+            # the output folder with reports of one row against another long
+            # before it finishes.
+            examples = ', '.join(repr(_abbreviate(label)) for label in labels[:3])
+            raise ValueError(
+                f"Column '{label_column}' has {len(labels)} distinct values "
+                f"(e.g. {examples}), more than the {MAX_INFERRED_LABELS} classes this "
+                f"command will infer - comparing them would mean "
+                f"{len(labels) * (len(labels) - 1) // 2} pairwise reports. A column with "
+                f"this many values is usually a continuous target or free text rather "
+                f"than a class label. Pass --regression to split a numeric target at its "
+                f"median, --label-column to point at a different column, or --label-list "
+                f"to name the classes to compare."
             )
         logging.debug(f"Inferred labels: {labels}")
         return df, labels
@@ -333,7 +366,11 @@ def run(input: list[str],
         label_column: Name of the label column for datasets in CSV/TSV format.
             Default: `'label'`.
         label_list: List of label classes to consider or "infer" to parse different labels
-            automatically from label column. For datasets in CSV/TSV format.
+            automatically from label column. For datasets in CSV/TSV format. Inference
+            stops at
+            [MAX_INFERRED_LABELS][genomic_benchmarks_qc.evaluate_classes.MAX_INFERRED_LABELS]
+            classes, past which the column is taken to be something other than a label
+            column; an explicit list is not capped.
             Default: `['infer']`.
         regression: If True, label column is considered as a regression target and values
             are split into 2 classes at the median. Raises ValueError if that does not

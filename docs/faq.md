@@ -79,6 +79,17 @@ FASTA is the opposite: it carries no labels, so each file *is* a class and its
 filename stem becomes the label. See
 [fasta-classes](examples/fasta-classes.md).
 
+## It refused to infer my classes
+
+`--label-list infer` stops at 50 distinct values. Every pair of classes gets its
+own comparison, so the work is quadratic — 600 values is 179,700 reports — and a
+column with that many values is nearly always a continuous target or the sequence
+column, not a label column.
+
+Three ways on, and the error names all three: `--regression` splits a numeric
+target at its median, `--label-column` points at a different column, and
+`--label-list` names the classes to compare. An explicit list is not capped.
+
 ## My class labels are not the directory names I expected
 
 Directory names are lowercased and stripped of characters unsafe on some

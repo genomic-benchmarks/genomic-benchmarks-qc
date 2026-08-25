@@ -147,6 +147,81 @@ class TestInputValidation:
         assert _reports(tmp_path / 'out') == []
 
 
+class TestInferredLabels:
+    """`--label-list infer` trusts the column it is pointed at, and every pair of
+    classes gets its own comparison - so the cost of pointing it at the wrong
+    column is quadratic and unbounded. A continuous target without --regression
+    inferred one class per row and wrote tens of thousands of directories before
+    it was stopped.
+    """
+
+    def test_a_column_with_too_many_values_is_refused(self, tmp_path):
+        labels = [str(value) for value in range(evaluate_classes.MAX_INFERRED_LABELS + 1)]
+        data = write_csv(tmp_path / 'data.csv', labels, rows_per_label=2)
+
+        with pytest.raises(ValueError, match='distinct values'):
+            evaluate_classes.run(input=[data], format='csv',
+                                 out_folder=str(tmp_path / 'out'),
+                                 report_types=['simple'])
+
+        # Refused before any comparison ran, so nothing is left to clean up.
+        assert _reports(tmp_path / 'out') == []
+
+    def test_the_message_says_what_to_do_instead(self, tmp_path):
+        """The three ways out, because the column that triggers this is usually a
+        regression target or the sequence column itself."""
+        labels = [f'value_{value}' for value in range(evaluate_classes.MAX_INFERRED_LABELS + 1)]
+        data = write_csv(tmp_path / 'data.csv', labels, rows_per_label=2)
+
+        with pytest.raises(ValueError) as failure:
+            evaluate_classes.run(input=[data], format='csv',
+                                 out_folder=str(tmp_path / 'out'),
+                                 report_types=['simple'])
+
+        message = str(failure.value)
+        assert '--regression' in message
+        assert '--label-list' in message
+        assert '--label-column' in message
+        assert 'value_0' in message                     # what it actually found
+
+    def test_a_long_label_is_shortened_in_the_message(self, tmp_path):
+        """The column pointed at is often the sequence column, whose values would
+        otherwise make the message unreadable."""
+        labels = [f'{"ACGT" * 20}{value}'
+                  for value in range(evaluate_classes.MAX_INFERRED_LABELS + 1)]
+        data = write_csv(tmp_path / 'data.csv', labels, rows_per_label=2)
+
+        with pytest.raises(ValueError) as failure:
+            evaluate_classes.run(input=[data], format='csv',
+                                 out_folder=str(tmp_path / 'out'),
+                                 report_types=['simple'])
+
+        assert '\u2026' in str(failure.value)
+        assert 'ACGT' * 20 not in str(failure.value)
+
+    def test_the_cap_itself_is_allowed(self, tmp_path):
+        labels = [str(value) for value in range(evaluate_classes.MAX_INFERRED_LABELS)]
+        data = write_csv(tmp_path / 'data.csv', labels, rows_per_label=2)
+
+        evaluate_classes.run(input=[data], format='csv',
+                             out_folder=str(tmp_path / 'out'),
+                             report_types=['simple'])
+
+        pairs = evaluate_classes.MAX_INFERRED_LABELS * (evaluate_classes.MAX_INFERRED_LABELS - 1)
+        assert len(_reports(tmp_path / 'out')) == pairs // 2
+
+    def test_an_explicit_list_is_not_capped(self, tmp_path):
+        """A list the caller typed out is a decision, not a mistake to catch."""
+        labels = [str(value) for value in range(evaluate_classes.MAX_INFERRED_LABELS + 1)]
+        data = write_csv(tmp_path / 'data.csv', labels, rows_per_label=2)
+
+        evaluate_classes.run(input=[data], format='csv',
+                             out_folder=str(tmp_path / 'out'),
+                             label_list=labels[:3], report_types=['simple'])
+
+        assert len(_reports(tmp_path / 'out')) == 3
+
+
 class TestInputMerging:
     def test_multiple_input_files_are_pooled_into_one_dataset(self, tmp_path, caplog):
         first = write_csv(tmp_path / 'first.csv', ['a', 'b'], rows_per_label=15)
