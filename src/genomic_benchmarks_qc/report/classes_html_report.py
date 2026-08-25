@@ -15,15 +15,52 @@ from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
     LOGO_BASE64,
     REPORT_HEADER_HTML,
+    SIDEBAR_LINKS_HTML,
     TOOL_DESCRIPTION,
     TOOL_TAGLINE,
+    docs_link,
     encode_image_to_base64,
     escape_str,
     icon_html,
     image_or_message,
     put_data,
+    verdict_html,
 )
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS, position_windows
+
+# The nine headline checks, in the order the navigation lists them. The flags
+# behind them are what the verdict line counts; every other key in
+# summary_statuses is a sub-check one of these already summarises.
+CHECK_NAMES = (
+    'Unique bases',
+    'Sequence Duplications within Labels',
+    'Duplicate Sequences between Labels',
+    'Sequence lengths',
+    'Per sequence GC content',
+    'Per sequence nucleotide content',
+    'Per sequence dinucleotide content',
+    'Per position nucleotide content',
+    'Per position reversed nucleotide content',
+)
+
+# The link that closes each ? explanation, keyed by the placeholder that holds
+# it. Each anchor is a heading in docs/guide/checks.md; tests/test_report_links.py
+# checks that they all still exist.
+EXPLANATION_LINKS = {
+    '{{link_unique_bases}}': ('checks', 'unique-bases', 'What to do about it'),
+    '{{link_within_dup}}': ('checks', 'sequence-duplications-within-labels',
+                            'What to do about it'),
+    '{{link_between_dup}}': ('checks', 'duplicate-sequences-between-labels',
+                             'What to do about it'),
+    '{{link_lengths}}': ('checks', 'sequence-lengths', 'What to do about it'),
+    '{{link_gc}}': ('checks', 'per-sequence-gc-content', 'What to do about it'),
+    '{{link_nucleotide}}': ('checks', 'per-sequence-nucleotide-content',
+                            'What to do about it'),
+    '{{link_dinucleotide}}': ('checks', 'per-sequence-dinucleotide-content',
+                              'What to do about it'),
+    '{{link_per_position_rev}}': ('checks', 'per-position-reversed-nucleotide-content',
+                                  'More on this check'),
+}
 
 
 def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
@@ -87,7 +124,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML Report Output</title>
+    <title>{{page_title}}</title>
     <style>{{common_css}}</style>
 </head>
 <body>
@@ -114,6 +151,7 @@ HTML_TEMPLATE = """
             <div class="sidebar-item">{{icon_per_sequence_dinucleotide_content}}<a href="#per-sequence-dinucleotide-content">Per Sequence Dinucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_position_nucleotide_content}}<a href="#per-position-nucleotide-content">Per Position Nucleotide Content</a></div>
             <div class="sidebar-item">{{icon_per_position_reversed_nucleotide_content}}<a href="#per-position-reversed-nucleotide-content">Per Position Reversed Nucleotide Content</a></div>
+{{sidebar_links}}
         </div>
 
         <div class="content">
@@ -190,7 +228,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="unique-bases-explanation" class="explanation-text">
-                    <strong>Unique Bases</strong> shows which nucleotides are present in each label. Differences in unique bases between labels may indicate data quality issues or biological differences that could bias machine learning models.
+                    <p>The set of characters each label uses. It fails if the two sets differ at all, and there is no Warning - the question is yes or no.</p>
+                    <p>What matters is the asymmetry, not the character: <code>N</code> in both labels passes, but a character only one label has makes every sequence carrying it perfectly classifiable. {{link_unique_bases}}</p>
                 </div>
                 <div class="nucleotide-flags-container" id="unique-bases-flags">
                     {{unique_bases_flags}}
@@ -218,7 +257,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="within-dup-explanation" class="explanation-text">
-                    <strong>Sequence Duplications within Labels</strong> shows how many sequences appear multiple times within each label. High duplication rates may indicate PCR artifacts, sequencing bias, or legitimate biological repeats. However, for machine learning and deep learning models, duplicate sequences can introduce bias during training. If the same sequence appears multiple times, the model may learn to overweight these repeated sequences, leading to skewed predictions and poor generalization.
+                    <p>How much of the data survives deduplication, pooled over both labels. Pass only at 100%, Warning above 98%, Fail below it - so any duplication at all is at least a Warning.</p>
+                    <p>Duplicates make the dataset smaller than its row count, and copies landing on both sides of a random split inflate the score you report. {{link_within_dup}}</p>
                 </div>
                 <!-- This will be populated either with png plot showing duplication or with a message saying no duplications found -->
                 {{sequence_duplications_within_classes}}
@@ -233,7 +273,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="between-dup-explanation" class="explanation-text">
-                    <strong>Duplicate Sequences between Labels</strong> identifies sequences that appear in both labels. The same sequence annotated with both labels is indicating conflicting labels for identical sequence content.
+                    <p>Sequences that appear under both labels: identical input, opposite label, so no model can get both right. One shared sequence fails; there is no Warning.</p>
+                    <p>It puts a hard ceiling on achievable accuracy, and the offending sequences are listed in <code>gb-qc-duplicates.txt</code> beside this report. {{link_between_dup}}</p>
                 </div>
                 <!-- This will be populated either with a table showing duplicate sequences or a message saying no duplications found -->
                 {{sequence_duplication_levels}}
@@ -248,7 +289,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="lengths-explanation" class="explanation-text">
-                    <strong>Sequence Lengths</strong> displays the distribution of sequence lengths in each label. The plot shows how lengths vary across your dataset. Significant differences in length distributions between labels may indicate bias or differences in the underlying biological processes. For ML models, length differences can sometimes be exploited as shortcuts.
+                    <p>The length distribution of each label. The flag is the AU-ROC of length on its own: how well a model that does nothing but count characters separates the two labels.</p>
+                    <p>It fires when the labels were sampled or trimmed differently, which is the easiest bias to introduce by accident. {{link_lengths}}</p>
                 </div>
 
                 <!-- This will be populated with png plot --->
@@ -264,7 +306,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="gc-explanation" class="explanation-text">
-                    <strong>Per Sequence GC Content</strong> shows the distribution of GC% (percentage of G and C bases) across all sequences in each label. GC content affects DNA structure and stability. Significant differences in GC distribution between labels may indicate sequence composition bias that could impact model training.
+                    <p>The GC% of every sequence, one distribution per label. The flag is the AU-ROC of GC content on its own.</p>
+                    <p>The classic compositional confound: it fires whenever the labels come from different genomic contexts - promoters against background, coding against intergenic. GC-matching the negatives removes most of it. {{link_gc}}</p>
                 </div>
                 <img src="data:image/png;base64, {{per-sequence-gc-content_base64}}" alt="Per Sequence GC Content" class="plot-half">
             </section>
@@ -278,7 +321,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="nucleotide-explanation" class="explanation-text">
-                    <strong>Per Sequence Nucleotide Content</strong> displays the distribution of individual nucleotide frequencies (A, C, G, T, N) across sequences. Each subplot shows how often that nucleotide appears in sequences from each label. Differences between labels may indicate composition bias or biological differences in your dataset.
+                    <p>One panel per base: how often it occurs in a sequence, compared between the labels. Each base is scored separately and <strong>the flag is the worst of them</strong>, so one red panel flags the check.</p>
+                    <p>It usually fires alongside GC content, and then the two are one finding. Firing without it means the imbalance is A against T or C against G, which points at strand asymmetry. {{link_nucleotide}}</p>
                 </div>
                 {{per-sequence-nucleotide-content}}
             </section>
@@ -292,7 +336,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="dinucleotide-explanation" class="explanation-text">
-                    <strong>Per Sequence Dinucleotide Content</strong> shows the frequency of two-base combinations (e.g., AA, AC, AG, AT) across sequences. Dinucleotide frequencies can reveal sequence patterns and motifs. Each row shows all dinucleotides starting with a specific base. Significant differences between labels may indicate compositional bias.
+                    <p>The same comparison for two-base combinations, each row holding the pairs that start with one base. All sixteen are scored separately and <strong>the flag is the worst of them</strong>.</p>
+                    <p>Which pair it is says something specific: <code>CG</code> alone points at methylation or promoter context, while all sixteen at once is the GC finding again. {{link_dinucleotide}}</p>
                 </div>
                 {{per-sequence-dinucleotide-content}}
             </section>
@@ -306,7 +351,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-explanation" class="explanation-text">
-                    <strong>Per Position Nucleotide Content</strong> tracks nucleotide frequencies at each position along the sequence (5' to 3' direction). Each line shows one nucleotide's frequency across positions. Position-specific patterns can reveal adapter contamination, sequencing artifacts, or biological motifs. The bottom panel shows what proportion of each class reaches each position: the compared window ends where the lower curve falls below the coverage a position needs before it can be compared.
+                    <p>One panel per base, one line per label, running 5' to 3' along the sequence. <strong>The shaded bands are the flagged positions</strong> - orange Warning, red Fail, grey not scored. Every position is scored separately and <strong>the flag is the worst single one</strong>. The lower panel is how much of each label still reaches each position.</p>
+                    <p>A flag means something at a fixed location gives the label away: an adapter or barcode left on one label, a padding convention applied to one only, or a real motif - which is the signal, not a leak. Where the flags sit tells you which: a cluster is a motif, position 1 alone is an artefact. {{link_per_position}}</p>
                     {{position_window_note}}
                 </div>
                 {{per-position-nucleotide-content}}
@@ -321,7 +367,8 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div id="per-position-rev-explanation" class="explanation-text">
-                    <strong>Per Position Reversed Nucleotide Content</strong> is similar to the forward position plot, but reads sequences from 3' to 5' (reverse direction): position 1 is the last base of a sequence, position 2 the one before it, and so on, which is why the axis counts from the sequence end. This view helps identify patterns at sequence ends, which is particularly useful for detecting 3' adapter contamination or poly-A tails in RNA-seq data. As in the forward plot, the bottom panel shows what proportion of each class reaches each position, and the window ends where the lower curve falls below the coverage a position needs before it can be compared.
+                    <p>The same check counted from the other end: position 1 is the last base of a sequence, position 2 the one before it. Read it exactly like the forward figure above.</p>
+                    <p>On fixed-length sequences it is redundant and will report the same numbers. It earns its place on variable-length data, where something anchored to the sequence end - a poly-A tail, a 3' adapter - sits at a different forward position in every sequence. {{link_per_position_rev}}</p>
                     {{position_window_note_reversed}}
                 </div>
                 {{per-position-reversed-nucleotide-content}}
@@ -449,6 +496,20 @@ def generate_position_window_html(stats1, stats2):
                 f'and a difference visible in it is not a difference this report is standing '
                 f'behind. {coverage_at(end_position)} reach the last position drawn.</p>')
 
+    # The common case, and the one where the cohort rule never bites: fixed-length
+    # sequences, so the window is the whole sequence and every sequence is behind
+    # every position of it. Spelling out the floors there costs eighty words to
+    # explain a boundary the data never came near. What the rule is stays one
+    # link away, in the same place the rest of the explanation sends the reader.
+    whole = (end_position == scored_end_position
+             and stats1.coverage_at(end_position) >= 1
+             and stats2.coverage_at(end_position) >= 1)
+    if whole:
+        return (f'<p>Positions 1&ndash;{end_position} were compared, all of them: every '
+                f'sequence in both labels reaches every position. Everything the figure '
+                f'draws was scored, so a stretch with no band on it is a stretch that '
+                f'passed.</p>')
+
     # The share each class was asked for, not the share that turned out to be
     # binding: on most datasets the latter is the sequence count restated as a
     # percentage, which explains nothing. The counts themselves come from the
@@ -522,13 +583,40 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     html_template = put_data(html_template, "{{tool_tagline}}", TOOL_TAGLINE)
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
-    html_template = put_data(html_template, "{{input_paths}}", input_paths)
     html_template = put_data(html_template, "{{version}}", __version__)
+
+    # What this particular report looked at, and how it came out. The subject
+    # line is the one thing a reader handed the file cannot work out for
+    # themselves, and the verdict saves them counting circles in the navigation.
+    label1 = str(stats1.label) if stats1.label is not None else 'N/A'
+    label2 = str(stats2.label) if stats2.label is not None else 'N/A'
+    subject = (f'Comparing label <strong>{html.escape(label1)}</strong> with label '
+               f'<strong>{html.escape(label2)}</strong> in '
+               f'{html.escape(str(input_paths))}')
+    html_template = put_data(html_template, "{{report_subject}}", subject)
+    html_template = put_data(html_template, "{{report_verdict}}",
+                             verdict_html(summary_statuses, CHECK_NAMES))
+    html_template = put_data(html_template, "{{sidebar_links}}", SIDEBAR_LINKS_HTML)
+    # Long enough to identify the report in a tab or a bookmark, short enough
+    # that a tab still shows the part that distinguishes it from its neighbours.
+    html_template = put_data(
+        html_template, "{{page_title}}",
+        html.escape(f'{stats1.filename}: {label1} vs {label2} - gb-qc'))
+
+    for placeholder, (page, anchor, text) in EXPLANATION_LINKS.items():
+        html_template = put_data(html_template, placeholder,
+                                 docs_link(page, anchor, text))
+    # The one explanation with two places to go on to: what the check means, and
+    # how to drive the figure it is attached to.
+    html_template = put_data(
+        html_template, "{{link_per_position}}",
+        docs_link('checks', 'per-position-nucleotide-content', 'What to do about it')
+        + docs_link('viewer', text='Reading the figure'))
 
     html_template = put_data(html_template, "{{filename1}}", stats1.filename)
     html_template = put_data(html_template, "{{filename2}}", stats2.filename)
-    html_template = put_data(html_template, "{{label1}}", str(stats1.label) if stats1.label is not None else "N/A")
-    html_template = put_data(html_template, "{{label2}}", str(stats2.label) if stats2.label is not None else "N/A")
+    html_template = put_data(html_template, "{{label1}}", label1)
+    html_template = put_data(html_template, "{{label2}}", label2)
     html_template = put_data(html_template, "{{seq_col1}}", str(stats1.seq_column) if stats1.seq_column is not None else "N/A")
     html_template = put_data(html_template, "{{seq_col2}}", str(stats2.seq_column) if stats2.seq_column is not None else "N/A")
     html_template = put_data(html_template, "{{number_of_sequences1}}", str(stats1.stats['Number of sequences']))

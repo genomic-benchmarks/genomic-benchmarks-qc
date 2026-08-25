@@ -9,6 +9,7 @@ single standalone file that opens with no network and no sibling assets.
 
 import json
 import re
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -131,10 +132,24 @@ class TestInteractivePerPosition:
 
 class TestStandalone:
     def test_nothing_is_loaded_from_outside_the_file(self, page):
-        references = [ref for ref in re.findall(r'(?:src|href)="([^"]*)"', page)
-                      if not ref.strip().startswith(('#', 'data:'))]
+        """A report opens complete with no network. Subresources only - an <a>
+        pointing at the documentation is somewhere the reader can go, not
+        something the page fetches to render itself."""
+        subresources = [
+            ref for ref in re.findall(r'\bsrc="([^"]*)"', page)
+            + re.findall(r'<link[^>]+href="([^"]*)"', page)
+            if not ref.strip().startswith(('#', 'data:'))
+        ]
 
-        assert references == []
+        assert subresources == []
+
+    def test_the_links_out_go_to_the_project(self, page):
+        """The only outbound links are to the tool: nowhere else is worth
+        sending a reader who was handed this file."""
+        hosts = {urlparse(href).netloc
+                 for href in re.findall(r'<a[^>]+href="(http[^"]*)"', page)}
+
+        assert hosts == {'genomic-benchmarks.github.io', 'github.com'}
 
     def test_the_styling_and_behaviour_are_inlined(self, page):
         assert '<style>' in page

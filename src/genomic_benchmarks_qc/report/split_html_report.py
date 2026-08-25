@@ -22,11 +22,14 @@ from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
     LOGO_BASE64,
     REPORT_HEADER_HTML,
+    SIDEBAR_LINKS_HTML,
     TOOL_DESCRIPTION,
     TOOL_TAGLINE,
+    docs_link,
     encode_image_to_base64,
     icon_html,
     put_data,
+    verdict_html,
 )
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
 
@@ -42,7 +45,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Similar Sequences Report</title>
+    <title>{{page_title}}</title>
     <style>
     {{common_css}}
     </style>
@@ -63,6 +66,7 @@ HTML_TEMPLATE = """
                 {{icon_data_leakage}}
                 <a href="#similarity-section">Data Leakage</a>
             </div>
+{{sidebar_links}}
         </div>
 
         <div class="content">
@@ -111,25 +115,23 @@ HTML_TEMPLATE = """
                 </div>
                 <div id="data-leakage-explanation" class="explanation-text">
                     <p>
-                        Genomic Benchmarks QC evaluate-splits uses
-                        <a href="https://github.com/soedinglab/MMseqs2" target="_blank">MMseqs2</a>
-                        to perform an ultra fast and sensitive test sequence search against a train set database and compute alignment-based
-                        metrics for detecting data leakage across train–test splits.
+                        Every test sequence searched against the train set with
+                        <a href="https://github.com/soedinglab/MMseqs2" target="_blank" rel="noopener">MMseqs2</a>,
+                        and scored on its best hit. Similarity is
+                        min(query coverage, target coverage) × percent identity: how much of
+                        the shorter sequence the alignment spans, times how much of that matches.
+                        The histogram is the distribution of those best hits.
                     </p>
                     <p>
-                        Data leakage is the percentage of train/test sequences whose best alignment exceeds the configured similarity threshold.
-                        Here, similarity equals min(query coverage, target coverage) × percent identity,
-                        where coverage is the fraction of each sequence spanned by the alignment,
-                        and percent identity is the proportion of identical aligned positions.
+                        The flag is the percentage of <em>test</em> sequences at or above the
+                        threshold: Pass at 0%, Warning below 2%, Fail at 2% or more. A test
+                        sequence that near-duplicates a training one is one the model has
+                        already seen, so the accuracy it earns there is not evidence.
+                        {{link_leakage}}
                     </p>
                     <p>
-                        Status is based on the percentage of test sequences with similarity at or above the threshold:
-                        Pass means 0% leaked test sequences, Warning means greater than 0% and less than 2%,
-                        and Fail means 2% or more.
-                    </p>
-                    <p>
-                        The panel under the histogram lists the alignments at or above the threshold, up to the
-                        first {{row_cap}}; every hit is exported to
+                        The panel under the histogram lists those alignments, up to the first
+                        {{row_cap}}; every hit is exported to
                         <code>mmseqs/mmseqs2_search_result.tsv</code> beside this report. Its columns are:
                     </p>
                     <dl class="explanation-defs">
@@ -256,15 +258,35 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     # header info
     if tool_description is None:
         tool_description = TOOL_DESCRIPTION
-    input_paths = f"{basic_stats['train_filename']}, {basic_stats['test_filename']}" if basic_stats['train_filename'] != basic_stats['test_filename'] else basic_stats['train_filename']
     generated_on = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     html_template = put_data(html_template, "{{tool_tagline}}", TOOL_TAGLINE)
     html_template = put_data(html_template, "{{tool_description}}", tool_description)
     html_template = put_data(html_template, "{{generated_on}}", generated_on)
-    html_template = put_data(html_template, "{{input_paths}}", input_paths)
     html_template = put_data(html_template, "{{version}}", __version__)
     html_template = put_data(html_template, "{{row_cap}}", str(ROW_CAP))
+
+    # The subject line here is the split itself: which file was searched against
+    # which, in that order, because the flag is about the test side. Only names
+    # are available - evaluate_splits keeps Path(f).name, not the path - so there
+    # is nothing further to add after them.
+    test_name = html.escape(str(basic_stats['test_filename']))
+    train_name = html.escape(str(basic_stats['train_filename']))
+    html_template = put_data(
+        html_template, "{{report_subject}}",
+        f'Searching test set <strong>{test_name}</strong> against train set '
+        f'<strong>{train_name}</strong>')
+    leakage_flags = {'Data Leakage': flag_split_data_leakage(
+        threshold_stats['perc_queries_above_thr'])}
+    html_template = put_data(html_template, "{{report_verdict}}",
+                             verdict_html(leakage_flags, ('Data Leakage',)))
+    html_template = put_data(html_template, "{{sidebar_links}}", SIDEBAR_LINKS_HTML)
+    html_template = put_data(
+        html_template, "{{page_title}}",
+        html.escape(f'{basic_stats["test_filename"]} vs '
+                    f'{basic_stats["train_filename"]}: leakage - gb-qc'))
+    html_template = put_data(html_template, "{{link_leakage}}",
+                             docs_link('leakage', text='What to do about it'))
 
     html_template = put_data(html_template, "{{train_filename}}", str(basic_stats['train_filename']))
     html_template = put_data(html_template, "{{test_filename}}", str(basic_stats['test_filename']))
@@ -285,11 +307,10 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{histogram_similarity_base64}}",
                              encode_image_to_base64(plots_paths_dict['Similarity histograms']))
 
-    leakage_flag = flag_split_data_leakage(threshold_stats["perc_queries_above_thr"])
     html_template = put_data(
         html_template,
         "{{icon_data_leakage}}",
-        icon_html({"Data Leakage": leakage_flag}, "Data Leakage")
+        icon_html(leakage_flags, "Data Leakage")
     )
 
     results_display = results_filt.head(ROW_CAP).copy()  # the page lists at most this many hits

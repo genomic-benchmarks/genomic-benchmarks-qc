@@ -91,12 +91,56 @@ a:hover { text-decoration: underline; }
 }
 .sidebar > .sidebar-item > a::after { content: ""; position: absolute; inset: 0; }
 
+/* The foot of the nav. Small, and separated by a rule rather than a heading -
+   it is the way out of the report, not part of its contents. */
+.sidebar-links {
+  margin: 22px 8px 0; padding-top: 14px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+}
+.sidebar-links a {
+  display: inline; width: auto; font-size: 12.5px; color: var(--ink-3);
+}
+.sidebar-links a:hover { color: var(--accent); }
+
 /* ---------------- sections as cards ---------------- */
 section {
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
   padding: 20px 22px; margin: 0 0 18px;
 }
-.report-header { margin-bottom: 8px !important; }
+/* ---------------- the page header ----------------
+ * Two jobs, in this order: say what the tool is, for a reader who was handed
+ * the file and nothing else, then say what this report looked at and how it
+ * came out. The nav already carries the wordmark, so the one here is the
+ * report's title block rather than a second logo, and is sized for that.
+ */
+.report-header { margin: 0 0 18px; }
+.report-header img.report-logo {
+  display: block; max-width: 250px; height: auto; margin: 4px 0 12px;
+}
+.report-tagline { font-size: 16px; font-weight: 650; color: var(--ink); }
+.report-lede { font-size: 14.5px; color: var(--ink-2); margin: 4px 0 0; max-width: 70ch; }
+.report-subject { font-size: 14.5px; color: var(--ink); margin: 14px 0 0; }
+.report-subject strong { font-weight: 650; }
+.report-meta { font-size: 12.5px; color: var(--ink-3); margin: 8px 0 0; }
+/* The verdict doubles as the key to the circles used down the whole page, so
+ * every count carries the icon it counts and the boundaries behind them are one
+ * link away. Wraps rather than truncates: four flag kinds fit on one line at
+ * the reading width, and on a narrow window they stack. */
+.report-verdict {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  margin: 10px 0 0; padding: 10px 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  font-size: 14px; color: var(--ink-2);
+}
+.report-verdict .verdict-total { font-weight: 650; color: var(--ink); }
+.report-verdict .verdict-part { display: inline-flex; align-items: center; gap: 6px; }
+.report-verdict .status-icon-small {
+  width: 18px; height: 18px; line-height: 18px; font-size: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; text-align: center;
+}
+.report-verdict .explanation-more { margin-left: auto; }
+
 .section-header { gap: 8px; align-items: center; }
 /* Each check heading is a .sidebar-item too - the status circle and the
  * heading on one row - and report.css gives that row no gap, so the circle
@@ -148,6 +192,20 @@ h3 { color: var(--ink-2); }
 .explanation-text p { margin: 10px 0 0; }
 .explanation-text p:first-child { margin-top: 0; }
 .explanation-text p:last-child { margin-bottom: 0; }
+/* File names and characters are quoted in these boxes - a bare N in a sentence
+   about characters is ambiguous with the word. Nothing styled <code> before. */
+code {
+  font-family: var(--mono); font-size: 0.92em;
+  background: rgba(16, 21, 28, .055); border-radius: 4px; padding: 1px 4px;
+}
+/* Sits at the end of the sentence it follows, not on a line of its own: the
+   explanation is short enough that a separate row for the link would be most of
+   its height. */
+.explanation-more { white-space: nowrap; font-weight: 600; margin-left: 6px; }
+/* one explanation sends the reader two places; without this the arrows run together */
+.explanation-more + .explanation-more::before {
+  content: "\00b7"; color: var(--ink-3); font-weight: 400; margin-right: 8px;
+}
 .not-scored-note {
   background-color: var(--ground); border-radius: 8px; color: var(--ink-2);
   font-size: 13.5px;
