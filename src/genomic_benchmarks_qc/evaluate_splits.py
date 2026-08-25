@@ -20,6 +20,7 @@ import pandas as pd
 from genomic_benchmarks_qc.report.report_generator import (
     generate_simple_report,
     generate_splits_html_report,
+    validate_report_types,
 )
 from genomic_benchmarks_qc.report.split_html_report import ROW_CAP
 from genomic_benchmarks_qc.utils import mmseqs_runtime
@@ -51,6 +52,12 @@ from genomic_benchmarks_qc.utils.split_stats import (
     get_basic_stats_from_aggregates,
     get_threshold_stats,
 )
+
+# The reports this command writes. Declared here rather than in the CLI, which is
+# how `json` came to be accepted and then silently ignored: there is nothing per
+# sequence to put in a JSON file for a search that reports on the split as a
+# whole, and the CLI had no way to know that.
+REPORT_TYPES = ('html', 'simple')
 
 
 def add_alignment_sequences(results_filt, test_fasta_path, train_fasta_path):
@@ -249,7 +256,9 @@ def run(
         sequence_column: Name of the columns with sequences to analyze for datasets in
             CSV/TSV format. Several columns are concatenated per row and searched
             together. Default: `['sequence']`.
-        report_types: Types of reports to generate. Default: `['html', 'simple']`.
+        report_types: Types of reports to generate, from
+            [REPORT_TYPES][genomic_benchmarks_qc.evaluate_splits.REPORT_TYPES].
+            Default: `['html', 'simple']`.
         similarity_threshold: Similarity threshold for flagging potential data leakage
             (between 0 and 100). Default: `90.0`.
         threads: Maximum number of threads MMseqs2 will use. Default: `None`.
@@ -266,6 +275,7 @@ def run(
         sequence_column = ['sequence']
     if report_types is None:
         report_types = ['html', 'simple']
+    validate_report_types(report_types, REPORT_TYPES, 'evaluate-splits')
 
     setup_logger(log_level, log_file)
     logging.info("Starting train-test split evaluation.")

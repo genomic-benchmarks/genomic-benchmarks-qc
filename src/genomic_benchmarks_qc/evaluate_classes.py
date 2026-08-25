@@ -19,6 +19,7 @@ from genomic_benchmarks_qc.report.report_generator import (
     generate_dataset_html_report,
     generate_json_report,
     generate_simple_report,
+    validate_report_types,
 )
 from genomic_benchmarks_qc.utils.input_utils import (
     ensure_directory,
@@ -42,6 +43,10 @@ from genomic_benchmarks_qc.utils.naming import (
 )
 from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE, SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
+
+# The reports this command writes, declared beside the code that writes them so
+# the CLI cannot offer one that never arrives.
+REPORT_TYPES = ('json', 'html', 'simple')
 
 
 def run_analysis(input_statistics, report_dir, report_types, plot_type):
@@ -333,7 +338,9 @@ def run(input: list[str],
         regression: If True, label column is considered as a regression target and values
             are split into 2 classes at the median. Raises ValueError if that does not
             produce two non-empty classes.
-        report_types: Types of reports to generate. Default: `['html', 'simple']`.
+        report_types: Types of reports to generate, from
+            [REPORT_TYPES][genomic_benchmarks_qc.evaluate_classes.REPORT_TYPES].
+            Default: `['html', 'simple']`.
         end_position: Last position of the sequences the per-position checks reach,
             1-based and inclusive. If not provided, the last position that at least
             [MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION]
@@ -363,6 +370,7 @@ def run(input: list[str],
         report_types = ['html', 'simple']
     if label_list is None:
         label_list = ['infer']
+    validate_report_types(report_types, REPORT_TYPES, 'evaluate-classes')
 
     setup_logger(log_level, log_file)
     logging.info("Starting classes evaluation.")

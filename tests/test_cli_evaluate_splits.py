@@ -55,7 +55,7 @@ class TestArgumentPassing:
             "--sequence-column", "seq_a",
             "--sequence-column", "seq_b",
             "--out-folder", out,
-            "--report-types", "json",
+            "--report-types", "simple",
             "--similarity-threshold", "80.5",
             "--threads", "8",
             "--split-memory-limit", "10G",
@@ -71,7 +71,7 @@ class TestArgumentPassing:
             'format': 'csv',
             'out_folder': out,
             'sequence_column': ['seq_a', 'seq_b'],
-            'report_types': ['json'],
+            'report_types': ['simple'],
             'similarity_threshold': 80.5,
             'threads': 8,
             'split_memory_limit': '10G',
@@ -286,7 +286,7 @@ class TestValidation:
         assert "Invalid report type 'pdf'" in result.stderr
         assert not splits_run.called
 
-    @pytest.mark.parametrize("report_type", ["json", "html", "simple"])
+    @pytest.mark.parametrize("report_type", ["html", "simple"])
     def test_valid_report_types_are_accepted(self, runner, split_files, splits_run, report_type):
         train, test = split_files
 
@@ -296,6 +296,22 @@ class TestValidation:
 
         assert result.exit_code == 0
         assert splits_run.kwargs['report_types'] == [report_type]
+
+    def test_a_report_type_this_command_cannot_write_is_rejected(
+            self, runner, split_files, splits_run):
+        """`json` is the classes command's per-class statistics; a search that
+        reports on the split as a whole has nothing to put in one. Accepting it
+        here meant a full MMseqs2 run that wrote no file and exited 0."""
+        train, test = split_files
+
+        result = invoke(
+            runner, "--train-input", train, "--test-input", test, "--report-types", "json"
+        )
+
+        assert result.exit_code == 1
+        assert "Invalid report type 'json'" in result.stderr
+        assert "html, simple" in result.stderr
+        assert not splits_run.called
 
     def test_invalid_log_level_is_rejected(self, runner, split_files, splits_run):
         train, test = split_files

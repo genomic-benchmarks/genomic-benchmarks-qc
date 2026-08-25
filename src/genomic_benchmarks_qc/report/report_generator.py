@@ -20,6 +20,27 @@ from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 
 
+def validate_report_types(report_types, valid_types, command):
+    """Reject a report type a command does not produce.
+
+    Which types exist is not a property of the tool but of each command - the
+    classes command writes per-class JSON and the splits command has nothing to
+    put in one - so the set is declared next to the code that implements it and
+    passed in here.
+
+    Raises ValueError rather than skipping the unknown type. Skipping is what the
+    splits command used to do with `json`: a full MMseqs2 search, a "successfully
+    completed" line, exit 0, and no file anywhere.
+    """
+    unknown = [str(report_type) for report_type in report_types
+               if report_type not in valid_types]
+    if unknown:
+        raise ValueError(
+            f"{command} cannot produce report type(s): {', '.join(unknown)}. "
+            f"Valid types are: {', '.join(valid_types)}."
+        )
+
+
 def generate_splits_html_report(basic_stats, threshold_stats, results_filt, output_path,
                                 plots_dir, query_similarity_max, target_similarity_max,
                                 leaked_hits=None):

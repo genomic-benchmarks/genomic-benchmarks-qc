@@ -320,7 +320,7 @@ position. It can only narrow what gets flagged, never widen it.
 | `--test-input` | required | Test file(s) |
 | `--sequence-column` | `sequence` | Column with sequences |
 | `--out-folder` | `.` | Output directory; reports go into `<out-folder>/split/` |
-| `--report-types` | `html simple` | Report formats |
+| `--report-types` | `html simple` | `html`, `simple` |
 | `--similarity-threshold` | `90.0` | % similarity for leakage flag |
 | `--threads` | auto | MMseqs2 thread count |
 | `--split-memory-limit` | unlimited | Upper RAM limit for MMseqs2 prefilter structures (e.g. `10G`, `1T`) |

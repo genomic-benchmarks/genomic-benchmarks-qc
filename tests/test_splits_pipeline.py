@@ -108,6 +108,22 @@ class TestHtmlReportBundle:
         assert (comparison / 'gb-qc-report.csv').is_file()
 
 
+class TestReportTypes:
+    def test_a_type_this_command_cannot_write_is_refused(self, tmp_path, split_inputs):
+        """The CLI checks this too, against the same constant. This is the
+        library path, where the failure was a run that did all the work - a full
+        MMseqs2 search - logged "successfully completed" and wrote nothing."""
+        train, test = split_inputs
+
+        with pytest.raises(ValueError, match="cannot produce report type"):
+            evaluate_splits.run(
+                train_files=[train], test_files=[test], format='csv',
+                out_folder=str(tmp_path / 'out'), report_types=['json'],
+            )
+
+        assert not (tmp_path / 'out' / 'split').exists()
+
+
 class TestEveryLeakedHitIsCountedAndExported:
     """The panel's count and the exported table both cover every leaked hit.
 

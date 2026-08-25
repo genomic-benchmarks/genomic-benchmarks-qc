@@ -133,6 +133,19 @@ class TestInputValidation:
         # Rejected while reading, so no partial reports are left behind.
         assert _reports(tmp_path / 'out') == []
 
+    def test_an_unknown_report_type_is_refused(self, tmp_path):
+        """Silently skipping one would mean a run that does all the work and
+        writes nothing - which is what the splits command used to do with json."""
+        with pytest.raises(ValueError, match="cannot produce report type"):
+            evaluate_classes.run(
+                input=[write_csv(tmp_path / 'data.csv', ['a', 'b'], rows_per_label=15)],
+                format='csv',
+                out_folder=str(tmp_path / 'out'),
+                report_types=['pdf'],
+            )
+
+        assert _reports(tmp_path / 'out') == []
+
 
 class TestInputMerging:
     def test_multiple_input_files_are_pooled_into_one_dataset(self, tmp_path, caplog):

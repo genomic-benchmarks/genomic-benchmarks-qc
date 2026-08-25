@@ -13,7 +13,9 @@ from pathlib import Path
 
 import typer
 
+from genomic_benchmarks_qc.evaluate_classes import REPORT_TYPES as CLASSES_REPORT_TYPES
 from genomic_benchmarks_qc.evaluate_classes import run as run_evaluate_classes
+from genomic_benchmarks_qc.evaluate_splits import REPORT_TYPES as SPLITS_REPORT_TYPES
 from genomic_benchmarks_qc.evaluate_splits import run as run_evaluate_splits
 from genomic_benchmarks_qc.utils.seq_stats import (
     DEFAULT_MIN_COVERAGE,
@@ -29,7 +31,6 @@ app = typer.Typer(no_args_is_help=True)
 # 'fasta') are what inputs are actually validated against — see
 # _normalize_format, which collapses the gzip and 'fa' variants before the check.
 VALID_FORMATS = ['fasta', 'fasta.gz', 'fa', 'fa.gz', 'csv', 'csv.gz', 'tsv', 'tsv.gz']
-VALID_REPORT_TYPES = ['json', 'html', 'simple']
 VALID_PLOT_TYPES = ['boxen', 'violin']
 VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
@@ -146,7 +147,8 @@ def evaluate_classes(
         False, help="Treat label column as regression target and split into high/low."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: list[str] = typer.Option(
-        ['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
+        ['html', 'simple'],
+        help=f"Types of reports to generate ({', '.join(CLASSES_REPORT_TYPES)})."),
     end_position: int | None = typer.Option(
         None, help=(
             "Last position the per-position checks reach. Defaults to the last position at "
@@ -177,7 +179,7 @@ def evaluate_classes(
     if format == 'fasta' and len(input) < 2:
         _fail("When format is 'fasta', at least 2 input files are required (one per class).")
 
-    _validate_choices(report_types, VALID_REPORT_TYPES, 'report type')
+    _validate_choices(report_types, CLASSES_REPORT_TYPES, 'report type')
     _validate_choice(plot_type, VALID_PLOT_TYPES, 'plot type')
     _validate_choice(log_level, VALID_LOG_LEVELS, 'log level')
 
@@ -214,7 +216,8 @@ def evaluate_splits(
         ['sequence'], help="One or more sequence column names for CSV/TSV inputs."),
     out_folder: str = typer.Option('.', help="Output folder for reports."),
     report_types: list[str] = typer.Option(
-        ['html', 'simple'], help="Types of reports to generate (json, html, simple)."),
+        ['html', 'simple'],
+        help=f"Types of reports to generate ({', '.join(SPLITS_REPORT_TYPES)})."),
     similarity_threshold: float = typer.Option(
         90.0, help="Similarity threshold for data leakage detection (%)."),
     threads: int | None = typer.Option(
@@ -235,7 +238,7 @@ def evaluate_splits(
     # Both halves are searched against each other, so they must share a format
     format = _resolve_format(train_input + test_input)
 
-    _validate_choices(report_types, VALID_REPORT_TYPES, 'report type')
+    _validate_choices(report_types, SPLITS_REPORT_TYPES, 'report type')
     _validate_choice(log_level, VALID_LOG_LEVELS, 'log level')
 
     if not 0 <= similarity_threshold <= 100:
