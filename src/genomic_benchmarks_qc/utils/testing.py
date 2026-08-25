@@ -41,7 +41,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import average_precision_score, roc_auc_score
 
 if TYPE_CHECKING:
     # Imported for annotations only: seq_stats imports this module, so a real
@@ -115,6 +114,13 @@ def _compute_metrics_from_arrays(values_1: np.ndarray, values_2: np.ndarray) -> 
     Returns:
         Dictionary with AU-ROC, AU-PR, Accuracy, and Flag.
     """
+    # Imported here, not at the top of the module: sklearn brings scipy with it,
+    # which is half a second and 60 MB, and this module is on the import path of
+    # `gb-qc --help`. Since the per-position checks stopped coming through here
+    # this runs about twenty times per comparison, so the repeated import is a
+    # lookup in `sys.modules` against work that only a real run should pay for.
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
     values_1 = np.asarray(values_1, dtype=float)
     values_2 = np.asarray(values_2, dtype=float)
 

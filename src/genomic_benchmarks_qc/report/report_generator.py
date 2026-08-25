@@ -4,15 +4,19 @@ The entry points both commands call. Everything about *what* a report looks like
 lives further down - the templates in `classes_html_report`/`split_html_report`,
 the figures in `classes_plots`/`splits_plots` - and the names of the files are
 defined in `genomic_benchmarks_qc.utils.naming`.
+
+The figures are imported inside the two functions that draw them rather than at
+the top of this module. seaborn brings scipy.stats and matplotlib with it, which
+is a second of startup and 130 MB of memory before Typer has read an argument -
+paid by `gb-qc --help`, and by every run that asks only for `simple` or `json`
+reports and never draws anything. `test_startup.py` holds that line.
 """
 
 import logging
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
-from genomic_benchmarks_qc.report import classes_plots, splits_plots
 from genomic_benchmarks_qc.report.classes_html_report import get_dataset_html_template
 from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
@@ -66,6 +70,10 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
 
 def generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir):
     """Save the split figures and return {plot title: path} for the template."""
+    # Deferred, for the reason in the module docstring.
+    import matplotlib.pyplot as plt
+
+    from genomic_benchmarks_qc.report import splits_plots
 
     plots_paths_dict = {}
 
@@ -202,6 +210,11 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
     """
 
     logging.info(f"Generating PNG plots at: {output_path}")
+
+    # Deferred, for the reason in the module docstring.
+    import matplotlib.pyplot as plt
+
+    from genomic_benchmarks_qc.report import classes_plots
 
     # The per-position figures draw only what was compared, so the scored window
     # is the one they are plotted over; the wider window the checks themselves
