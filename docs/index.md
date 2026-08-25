@@ -17,6 +17,9 @@ same sequence in both classes, a test set that repeats the training set.
 pip install genomic-benchmarks-qc
 ```
 
+Python 3.12 or newer; the leakage check wants one extra thing — see
+[installation](installation.md).
+
 ```bash
 gb-qc evaluate-classes \
   --input examples/enhancers/data/enhancers_train.csv \

@@ -114,6 +114,7 @@ strict: true
 
 nav:
   - Home: index.md
+  - Installation: installation.md
   - Examples:
       - Overview: examples/index.md
       - clean-dataset: examples/clean-dataset.md

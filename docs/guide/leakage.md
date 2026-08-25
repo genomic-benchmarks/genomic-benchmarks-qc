@@ -19,7 +19,8 @@ gb-qc evaluate-splits \
 ```
 
 Unlike `evaluate-classes`, this one needs
-[MMseqs2](https://github.com/soedinglab/MMseqs2) on your `PATH`.
+[MMseqs2](https://github.com/soedinglab/MMseqs2) on your `PATH` —
+[how to install it](../installation.md#mmseqs2-for-the-leakage-check).
 
 ## How similarity is measured
 

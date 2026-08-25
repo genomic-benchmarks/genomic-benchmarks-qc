@@ -3,9 +3,9 @@
 ## `mmseqs: command not found`
 
 `evaluate-splits` needs [MMseqs2](https://github.com/soedinglab/MMseqs2) on your
-`PATH`; it is not a Python dependency and `pip` will not install it. Get a
-precompiled binary from the
-[installation guide](https://github.com/soedinglab/MMseqs2/wiki#installation).
+`PATH`; it is not a Python dependency and `pip` will not install it. Take a
+precompiled binary — see
+[installing MMseqs2](installation.md#mmseqs2-for-the-leakage-check).
 
 `evaluate-classes` does not need it, so if you only want the class checks you can
 skip this entirely.
