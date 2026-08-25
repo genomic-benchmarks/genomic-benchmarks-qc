@@ -32,12 +32,14 @@ Every check gets a <span class="flag flag-pass">Pass</span>,
 <span class="flag flag-fail">Fail</span> flag, a standalone HTML report you can
 read or mail, and a CSV you can put in CI.
 
-[![The gb-qc HTML report: a filterable flag summary down the side, and every statistic behind it](assets/report-screenshot.png){ .screenshot }](reports/enhancers/class/sequence/0_vs_1/gb-qc-report.html)
+[![The gb-qc report's per-position panel: nucleotide frequencies flat across 398 positions until they diverge sharply in the middle, with a filterable flag summary down the side](assets/report-screenshot.png){ .screenshot }](reports/hidden-motif/class/sequence/0_vs_1/gb-qc-report.html)
 
-The report for [enhancers](examples/enhancers.md), one of the eight worked
-examples below — **click it to open the real one.** Six of its nine checks want
-attention, and the side nav filters down to just those. Everything is in the one
-file: no server, no assets directory, nothing to host.
+The report for [hidden-motif](examples/hidden-motif.md), one of the eight worked
+examples below — **click it to open the real one.** Six of its nine checks pass:
+length, GC content and base composition are all clean, and the entire finding is
+that spike halfway along. The panel is interactive because it has to be — at
+this width the flagged region is a hairline. Everything is in the one file: no
+server, no assets directory, nothing to host.
 
 ## Start here
 

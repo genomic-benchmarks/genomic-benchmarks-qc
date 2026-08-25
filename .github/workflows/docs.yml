@@ -65,6 +65,13 @@ jobs:
           pip install '.'
           pip install -r docs/requirements.txt
 
+      # The landing page's report screenshot is taken with a real browser by
+      # scripts/screenshot_report.py. --with-deps pulls the system libraries
+      # Chromium needs on a bare runner; only chromium is installed, not all
+      # three browser engines.
+      - name: Install Chromium for the report screenshot
+        run: python -m playwright install --with-deps chromium
+
       # evaluate-splits needs it, and five of the eight examples run it.
       # Same pinned release the CI workflow uses.
       - name: Install MMseqs2
@@ -78,8 +85,10 @@ jobs:
           echo "$PWD/mmseqs/bin" >> "$GITHUB_PATH"
 
       # Generates the CLI reference from the Typer app, runs gb-qc over every
-      # example and asserts the flags match each meta.toml, then builds the site
-      # with --strict. Any of those three failing fails the job.
+      # example and asserts the flags match each meta.toml, screenshots one of
+      # the reports it just built, then builds the site with --strict. Any of
+      # those failing fails the job - including the screenshot, which is taken
+      # with --require here so a placeholder cannot reach the site.
       - name: Build site
         run: python scripts/build_docs.py
 

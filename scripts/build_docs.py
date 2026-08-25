@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Assemble the generated parts of the documentation site, then build it.
 
-Three things are generated rather than committed, so that none of them can drift
+Four things are generated rather than committed, so that none of them can drift
 from the code they describe:
 
-    docs/reference/cli.md   the CLI reference, from the Typer app itself
-    docs/reports/<name>/    the example reports, from examples/build.py
-    site/reference/api/     the API reference, by mkdocstrings during the build
+    docs/reference/cli.md              the CLI reference, from the Typer app
+    docs/reports/<name>/               the example reports, from examples/build.py
+    docs/assets/report-screenshot.png  the landing page's shot of one of those
+    site/reference/api/                the API reference, by mkdocstrings
 
 Usage:
 
@@ -21,6 +22,28 @@ published build never skips them.
 Building the reports needs MMseqs2 on PATH for the four `evaluate-splits` runs.
 Both workflows in .github/workflows/ install it; locally, put its `bin` on PATH
 first or the split reports fail and the build stops.
+
+Two traps when running this locally, both of which produce a site that looks
+freshly built and carries pre-edit code. `check_installed_matches_tree` refuses
+to build under either.
+
+The first: uv caches the wheel it
+builds from the source tree and will reuse it while the version is unchanged, so
+the `gb-qc` this calls - and the package mkdocstrings imports - can be older than
+the working tree. Reports come out looking freshly built and carrying stale
+strings. `--refresh-package genomic-benchmarks-qc` is the documented fix and
+does work - but not alongside `--with-requirements`, which makes uv reuse the
+cached build and ignore both --refresh and --refresh-package. Pass the docs
+dependencies as individual `--with` flags, or run this with an interpreter that
+has the package installed editable. CI is unaffected: it does a plain
+`pip install .` on a clean runner.
+
+The second: setuptools reuses `build/lib/` between builds and only copies a
+source file over when it looks newer, so a file it decides is unchanged stays at
+whatever version it was when that directory was first populated. Editing an
+asset that is package data - the report's CSS and JavaScript - and rebuilding
+can therefore ship the old one. `rm -rf build/lib` fixes it. CI is again
+unaffected, having no `build/` at all.
 """
 
 import argparse
@@ -57,6 +80,61 @@ def _run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
     if result.returncode != 0:
         raise SystemExit(f"failed ({result.returncode}): {' '.join(argv)}")
     return result
+
+
+def check_installed_matches_tree():
+    """Refuse to build if the importable package differs from src/.
+
+    Every generated part of this site comes from the installed package rather
+    than from the working tree - the reports from running `gb-qc`, the API pages
+    from mkdocstrings importing it - so if the two disagree, the build succeeds
+    while publishing something the code no longer does. That has happened twice
+    here from two unrelated causes: uv reusing a wheel it had cached from an
+    earlier state of the tree, and setuptools reusing a `build/lib` whose copy of
+    an asset it had decided was current. Rather than test for each cause, this
+    tests the property both of them break.
+
+    An editable install points at src/ and is always in agreement, so this is a
+    no-op there. It compares the package's files, which covers the report's CSS
+    and JavaScript - package data, and the likeliest thing to go stale unnoticed,
+    since nothing about a report looks wrong when its script is a version old.
+
+    The limit worth knowing: this checks the package that `sys.executable` can
+    import, which is also where mkdocstrings reads from and, in every
+    environment used here, where the `gb-qc` on PATH comes from. It cannot see a
+    `gb-qc` resolved from some other environment.
+    """
+    import importlib.util
+
+    spec = importlib.util.find_spec('genomic_benchmarks_qc')
+    if spec is None or not spec.origin:
+        raise SystemExit(
+            "genomic_benchmarks_qc is not importable, so the reports cannot be "
+            "built. Install it: `pip install -e .`"
+        )
+    installed = Path(spec.origin).resolve().parent
+    source = (ROOT / 'src' / 'genomic_benchmarks_qc').resolve()
+    if installed == source:
+        return  # editable install: the same files, by definition
+
+    differing = [
+        path.relative_to(source) for path in sorted(source.rglob('*'))
+        if path.is_file() and path.suffix not in {'.pyc'}
+        and '__pycache__' not in path.parts
+        and (installed / path.relative_to(source)).is_file()
+        and (installed / path.relative_to(source)).read_bytes() != path.read_bytes()
+    ]
+    if differing:
+        raise SystemExit(
+            "the installed package does not match src/, so this build would "
+            "publish code the tree no longer contains:\n  "
+            + '\n  '.join(str(path) for path in differing)
+            + f"\n\ninstalled: {installed}"
+            + "\n\nReinstall it. Under uvx, note that `--with-requirements` "
+              "defeats both --refresh and --refresh-package: pass the docs "
+              "dependencies as individual `--with` flags, or run this from an "
+              "environment with the package installed editable."
+        )
 
 
 def generate_cli_page():
@@ -394,6 +472,21 @@ def expected_report_paths() -> list[tuple[str, str]]:
     return pairs
 
 
+def generate_screenshot(require: bool):
+    """Shoot the landing page's screenshot from a report this build produced.
+
+    scripts/screenshot_report.py explains what it frames and why. `require` is
+    dropped only for prose builds, where accepting a placeholder beats
+    demanding a 150 MB browser download; any build that could be published
+    insists on the real image, so a broken install fails the build instead of
+    quietly publishing a placeholder.
+    """
+    argv = [sys.executable, str(ROOT / 'scripts' / 'screenshot_report.py')]
+    if require:
+        argv.append('--require')
+    _run(argv)
+
+
 def placeholder_reports():
     """Stand in for the reports so links to them still resolve.
 
@@ -419,6 +512,7 @@ def main():
                         help="Leave docs/reports/ alone; for working on prose")
     args = parser.parse_args()
 
+    check_installed_matches_tree()
     generate_cli_page()
     if args.skip_reports:
         REPORTS.mkdir(parents=True, exist_ok=True)
@@ -427,6 +521,7 @@ def main():
               f"placeholder(s) in place so report links still resolve")
     else:
         generate_reports()
+    generate_screenshot(require=not args.skip_reports)
     generate_flag_tables()
     generate_position_tables()
     generate_check_coverage()

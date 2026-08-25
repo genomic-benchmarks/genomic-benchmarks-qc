@@ -7,3 +7,7 @@ mkdocstrings[python]>=0.27,<0.31
 # Signature formatting: without one of Black or Ruff, mkdocstrings leaves long
 # signatures on one line. Ruff is already a dev dependency.
 ruff>=0.16,<0.17
+# The landing page's report screenshot, by scripts/screenshot_report.py. The
+# Chromium build it drives is a separate download - see that script - and the
+# docs workflow installs it. Without it the build writes a placeholder image.
+playwright>=1.49,<2

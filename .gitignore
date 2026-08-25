@@ -144,6 +144,10 @@ venv.bak/
 # examples/. Committing either would let it drift from the code.
 docs/reference/cli.md
 docs/reports/
+# Shot from one of those reports by scripts/screenshot_report.py, for the same
+# reason: taken by hand it drifted, and a stale screenshot of a report is a
+# claim about the current output that nothing checks.
+docs/assets/report-screenshot.png
 
 # mypy
 .mypy_cache/

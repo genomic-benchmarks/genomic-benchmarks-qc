@@ -7,8 +7,8 @@
 #   docs/reference/api/     from the docstrings, by mkdocstrings
 #
 # The example reports are generated too - by examples/build.py - and copied into
-# docs/reports/ before this runs. None of those are committed; see
-# scripts/build_docs.py.
+# docs/reports/ before this runs, along with the landing page's screenshot of
+# one of them. None of those are committed; see scripts/build_docs.py.
 
 site_name: genomic-benchmarks-qc
 site_description: >-
