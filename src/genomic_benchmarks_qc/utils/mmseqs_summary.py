@@ -163,7 +163,16 @@ def _push_top_rows(top_rows_heap, rows, row_order, top_n):
 
 
 def _finalize_results_frame(top_rows_heap):
-    """Turn the heap of top hits into a frame sorted most-similar first."""
+    """Turn the heap of top hits into a frame sorted most-similar first.
+
+    The sort key is (similarity descending, arrival order), which is a total
+    order over the rows: two equally similar hits are separated by the counter
+    `_push_top_rows` stamped them with, so the same input always produces the
+    same table. That is the whole ordering - the frame is built in this order
+    and left in it. Sorting the frame again afterwards was where the
+    determinism went: `sort_values` defaults to quicksort, which is not stable,
+    so it was free to shuffle the ties this key had just settled.
+    """
     top_rows = [
         row_dict
         for _, _, row_dict in sorted(top_rows_heap, key=lambda item: (-item[0], item[1]))
@@ -172,11 +181,6 @@ def _finalize_results_frame(top_rows_heap):
         results_filt = pd.DataFrame(top_rows)
     else:
         results_filt = pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
-    if not results_filt.empty:
-        results_filt = (
-            results_filt.sort_values(by=["min_cov*pident"], ascending=False)
-            .reset_index(drop=True)
-        )
     return results_filt.reindex(columns=MMSEQS_RESULT_COLUMNS)
 
 

@@ -111,6 +111,48 @@ class TestTheJoinBackToSequences:
             summarize_mmseqs_output(hits, 90.0, query_count=3, target_count=3)
 
 
+class TestTheOrderOfTheTopHits:
+    """The alignment table is a listing, so its order has to be reproducible.
+
+    Every hit here scores the same, which is not a corner case: `min_cov*pident`
+    is a product of two rounded percentages, so a real search returns ties by
+    the hundred and the page has to put them somewhere.
+    """
+
+    def make_ties(self, tmp_path, count=40):
+        """`count` hits that all score exactly 95.0, in a known reading order."""
+        return write_hits(tmp_path / 'hits.tsv',
+                          [(i, i, 1.0, 95.0) for i in range(count)])
+
+    def test_ties_keep_the_order_they_were_read_in(self, tmp_path):
+        hits = self.make_ties(tmp_path)
+
+        summary = summarize_mmseqs_output(hits, 90.0, query_count=40, target_count=40)
+
+        assert list(summary['results_filt']['query']) == [
+            sequence_id(i, 'test') for i in range(40)]
+
+    def test_the_same_table_summarises_to_the_same_order_twice(self, tmp_path):
+        """The listing a reader cites has to still say that tomorrow."""
+        hits = self.make_ties(tmp_path)
+
+        first = summarize_mmseqs_output(hits, 90.0, query_count=40, target_count=40)
+        second = summarize_mmseqs_output(hits, 90.0, query_count=40, target_count=40)
+
+        assert list(first['results_filt']['query']) == list(second['results_filt']['query'])
+
+    def test_more_similar_hits_still_come_first(self, tmp_path):
+        """Dropping the second sort must not drop the sorting."""
+        hits = write_hits(tmp_path / 'hits.tsv', [
+            (0, 0, 1.0, 91.0), (1, 1, 1.0, 99.0), (2, 2, 1.0, 95.0),
+        ])
+
+        summary = summarize_mmseqs_output(hits, 90.0, query_count=3, target_count=3)
+
+        assert list(summary['results_filt']['query']) == [
+            sequence_id(1, 'test'), sequence_id(2, 'test'), sequence_id(0, 'test')]
+
+
 class TestStagedIds:
 
     def test_the_ids_come_back_from_the_mask(self):
