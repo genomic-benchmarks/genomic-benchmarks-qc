@@ -139,7 +139,21 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     checkout and is missing from the installed package. `tests/test_report_assets.py` fails when a
     new one is not.
 
-8.  Commit your changes and push your branch to GitHub:
+8.  If you added a file under `tests/` that is not a `test_*.py` module - a fixture, a helper, a
+    data file - add it to `MANIFEST.in`. setuptools finds the test modules by itself and nothing
+    else, so without it the source distribution ships a suite that cannot run. The same trap as
+    package data above, one directory further out:
+
+    ```bash
+    python -m build
+    tar tzf dist/*.tar.gz | grep /tests/
+    ```
+
+    CI's package job builds both artifacts, runs `twine check` on them, and then runs the whole
+    suite from the unpacked tarball. That is the only place a file missing from the sdist shows
+    up: every other check here reads your working tree, where the file is still sitting.
+
+9.  Commit your changes and push your branch to GitHub:
 
     ```bash
     git add .
@@ -147,7 +161,7 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     git push origin name-of-your-bugfix-or-feature
     ```
 
-9.  Submit a pull request through the GitHub website.
+10. Submit a pull request through the GitHub website.
 
 ## Pull Request Guidelines
 

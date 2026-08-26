@@ -168,3 +168,43 @@ jobs:
             --out-folder ci_out/splits
           test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.csv"
           test -f "ci_out/splits/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html"
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      # What PyPI will run on upload, run before the tag rather than after it.
+      - name: Check metadata
+        run: twine check dist/*
+
+      # MANIFEST.in exists so the sdist carries a suite that someone who never
+      # cloned this repository can run. setuptools finds `tests/test_*.py` by
+      # itself and nothing else, so a conftest, a helper module or a data file
+      # added later goes missing from the tarball silently - the checkout above
+      # still has it, and every other job here runs against the checkout. This
+      # unpacks the built tarball somewhere that is not a checkout, which is the
+      # only place that difference shows up.
+      - name: Test suite from the unpacked sdist
+        run: |
+          mkdir -p "$RUNNER_TEMP/sdist"
+          tar xzf dist/*.tar.gz -C "$RUNNER_TEMP/sdist"
+          cd "$RUNNER_TEMP/sdist"/genomic_benchmarks_qc-*/
+          pip install '.[develop]'
+          pytest -q

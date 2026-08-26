@@ -1,0 +1,20 @@
+# What the source distribution carries beyond what setuptools finds by itself.
+#
+# setuptools picks up `tests/test_*.py` on its own and stops there, which ships
+# a suite that cannot run: `conftest.py` holds every fixture the tests ask for,
+# and `helpers.py` holds the input builders that four of the modules import. An
+# unpacked sdist failed collection on four files before this file existed.
+# Matching `*.py` rather than naming the two means a helper added later ships
+# without anyone having to remember this file.
+recursive-include tests *.py
+
+# `test_report_links.py` opens the guide pages to check that every "?"
+# explanation in a report points at a heading that exists. It does not skip when
+# they are missing - it asserts the page is a file, and fails. Only `guide/` is
+# needed; the rest of the site is not, and `docs/reports/` is 29 MB of rendered
+# example reports, which are build output.
+recursive-include docs/guide *.md
+
+# The example datasets under `examples/` are deliberately absent: 13 MB of FASTA
+# and CSV that no test reads. They are there for the documentation site and for
+# people working in a clone, which is what the README's quickstart paths assume.
