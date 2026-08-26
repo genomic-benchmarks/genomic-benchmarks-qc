@@ -59,15 +59,9 @@ a specific motif.
 difference is in overall composition, not in any particular position, which is
 exactly the pattern to expect from a length-driven bias.
 
-## About that Warning
-
-`Sequence lengths` is a <span class="flag flag-warn">Warning</span>, not a
-<span class="flag flag-fail">Fail</span>, and this is the strongest length bias
-available rather than a weak example. Across the 234 dataset splits surveyed for
-the paper, **no dataset fails the length check outright.** The strongest on
-record scores 0.61.
-
-So the README leads with length bias because it is the easiest bias to introduce
-accidentally and the most embarrassing to ship — not because published benchmarks
-are full of it. Published benchmarks are mostly length-matched, often
-deliberately. Yours might not be, and it is the cheapest thing to check.
+**It is a <span class="flag flag-warn">Warning</span>, not a
+<span class="flag flag-fail">Fail</span>**, and 0.631 is as high as the length
+check goes anywhere in these examples — every other one passes it. That is worth
+knowing when you read the README leading with length bias: it leads with it
+because it is the easiest bias to introduce by accident and the cheapest to rule
+out, not because it is the most common.

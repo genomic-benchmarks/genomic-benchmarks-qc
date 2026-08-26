@@ -1,19 +1,15 @@
 # The README's first claim, and the only example with a continuous label.
 #
 # "Your negatives are shorter than your positives. A length classifier now beats
-# your model" leads the README's list of what gb-qc catches, and until this
-# example none of the others demonstrated it - every one of them has classes
-# whose length distributions are identical, scoring the length check at exactly
-# 0.500. Worth knowing why: across all 234 dataset splits surveyed for the
-# paper, no dataset fails the length check outright. The strongest length bias
-# on record is this one, at AU-ROC 0.61 - a Warning. That is a finding about the
-# field rather than a gap in the example set, and the docs page says so.
+# your model" leads the README's list of what gb-qc catches, and this is the only
+# example where that check fires: every other one passes it, most at exactly
+# 0.500. Here it is a Warning at 0.631 - the highest the bundled examples reach.
 #
 # It also carries the only two options nothing else exercises:
 #
 #   --regression      the label is translation efficiency, a continuous value,
 #                     split at its median into high and low
-#   --end-position    these are whole mRNAs, median 3446 nt and up to 17497. Left
+#   --end-position    these are whole mRNAs, median 3463 nt and up to 17497. Left
 #                     unbounded the per-position checks would run for thousands
 #                     of positions and produce a report nobody can load. Trimmed
 #                     to 500, which is what that option is for.

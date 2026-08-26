@@ -44,13 +44,11 @@ does.
 That table is read off the reports themselves, so it cannot fall out of step
 with them. Two gaps in it are worth stating rather than leaving as blanks.
 
-**Nothing fails the length check** — the empty cell in its row is real. Not in
-these examples, and not anywhere in the 234 dataset splits surveyed for the
-paper, where the strongest length bias on record scores AU-ROC 0.61, a
-<span class="flag flag-warn">Warning</span>.
-The README leads with "your negatives are shorter than your positives" because
-it is the easiest bias to introduce and the most embarrassing to ship, not
-because published benchmarks are riddled with it.
+**Nothing fails the length check** — the empty cell in its row is real. The
+closest any example comes is [length-bias](length-bias.md) at AU-ROC 0.631, a
+<span class="flag flag-warn">Warning</span>. The README leads with "your
+negatives are shorter than your positives" because it is the easiest bias to
+introduce and the most embarrassing to ship, not because every benchmark has it.
 
 **`Unique bases` has no Warning.** It is a yes-or-no question — either the two
 classes use the same set of characters or they do not — so it never lands in

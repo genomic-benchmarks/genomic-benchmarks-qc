@@ -63,11 +63,6 @@ than at a fixed length. If the difference is intrinsic to the biology (mRNAs
 really do differ in length by translation efficiency), report the length-only
 baseline alongside your model so a reader can see what the model added.
 
-**Worth knowing:** across the 234 dataset splits surveyed for the paper, **no
-dataset fails this check outright** — the strongest length bias on record scores
-0.61. Published benchmarks are mostly length-matched, often deliberately. Yours
-might not be, and this is the cheapest thing to check.
-
 **See it warn:** [length-bias](../examples/length-bias.md).
 
 ## Per sequence GC content
