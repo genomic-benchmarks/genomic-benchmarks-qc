@@ -6,7 +6,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from genomic_benchmarks_qc.report.classes_plots import HuePalette, prepare_legend
-from genomic_benchmarks_qc.report.utils import FAIL_COLOR
+from genomic_benchmarks_qc.report.colors import FAIL_COLOR
 
 # The similarity axis: ten bins of ten percent, the last closed at both ends so
 # a perfect 100% match lands in it rather than off the end.

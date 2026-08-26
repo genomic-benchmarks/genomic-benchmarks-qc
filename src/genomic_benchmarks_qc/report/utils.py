@@ -9,14 +9,6 @@ from pathlib import Path
 
 from genomic_benchmarks_qc.report import assets
 
-# Re-exported: the colors are defined in report.colors, which the stylesheets
-# also read, and imported from here by the plotting modules.
-from genomic_benchmarks_qc.report.colors import (  # noqa: F401
-    FAIL_COLOR,
-    PASS_COLOR,
-    UNKNOWN_COLOR,
-    WARN_COLOR,
-)
 
 # A figure is written to plots/ at print resolution and embedded in the page at
 # half of it. The images are most of a report's bytes - the four a class report
