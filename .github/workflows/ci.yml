@@ -4,8 +4,16 @@ on:
   push:
     branches: [main, dev]
   pull_request:
+  # What the publish job at the bottom hangs off. A published Release rather
+  # than a tag push, because a tag is easy to push by reflex and a Release is
+  # not: it has a body you have to write and a button you have to mean.
+  release:
+    types: [published]
 
 concurrency:
+  # `github.ref` is `refs/tags/vX.Y.Z` for a release event and a branch ref
+  # otherwise, so these two never share a group - a push to main cannot cancel
+  # a release mid-upload.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -194,6 +202,31 @@ jobs:
       - name: Check metadata
         run: twine check dist/*
 
+      # The version is dynamic - setuptools reads `__version__` out of the
+      # package - so nothing otherwise ties the number that lands on PyPI to the
+      # tag you published. This reads the built filename rather than the source
+      # attribute, because the filename is what PyPI takes the version from: it
+      # checks the artifact that will actually be uploaded. Failing here costs a
+      # run. The wrong number on PyPI cannot be taken back at all.
+      - name: Tag matches the built version
+        if: github.event_name == 'release'
+        env:
+          # Through the environment, not interpolated into the script: a tag
+          # name is attacker-controllable text.
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(basename "$(ls dist/*.tar.gz)" .tar.gz)
+          version=${version##*-}
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Release tag '$TAG' does not match the built version" \
+                 "'$version'. Either tag the release 'v$version', or bump" \
+                 "__version__ in src/genomic_benchmarks_qc/__init__.py to match" \
+                 "the tag - and note that the leading v is part of the tag and" \
+                 "not part of the version."
+            exit 1
+          fi
+          echo "Tag $TAG matches the built version $version."
+
       # MANIFEST.in exists so the sdist carries a suite that someone who never
       # cloned this repository can run. setuptools finds `tests/test_*.py` by
       # itself and nothing else, so a conftest, a helper module or a data file
@@ -208,3 +241,62 @@ jobs:
           cd "$RUNNER_TEMP/sdist"/genomic_benchmarks_qc-*/
           pip install '.[develop]'
           pytest -q
+
+      # Last, so this holds bytes that have been checked and tested rather than
+      # merely built - and so the publish job below uploads those same bytes.
+      # Rebuilding there would test one tarball and ship a different one.
+      #
+      # On every run, not only on a release: a step that runs for the first time
+      # on the one run that must not fail is a step nobody has ever seen work.
+      - name: Upload the built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          # The publish job downloads this seconds later, within this same run.
+          # Nothing needs it afterwards; PyPI keeps the durable copy.
+          retention-days: 7
+
+  # No checkout step, deliberately: this job builds nothing and reads nothing
+  # from the repository. It downloads what `package` tested and hands it to
+  # PyPI, and that is all it can do - a `permissions:` block replaces the
+  # defaults rather than adding to them, so every scope but `id-token` is
+  # dropped here.
+  publish:
+    name: Publish to PyPI
+    # Only on a published Release, and only once lint, all three Python versions
+    # and the sdist suite are green on that exact commit. `needs:` cannot reach
+    # across workflow files, which is why this lives in ci.yml rather than in a
+    # release.yml of its own: a standalone workflow would have to either rebuild
+    # everything itself or upload artifacts that nothing had verified.
+    if: github.event_name == 'release'
+    needs: [lint, test, package]
+    runs-on: ubuntu-latest
+
+    # Created at Settings -> Environments with a required reviewer, so the
+    # upload waits for a second deliberate click and a stray tag cannot ship
+    # anything on its own. The name has to match the pending publisher
+    # registered on PyPI, which names this workflow file and this environment;
+    # a mismatch reads to PyPI as an unauthorised publisher, not as a typo.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/genomic-benchmarks-qc
+
+    permissions:
+      # Trusted Publishing: GitHub mints a short-lived credential for this one
+      # run and PyPI trades it for the upload, so there is no API token to
+      # create, store or rotate. It also buys the PEP 740 attestation the action
+      # attaches by default, which records that these files were built from this
+      # commit in this repository - worth having for a tool people will cite.
+      id-token: write
+
+    steps:
+      - name: Download the tested artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
