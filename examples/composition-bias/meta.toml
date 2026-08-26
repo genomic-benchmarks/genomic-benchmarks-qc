@@ -1,0 +1,60 @@
+# The worst case, and the only example that fails both kinds of report.
+#
+# Small enough to ship whole, which matters here: the leakage percentage is a
+# property of the exact train and test sets, so shipping them intact means the
+# number in the docs is the number for the published dataset rather than for a
+# subsample of it.
+
+name = "composition-bias"
+title = "Bias a length classifier could exploit"
+blurb = """
+Human core promoters with a TATA box. The classes differ in GC content,
+nucleotide and dinucleotide composition, they share sequences with each other,
+and 6% of the test set is already in the training set. Six checks fail.
+"""
+
+[source]
+collection = "GUE_v2"
+dataset = "core_promoter_detection_tata"
+citation = "Zhou et al. DNABERT-2: Efficient Foundation Model and Benchmark For Multi-Species Genome. arXiv:2306.15006"
+url = "https://arxiv.org/abs/2306.15006"
+redistribution = "permitted"
+# Where data/ came from. The files are the artefact; the sampling that
+# produced them is recorded here rather than scripted, so this note is
+# the provenance.
+derived = """
+train and test splits in full, 4904 and 613 sequences.
+Only the label and sequence columns were kept.
+"""
+
+[[run]]
+id = "class"
+command = "evaluate-classes"
+args = ["--input", "data/train.csv"]
+
+[[run]]
+id = "split"
+command = "evaluate-splits"
+args = [
+    "--train-input", "data/train.csv",
+    "--test-input", "data/test.csv",
+    "--sequence-column", "sequence",
+]
+
+# The flags this example's reports are expected to produce, asserted by
+# `build.py --check`. Measured, not aspirational: if the tool's behaviour
+# changes, this table is what fails and tells us the docs pages now lie.
+
+[expect."class/sequence/0_vs_1"]
+"Unique bases" = "Pass"
+"Sequence Duplications within Labels" = "Warning"
+"Duplicate Sequences between Labels" = "Fail"
+"Sequence lengths" = "Pass"
+"Per sequence GC content" = "Fail"
+"Per sequence nucleotide content" = "Fail"
+"Per sequence dinucleotide content" = "Fail"
+"Per position nucleotide content" = "Fail"
+"Per position reversed nucleotide content" = "Fail"
+
+[expect."split/sequence/train_vs_test"]
+"Data Leakage" = "Fail"

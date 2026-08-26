@@ -1,0 +1,135 @@
+name: Docs
+
+# Builds the documentation site, including running gb-qc over every example to
+# generate the reports it publishes. On `main` it deploys to GitHub Pages; on a
+# pull request it builds and stops, so a change that breaks an example or a
+# cross-reference fails the PR rather than the deployment.
+#
+# The one piece of setup this depends on is not in this file: Settings -> Pages
+# -> Source has to be "GitHub Actions". While it is set to "Deploy from a
+# branch" the build here still passes and only the deploy step fails, which
+# reads as a permissions problem rather than as a setting.
+#
+# Nothing else is needed now that `main` publishes: Settings -> Environments ->
+# github-pages admits the default branch by default. The `dev` entry added
+# there while the publish branch was temporarily `dev` no longer does anything
+# and can be removed.
+
+on:
+  push:
+    # `main` alone, because it is the only branch that deploys and the
+    # pull_request trigger below already builds every change on its way in,
+    # whichever branch it is heading for. A commit pushed straight to a branch
+    # rather than through a pull request is the one case this stops covering.
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'examples/**'
+      - 'mkdocs.yml'
+      - 'scripts/build_docs.py'
+      - 'src/**'
+      # A dependency floor moving can move an AU-ROC, and this workflow holds
+      # the only assertions on what the examples' flags should be.
+      - 'pyproject.toml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'examples/**'
+      - 'mkdocs.yml'
+      - 'scripts/build_docs.py'
+      - 'src/**'
+      # A dependency floor moving can move an AU-ROC, and this workflow holds
+      # the only assertions on what the examples' flags should be.
+      - 'pyproject.toml'
+      - '.github/workflows/docs.yml'
+  # So the site can be rebuilt without a code change, e.g. after flipping the
+  # Pages source over.
+  workflow_dispatch:
+
+# Read-only by default; the deploy job asks for what it needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and docs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install '.'
+          pip install -r docs/requirements.txt
+
+      # The landing page's report screenshot is taken with a real browser by
+      # scripts/screenshot_report.py. --with-deps pulls the system libraries
+      # Chromium needs on a bare runner; only chromium is installed, not all
+      # three browser engines.
+      - name: Install Chromium for the report screenshot
+        run: python -m playwright install --with-deps chromium
+
+      # evaluate-splits needs it, and five of the eight examples run it.
+      # Same pinned release the CI workflow uses.
+      - name: Install MMseqs2
+        env:
+          MMSEQS_VERSION: 18-8cc5c
+          MMSEQS_SHA256: bd9b0234da5949ad528d5b5f9ea4cda9c1e23dce14b46c0791d4d919a76e61ce
+        run: |
+          wget -q "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS_VERSION}/mmseqs-linux-avx2.tar.gz"
+          echo "${MMSEQS_SHA256}  mmseqs-linux-avx2.tar.gz" | sha256sum -c -
+          tar xzf mmseqs-linux-avx2.tar.gz
+          echo "$PWD/mmseqs/bin" >> "$GITHUB_PATH"
+
+      # Generates the CLI reference from the Typer app, runs gb-qc over every
+      # example and asserts the flags match each meta.toml, screenshots one of
+      # the reports it just built, then builds the site with --strict. Any of
+      # those failing fails the job - including the screenshot, which is taken
+      # with --require here so a placeholder cannot reach the site.
+      - name: Build site
+        run: python scripts/build_docs.py
+
+      # Reports are not committed, so a reviewer has no diff to look at when a
+      # change alters how they render. This is that diff.
+      - name: Upload example reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-reports
+          path: docs/reports/
+          if-no-files-found: error
+
+      - name: Upload site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

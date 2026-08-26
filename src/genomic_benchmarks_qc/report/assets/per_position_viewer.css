@@ -1,0 +1,87 @@
+/* The interactive per-position figure: its toolbar, the canvas, the hover
+ * tooltip, and the table of flagged positions underneath.
+ *
+ * Tokens come from report_design.css - this file must not redeclare them on
+ * .ppv, or a change to the palette would stop at the edge of this component.
+ * The same goes for the look of the parts this figure shares with the split
+ * report: the collapsible panel (.qc-panel), the listing table inside it
+ * (.qc-listing) and the toolbar buttons (.qc-btn) are all defined there, and
+ * what is left here is only what is particular to this figure.
+ *
+ * The canvas is wider than the box it sits in: it also carries the coverage
+ * panel's right-hand y axis, which lives outside the plot body. .ppv-plot is
+ * sized so the *body* matches .plot-wide (the static figures above it), and the
+ * axis then overhangs to the right into the card's padding. Two consequences:
+ * .ppv-plot must never get padding of its own, because the viewer measures its
+ * clientWidth to lay the figure out, and the 92% here has to stay in step with
+ * .plot-wide in report_design.css.
+ */
+
+.ppv { margin: 14px 0 0; }
+.ppv-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.ppv-bar-gap { flex: 1 1 auto; }
+.ppv-bar-label { font-size: 13px; color: var(--ink-3); margin-right: 6px; }
+.ppv-readout { font-size: 13px; color: var(--ink-3); font-family: var(--mono); margin: 0; }
+.ppv-plot { position: relative; width: 92%; }
+.ppv-canvas { display: block; cursor: crosshair; }
+.ppv-fallback { font-size: 14px; color: var(--ink-3); }
+.ppv-hint { font-size: 12px; color: var(--ink-3); margin: 8px 0 0; }
+.ppv-tooltip {
+  position: absolute; z-index: 30; pointer-events: none; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, .14); font-size: 12px;
+}
+.ppv-tt-head { font-weight: 650; margin-bottom: 2px; font-family: var(--mono); }
+/* What the two numeric columns hold. The card is the only place that says it,
+ * so it sits under the position rather than in the column headings, where the
+ * class names have to stay legible. */
+.ppv-tt-sub { font-size: 11px; color: var(--ink-3); margin: 0 0 6px; }
+.ppv-tooltip table { width: auto; table-layout: auto; border-collapse: collapse; }
+.ppv-tooltip th, .ppv-tooltip td {
+  padding: 1px 9px 1px 0; text-align: right; font-weight: 400;
+  font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.ppv-tooltip thead td { color: var(--ink-3); font-size: 11px; }
+.ppv-tooltip th { text-align: left; font-weight: 650; }
+.ppv-tooltip thead th { color: var(--ink-3); font-size: 11px; font-weight: 600; }
+.ppv-tooltip .ppv-tt-flag { padding-left: 4px; }
+.ppv-tooltip tr.is-focus td, .ppv-tooltip tr.is-focus th { background: var(--accent-soft); }
+/* The cohort behind the position, one class per row: with labels like '0' and
+ * '1' a single line would read as four numbers in a row. */
+.ppv-tt-reach { margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line-2); }
+.ppv-tt-reach-head { font-size: 11px; color: var(--ink-3); margin-bottom: 2px; }
+.ppv-tooltip .ppv-tt-reach td { color: var(--ink-3); }
+.ppv-swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+.ppv-chip { color: #fff; border-radius: 9px; padding: 1px 7px; font-size: 10.5px; font-family: var(--ui); }
+
+/* flagged-position list: the shared .qc-panel / .qc-listing component, plus what
+ * is particular to this table - a two-row header, and rows that zoom the figure.
+ * Everything else it looks like comes from report_design.css. */
+/* What the two rightmost columns hold, spanning them. Styled as a column header
+ * and not as a caption - it inherits the uppercase, tracked-out `th` rule the
+ * other headers use, so the header row reads as one row of labels rather than a
+ * sentence pasted over its right-hand end.
+ *
+ * Only the sub-header row below carries the rule: a border under the group cell
+ * as well would draw two lines through the header, where every other column has
+ * one. The rowspan cells end their border on that same row, so the whole header
+ * closes on a single line. */
+.ppv-flagtable th.ppv-h-group { border-bottom: 0; padding-bottom: 4px; }
+/* The single-column headers span both header rows, so by default they sit
+ * midway down the pair and the group heading printed a line above them. Aligned
+ * to the top of the cell, every column name in the first row shares one
+ * baseline, and only the class names sit below. */
+.ppv-flagtable thead th { vertical-align: top; }
+.ppv-flagtable th.ppv-h-sub { padding-top: 0; }
+/* A row is a link into the figure: click it and the plot zooms to that position. */
+.ppv-flagtable tbody tr { cursor: pointer; }
+.ppv-flagtable tbody tr:hover .ppv-go { opacity: 1; }
+.ppv-c-go { width: 1%; }
+.ppv-sev { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 7px; }
+.ppv-go {
+  font-size: 11.5px; color: var(--accent); opacity: 0; transition: opacity .15s;
+  border: 1px solid var(--accent); border-radius: 5px; padding: 1px 7px; white-space: nowrap;
+}
+.ppv-more { margin: 12px 0 0; }

@@ -1,0 +1,146 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genomic-benchmarks-qc"
+dynamic = ["version"]
+description = "Automated quality control for genomic machine learning datasets: scores the biases, duplicates and data leakage a classifier could exploit before you train on it."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Katarina Gresova", email = "gresova11@gmail.com" },
+]
+keywords = [
+    "genomic benchmarks",
+    "deep learning",
+    "machine learning",
+    "computational biology",
+    "bioinformatics",
+    "genomics",
+    "quality control",
+]
+# What PyPI files this under and who it offers it to. The audience and the topic
+# are the two that decide whether someone looking for this finds it, and both
+# were describing a different package: "Developers" and "Software Development ::
+# Build Tools" are what a cookiecutter leaves behind, and would put a dataset QC
+# tool in among the packaging helpers.
+#
+# No License classifier: the licence is declared as an SPDX expression in
+# `license` above, and PEP 639 deprecates saying it twice.
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "numpy>=2.3.2",
+    "pandas>=2.3.3",
+    "matplotlib>=3.10.4",
+    "seaborn>=0.13.2",
+    "biopython>=1.86",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.14",
+    "typer>=0.20",
+]
+
+[project.optional-dependencies]
+# Ruff is capped at a minor release on purpose. Being pre-1.0, it uses minor
+# versions where SemVer would use major: 0.17 is allowed to promote rules to
+# stable and to change what an existing rule reports, which would fail CI on
+# pull requests that did not cause it. Patch releases only fix bugs, so those
+# come in freely. Upgrading is a deliberate pull request of its own.
+develop = ["pytest>=8.4", "pytest-cov>=7.0", "ruff>=0.16,<0.17"]
+
+[project.urls]
+Homepage = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+Documentation = "https://genomic-benchmarks.github.io/genomic-benchmarks-qc/"
+Repository = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc"
+Issues = "https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues"
+
+[project.scripts]
+gb-qc = "genomic_benchmarks_qc.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Read from the package itself, so the number lives in exactly one place; see
+# the comment in src/genomic_benchmarks_qc/__init__.py.
+[tool.setuptools.dynamic]
+version = {attr = "genomic_benchmarks_qc.__version__"}
+
+# The report's stylesheets and scripts are read at report-generation time and
+# inlined into the HTML, so they have to ship in the wheel. tests/test_report_assets.py
+# loads every one of them through the loader, which is what catches a file added
+# here and forgotten below.
+[tool.setuptools.package-data]
+"genomic_benchmarks_qc.report.assets" = ["*.html", "*.css", "*.js"]
+
+# Linting and formatting. Ruff replaces flake8/isort/pyupgrade in one tool; the
+# rule set is deliberately pragmatic rather than exhaustive, so that a warning
+# means something is actually wrong instead of merely unfashionable.
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Generated reports and the bundled example data are outputs, not source.
+extend-exclude = ["examples/*/data", "example_outputs"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: undefined names, unused imports and variables
+    "I",    # isort: import order
+    "UP",   # pyupgrade: syntax that the minimum Python already supports
+    "B",    # flake8-bugbear: likely bugs, e.g. mutable default arguments
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RET",  # flake8-return
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests build deliberately awkward inputs and long expected-value literals.
+"tests/*" = ["E501"]
+# These modules hold the report's HTML as Python strings. A `# noqa` cannot be
+# placed inside a triple-quoted string, and rewrapping markup to satisfy a
+# Python line limit makes it harder to read, not easier.
+"src/genomic_benchmarks_qc/report/classes_html_report.py" = ["E501"]
+"src/genomic_benchmarks_qc/report/split_html_report.py" = ["E501"]
+"src/genomic_benchmarks_qc/report/per_position_payload.py" = ["E501"]
+"src/genomic_benchmarks_qc/report/utils.py" = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Typer's whole API is `def cmd(x: T = typer.Option(...))`, which B008 would
+# otherwise flag on every single CLI parameter.
+extend-immutable-calls = ["typer.Option", "typer.Argument"]
+
+[tool.ruff.format]
+# The codebase mixes quote styles; preserving them keeps a future formatting
+# run from rewriting lines it has no other reason to touch.
+quote-style = "preserve"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source_pkgs = ["genomic_benchmarks_qc"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 60
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

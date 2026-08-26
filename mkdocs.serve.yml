@@ -1,0 +1,15 @@
+# Local preview only. Never used to publish - the workflow builds mkdocs.yml.
+#
+# Inherits everything from mkdocs.yml and changes two things:
+#
+#   site_url  emptied, so the preview serves at / rather than at
+#             /genomic-benchmarks-qc/. One less thing to get wrong when
+#             forwarding a port, and no redirect on the way in.
+#   strict    off, so a half-written link lets you keep looking at the page
+#             next to it. The published build stays strict.
+#
+# Usage:
+#     mkdocs serve -f mkdocs.serve.yml --dev-addr 0.0.0.0:8000
+INHERIT: mkdocs.yml
+site_url: ""
+strict: false

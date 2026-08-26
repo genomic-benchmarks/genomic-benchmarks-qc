@@ -1,0 +1,360 @@
+"""Reading sequence inputs, plus the logging and output-folder plumbing.
+
+Everything here is shared by both commands: FASTA and CSV/TSV readers - eager
+ones returning lists, streaming ones for inputs too large to hold in memory -
+and the small amount of process setup (logger configuration, failure logging,
+output directories) they both need.
+"""
+
+import gzip
+import json
+import logging
+from contextlib import contextmanager
+from pathlib import Path
+
+import pandas as pd
+from Bio import SeqIO
+
+# Everything in the package logs to a child of this, so `setup_logger` can
+# configure the lot with one handler and leave the root logger alone.
+PACKAGE_LOGGER_NAME = __name__.split('.')[0]
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _open_text(file_path):
+    """Open a file for reading text, transparently handling gzip compression."""
+    if str(file_path).endswith('.gz'):
+        with gzip.open(file_path, 'rt') as handle:
+            yield handle
+    else:
+        with open(file_path) as handle:
+            yield handle
+
+
+class SequenceStatsAccumulator:
+    """Streaming accumulator for sequence length statistics."""
+
+    def __init__(self):
+        """Initialize empty counters for sequence length aggregation."""
+        self.count = 0
+        self.total_length = 0
+        self.min_length = None
+        self.max_length = None
+
+    def add(self, sequence):
+        """Update aggregate length metrics with one sequence."""
+        seq_len = len(sequence)
+        self.count += 1
+        self.total_length += seq_len
+        if self.min_length is None or seq_len < self.min_length:
+            self.min_length = seq_len
+        if self.max_length is None or seq_len > self.max_length:
+            self.max_length = seq_len
+
+    def finalize(self):
+        """Return finalized count/min/mean/max statistics as a dictionary."""
+        count = self.count
+        return {
+            "count": count,
+            "min_length": self.min_length if self.min_length is not None else 0,
+            "mean_length": (self.total_length / count) if count > 0 else 0.0,
+            "max_length": self.max_length if self.max_length is not None else 0,
+        }
+
+def stream_fasta_sequences(fasta_file):
+    """Yield uppercase sequences one-by-one from a FASTA file."""
+    logger.debug(f"Streaming FASTA file: {fasta_file}")
+    with _open_text(fasta_file) as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
+            yield str(record.seq).upper()
+
+
+def read_fasta(fasta_file):
+    """Read all sequences from a FASTA file into a list."""
+    logger.debug(f"Reading FASTA file: {fasta_file}")
+    with _open_text(fasta_file) as handle:
+        return [str(record.seq).upper() for record in SeqIO.parse(handle, 'fasta')]
+
+
+def read_selected_fasta_sequences(fasta_file, ids_to_keep):
+    """Read a FASTA file and return uppercase sequences for selected IDs."""
+    ids_to_keep = set(ids_to_keep)
+    if not ids_to_keep:
+        return {}
+
+    out = {}
+    with _open_text(fasta_file) as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
+            seq_id = record.id
+            if seq_id in ids_to_keep:
+                out[seq_id] = str(record.seq).upper()
+                if len(out) == len(ids_to_keep):
+                    break
+
+    return out
+
+
+def stream_fasta_records_by_ids(fasta_path, ids_to_keep):
+    """Stream FASTA records whose IDs are in ids_to_keep."""
+    ids_to_keep = set(ids_to_keep)
+    if not ids_to_keep:
+        return
+
+    with _open_text(fasta_path) as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
+            if record.id in ids_to_keep:
+                yield record
+
+
+def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
+    """Write only selected FASTA records to a new output file."""
+    logger.debug(
+        f"Filtering FASTA file: {fasta_path} -> {new_fasta_path}, "
+        f"keeping {len(ids_to_keep)} IDs"
+    )
+    records = stream_fasta_records_by_ids(fasta_path, ids_to_keep)
+    SeqIO.write(records, str(new_fasta_path), 'fasta')
+
+
+def append_fasta_record(file_handle, sequence, seq_id):
+    """Append one sequence to an open FASTA handle, as its two lines.
+
+    Written straight out rather than through a `SeqRecord` and the FASTA
+    writer, which is what produced the same two lines before. The ids are
+    numbers `sequence_id` generates and the sequences are already uppercased,
+    so nothing Biopython offers on the way is being used, and one record object
+    per sequence is a large share of staging a multi-million-sequence split -
+    work that happens before MMseqs2 has started.
+
+    The sequence goes on one line where the writer wrapped it at 60 characters.
+    Both are FASTA; `stream_fasta_records_by_ids` reads either back.
+    """
+    file_handle.write(f">{seq_id}\n{sequence}\n")
+
+
+def _table_read_options(file_path, input_format):
+    """Return the (delimiter, compression) pandas needs for a tabular input."""
+    delimiter = '\t' if input_format in ('tsv', 'tsv.gz') else ','
+    compression = 'gzip' if str(file_path).endswith('.gz') else None
+    return delimiter, compression
+
+
+def _check_columns_present(file_path, delimiter, compression, seq_columns, label_column=None):
+    """Raise unless every column asked for is in the file's header.
+
+    `usecols` refuses a column it cannot find, but its message names only the
+    column: not the file it was looked for in, and not what that file does
+    have. Getting a column name wrong is the ordinary way to mistype this
+    command - the defaults are 'sequence' and 'label', and a real dataset calls
+    them almost anything - so the message that comes back has to be the one
+    that fixes it. It names the file, the columns that are missing, the option
+    each was read from, and everything the header does offer.
+
+    Reading the header costs one line of the file, which for a gzip is the
+    first block, and happens once per file.
+    """
+    option_of = dict.fromkeys(seq_columns, '--sequence-column')
+    if label_column is not None:
+        option_of[label_column] = '--label-column'
+
+    header = pd.read_csv(
+        file_path, delimiter=delimiter, compression=compression, nrows=0)
+    present = list(header.columns)
+    missing = [column for column in option_of if column not in present]
+    if not missing:
+        return
+
+    named = ', '.join(f"{column!r} ({option_of[column]})" for column in missing)
+    options = sorted({option_of[column] for column in missing})
+    raise ValueError(
+        f"Column{'s' if len(missing) > 1 else ''} not found in {file_path}: {named}. "
+        f"The file has: {', '.join(repr(column) for column in present)}. "
+        f"Set {' and '.join(options)} to the name{'s' if len(options) > 1 else ''} used here."
+    )
+
+
+def read_csv_file(file_path, input_format, seq_columns, label_column=None):
+    """Read CSV/TSV data and normalize sequence columns to uppercase strings.
+
+    Everything is read as text: sequences are strings, and a numeric label
+    column is converted by the caller that needs numbers, so that no column is
+    silently retyped on the way in.
+    """
+    delim, compression = _table_read_options(file_path, input_format)
+
+    _check_columns_present(file_path, delim, compression, seq_columns, label_column)
+
+    columns = seq_columns.copy()
+    if label_column is not None:
+        columns += [label_column]
+
+    df = pd.read_csv(
+        file_path, delimiter=delim, usecols=columns, dtype=str, compression=compression)
+
+    # Drop rows with missing labels
+    if label_column is not None:
+        # check if label column contains any missing values
+        if df[label_column].isnull().any():
+            logger.warning(
+                f"Label column '{label_column}' contains missing values. "
+                "Dropping rows with missing labels."
+            )
+        df = df.dropna(subset=[label_column])
+        logger.debug(f"Dropped rows with missing labels, new shape: {df.shape}")
+
+    # Replace NaN values in sequence columns with empty strings
+    df[seq_columns] = df[seq_columns].fillna('')
+
+    # Convert sequences to uppercase
+    df[seq_columns] = df[seq_columns].apply(lambda col: col.str.upper())
+
+    logger.debug(f"Read CSV/TSV file: {file_path}, shape: {df.shape}, columns: {columns}")
+
+    return df
+
+
+def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
+    """Extract sequences from a dataframe with optional label filtering.
+
+    `seq_columns` may be a single column name (str) or a list of column names.
+    If multiple columns are provided the columns are concatenated per-row.
+    If `label_column` is provided, rows are filtered by `label`.
+    """
+    # Normalize seq_columns to a list
+    if isinstance(seq_columns, str):
+        seq_columns = [seq_columns]
+
+    if label_column is not None:
+        logger.debug(f"Filtering sequences by label: {label} in column: {label_column}")
+        df_parsed = df[df[label_column] == label]
+        if df_parsed.empty:
+            raise ValueError(f"No sequences found for label '{label}' in column '{label_column}'.")
+    else:
+        df_parsed = df
+
+    for col in seq_columns:
+        if col not in df_parsed.columns:
+            raise KeyError(f"Sequence column '{col}' not found in dataframe.")
+
+    if len(seq_columns) == 1:
+        return df_parsed[seq_columns[0]].tolist()
+    return df_parsed[seq_columns].agg(''.join, axis=1).tolist()
+
+def stream_table_sequences(file_path, input_format, seq_columns, chunksize=10000):
+    """Yield sequences from CSV/TSV files in chunks to limit memory usage."""
+    delim, compression = _table_read_options(file_path, input_format)
+    _check_columns_present(file_path, delim, compression, seq_columns)
+
+    reader = pd.read_csv(
+        file_path,
+        delimiter=delim,
+        usecols=seq_columns,
+        dtype=str,
+        compression=compression,
+        chunksize=chunksize,
+    )
+
+    for chunk in reader:
+        for col in seq_columns:
+            chunk[col] = chunk[col].fillna('').str.upper()
+
+        if len(seq_columns) == 1:
+            for seq in chunk[seq_columns[0]].tolist():
+                yield seq
+        else:
+            for seq in chunk[seq_columns].agg(''.join, axis=1).tolist():
+                yield seq
+
+
+def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10000):
+    """Yield sequences from multiple input files based on declared format."""
+    for file in files:
+        if input_format.startswith('fa'):
+            yield from stream_fasta_sequences(file)
+        elif input_format.startswith('csv') or input_format.startswith('tsv'):
+            yield from stream_table_sequences(
+                file, input_format, sequence_column, chunksize=chunksize)
+        else:
+            raise ValueError(f"Unsupported input format: {input_format}")
+
+
+def setup_logger(level=logging.INFO, file=None):
+    """Send this package's log to the console, and to `file` if one is named.
+
+    Only this package's logger is touched. `basicConfig` was what this used
+    before, and `basicConfig` configures the caller's *root* logger: importing
+    the package and calling `run()` reached into an application's logging and
+    reconfigured it, and every library in that process started reporting
+    through handlers gb-qc had installed.
+
+    It also did nothing at all the second time. `basicConfig` returns without
+    acting once the root logger has handlers, so a second `run()` in one
+    process silently ignored its `log_level` and its `log_file` - the second
+    run's log went to the first run's file. Handlers are replaced here rather
+    than added, so calling this again means what it says, and two runs do not
+    each get a copy of the other's lines.
+
+    Nothing configures the root logger any more, which is the caller's to
+    configure. That includes the matplotlib level this used to pin: it was only
+    needed because a root handler at DEBUG made matplotlib's own debug output
+    everyone's problem.
+    """
+    package_logger = logging.getLogger(PACKAGE_LOGGER_NAME)
+    for handler in package_logger.handlers[:]:
+        package_logger.removeHandler(handler)
+        handler.close()
+
+    formatter = logging.Formatter(
+        fmt='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+    handlers = [logging.StreamHandler()]
+    if file:
+        handlers.append(logging.FileHandler(file, mode='w'))
+    for handler in handlers:
+        handler.setFormatter(formatter)
+        package_logger.addHandler(handler)
+
+    package_logger.setLevel(level)
+
+
+def ensure_directory(path):
+    """Create a directory and its parents, reporting the ones that were missing."""
+    path = Path(path)
+    if not path.exists():
+        logger.info(f"Output folder {path} does not exist. Creating it.")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@contextmanager
+def log_failures(operation):
+    """Log a failing operation and re-raise, so the log file records the cause.
+
+    The exception still propagates to the caller - the CLI turns it into a
+    non-zero exit - but without this the reason would only ever reach stderr and
+    never `--log-file`. At DEBUG level the traceback is logged too.
+    """
+    try:
+        yield
+    except Exception as exc:
+        if logging.getLogger(PACKAGE_LOGGER_NAME).isEnabledFor(logging.DEBUG):
+            logger.exception(f"{operation} failed.")
+        else:
+            logger.error(f"{operation} failed: {exc}")
+        raise
+
+
+def write_stats_json(stats, stats_json_file):
+    """Serialize computed statistics to JSON, converting DataFrames to plain dicts."""
+    stats_dict = {}
+    for key, value in stats.items():
+        if isinstance(value, pd.DataFrame):
+            stats_dict[key] = value.to_dict(orient='list')
+        else:
+            stats_dict[key] = value
+
+    with open(stats_json_file, 'w') as file:
+        json.dump(stats_dict, file, indent=4)
