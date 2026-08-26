@@ -37,7 +37,6 @@ of sequences: it is ~75 bytes per position per direction, against ~900 KB for
 the PNG it replaces.
 """
 
-import html
 import json
 
 import numpy as np
@@ -48,6 +47,7 @@ from genomic_benchmarks_qc.report.colors import (
     UNKNOWN_COLOR,
     WARN_COLOR,
 )
+from genomic_benchmarks_qc.report.utils import escape_html_text
 from genomic_benchmarks_qc.utils.testing import position_windows
 
 # One name per direction, shared by the statistics frame, the check names in the
@@ -220,17 +220,46 @@ def build_payload(stats1, stats2, bases, end_position, results, direction, compa
     }
 
 
+def _mark_braces(value):
+    """Mark every `{` in a payload's text, leaving the structure alone.
+
+    The element this payload goes into is inserted into a page that still has
+    `{{name}}` placeholders left to fill, so a class label containing one would
+    be filled in along with the real thing - the same problem
+    `escape_html_text` solves for the markup around it. The escape JSON wants
+    is `\\u007b`, and it has to be applied to the text and not to the object
+    braces holding it, which is why this runs before the dump: afterwards there
+    is no way to tell a `{` that opens an object from one inside a label.
+
+    NUL is the mark. `json.dumps` writes it as `\\u0000` and nothing else in a
+    payload can produce that, so `payload_script` can rewrite it afterwards
+    without ambiguity. A NUL already in the text is dropped: it cannot be a
+    base or appear in a label read back from a text file, and it is not
+    something a page can show.
+    """
+    if isinstance(value, str):
+        return value.replace('\x00', '').replace('{', '\x00')
+    if isinstance(value, dict):
+        return {_mark_braces(key): _mark_braces(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_mark_braces(item) for item in value]
+    return value
+
+
 def payload_script(payload, dom_id):
     """Return the <script type="application/json"> element holding a payload.
 
     JSON goes into the page as data rather than as a JavaScript literal, so a
     class label containing markup cannot break out of the script element. The
-    three characters that could close it early are escaped.
+    three characters that could close it early are escaped, and `{` with them -
+    see `_mark_braces`. All four are escapes JavaScript unwinds on the way in,
+    so what the viewer reads is what the payload held.
     """
-    text = (json.dumps(payload, separators=(',', ':'))
+    text = (json.dumps(_mark_braces(payload), separators=(',', ':'))
             .replace('<', '\\u003c')
             .replace('>', '\\u003e')
-            .replace('&', '\\u0026'))
+            .replace('&', '\\u0026')
+            .replace('\\u0000', '\\u007b'))
     return f'<script type="application/json" id="{dom_id}">{text}</script>'
 
 
@@ -249,7 +278,7 @@ def viewer_html(payload, dom_id):
     # The attribute holds the same two names and the same bases as the payload,
     # so it is escaped for the same reason the payload is: a label carrying a
     # quote would otherwise end the attribute and the element with it.
-    aria = html.escape(
+    aria = escape_html_text(
         f"Per-position nucleotide frequency for {', '.join(payload['nucleotides'])} "
         f"across positions 1 to {payload['endPosition']}, comparing "
         f"{labels[0]} with {labels[1]}. Flagged positions are listed below the plot.")

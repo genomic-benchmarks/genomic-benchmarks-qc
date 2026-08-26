@@ -11,7 +11,6 @@ evidence for a per-position check, so they sit in that check's card in the same
 kind of panel, and not in a card of their own with no flag and no nav entry.
 """
 
-import html
 import logging
 from datetime import datetime
 
@@ -28,6 +27,7 @@ from genomic_benchmarks_qc.report.utils import (
     TOOL_TAGLINE,
     docs_link,
     encode_image_to_base64,
+    escape_html_text,
     icon_html,
     put_data,
     put_text,
@@ -103,8 +103,8 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     # which, in that order, because the flag is about the test side. Only names
     # are available - evaluate_splits keeps Path(f).name, not the path - so there
     # is nothing further to add after them.
-    test_name = html.escape(str(basic_stats['test_filename']))
-    train_name = html.escape(str(basic_stats['train_filename']))
+    test_name = escape_html_text(str(basic_stats['test_filename']))
+    train_name = escape_html_text(str(basic_stats['train_filename']))
     html_template = put_data(
         html_template, "{{report_subject}}",
         f'Searching test set <strong>{test_name}</strong> against train set '
@@ -116,7 +116,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
     html_template = put_data(html_template, "{{sidebar_links}}", SIDEBAR_LINKS_HTML)
     html_template = put_data(
         html_template, "{{page_title}}",
-        html.escape(f'{basic_stats["test_filename"]} vs '
+        escape_html_text(f'{basic_stats["test_filename"]} vs '
                     f'{basic_stats["train_filename"]}: leakage - gb-qc'))
     html_template = put_data(html_template, "{{link_leakage}}",
                              docs_link('leakage', text='What to do about it'))
@@ -181,14 +181,14 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
                 )
             alignment_str_color = (
                 '<span class="aln-error">ALIGNMENT VISUALISATION ERROR</span><br>'
-                f'{html.escape(type(e).__name__)}: {html.escape(str(e))}<br>'
+                f'{escape_html_text(type(e).__name__)}: {escape_html_text(str(e))}<br>'
                 '<span class="aln-error-detail">This can happen with a '
                 'conda-installed mmseqs2 — see the installation notes in README.md.</span>'
             )
         rows.append(f"""
     <tr>
-        <td class="qc-mono">{html.escape(str(row['query']))}</td>
-        <td class="qc-mono">{html.escape(str(row['target']))}</td>
+        <td class="qc-mono">{escape_html_text(str(row['query']))}</td>
+        <td class="qc-mono">{escape_html_text(str(row['target']))}</td>
         <td class="qc-num">{row['qcov']:.2f}</td>
         <td class="qc-num">{row['tcov']:.2f}</td>
         <td class="qc-num">{row['pident']:.1f}</td>

@@ -71,29 +71,53 @@ def put_data(html_template, placeholder, data):
     return html_template.replace(placeholder, str(data))
 
 
+def escape_html_text(value):
+    """Return `value` as HTML text that is inert both as markup and as a placeholder.
+
+    Two things have to be neutralised in text the report did not write itself.
+
+    Markup, which `html.escape` handles: a label of `<img src=x onerror=...>`
+    would otherwise be markup by the time the page was opened, and a sequence
+    containing `<` would silently swallow the rest of the cell.
+
+    And placeholders. A page is built by filling `{{name}}` one name at a time,
+    so a value that lands early and happens to contain `{{label2}}` is still
+    sitting in the page when `{{label2}}` is filled, and gets filled too - a
+    file called `{{label2}}.csv` puts the class name in the filename cell.
+    `html.escape` leaves braces alone, so `{` is written as `&#123;` here. It
+    renders as `{` and matches no placeholder.
+    """
+    return html.escape(str(value)).replace('{', '&#123;')
+
+
 def put_text(html_template, placeholder, data):
     """Fill a placeholder with text from the data, escaped.
 
     Class labels, column names, file names and the bases themselves are read out
     of files the report has no say over, and a report is a page someone else
-    opens. A label of `<img src=x onerror=...>` would otherwise be markup by the
-    time it reached them, and a sequence containing `<` would silently swallow
-    the rest of the cell.
+    opens. `escape_html_text` says what that costs them.
 
     The counterpart of `put_data`: which one a call site uses says where the
     value came from.
     """
-    return put_data(html_template, placeholder, html.escape(str(data)))
+    return put_data(html_template, placeholder, escape_html_text(data))
 
 
 def escape_str(s):
-    """Return a JSON/JS quoted string for safe embedding in inline scripts."""
+    """Return a JSON/JS quoted string for safe embedding in inline scripts.
+
+    `{` goes in as its JSON escape for the reason `escape_html_text` gives:
+    the element this lands in is inserted into a page that still has
+    placeholders left to fill. The escape is invisible to the reader - the
+    string JavaScript parses out is the one that went in.
+    """
     return (
         json.dumps(str(s))
         .replace("&", "\\u0026")
         .replace("<", "\\u003c")
         .replace(">", "\\u003e")
         .replace("'", "\\u0027")
+        .replace("{", "\\u007b")
     )
 
 
@@ -165,9 +189,9 @@ def image_or_message(image_path, alt, css_class, message):
         HTML snippet as a string.
     """
     if image_path is None:
-        return f'<p class="no-plot-message">{html.escape(message)}</p>'
+        return f'<p class="no-plot-message">{escape_html_text(message)}</p>'
     return (f'<img src="data:image/png;base64, {encode_image_to_base64(image_path)}" '
-            f'alt="{html.escape(str(alt))}" class="{css_class}">')
+            f'alt="{escape_html_text(alt)}" class="{css_class}">')
 
 # The stylesheets, inlined into every report. report.css is the original shared
 # stylesheet; the other two are layered on top of it, so their rules win where
@@ -310,7 +334,7 @@ def verdict_html(summary_statuses, check_names):
         # check and its flag instead of counting to one.
         name, bucket = scored[0]
         key, label, symbol = next(e for e in VERDICT_ORDER if e[0] == bucket)
-        lead = (f'<span class="verdict-total">{html.escape(name)}:</span>'
+        lead = (f'<span class="verdict-total">{escape_html_text(name)}:</span>'
                 + part(key, label, symbol))
     else:
         lead = (f'<span class="verdict-total">{total} checks:</span>'

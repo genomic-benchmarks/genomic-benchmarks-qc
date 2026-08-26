@@ -5,8 +5,9 @@ the target; this lays the two full sequences out against each other with that
 region aligned, so a reader can see how much of each sequence the match covers.
 """
 
-import html
 from itertools import zip_longest
+
+from genomic_benchmarks_qc.report.utils import escape_html_text
 
 
 def _validate_alignment_coords(start, end, sequence_length, label):
@@ -101,7 +102,7 @@ def _wrap_text(text, width):
 
 def _color_base(base):
     """Wrap one base in the span that colors it, escaping anything unexpected."""
-    safe_base = html.escape(base)
+    safe_base = escape_html_text(base)
     return {
         "A": '<span class="base-A">A</span>',
         "C": '<span class="base-C">C</span>',
@@ -114,7 +115,7 @@ def _color_base(base):
 def _format_sequence(seq, color):
     """Escape a sequence for HTML, coloring each base unless color is off."""
     if not color:
-        return html.escape(seq)
+        return escape_html_text(seq)
     return "".join(_color_base(base) for base in seq)
 
 def build_alignment_string(row, width=80, color=True, validate=True):

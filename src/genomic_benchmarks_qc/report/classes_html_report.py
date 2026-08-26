@@ -5,7 +5,6 @@ and the styling is inlined, so a report can be moved, zipped or served from
 anywhere without losing anything.
 """
 
-import html
 from datetime import datetime
 
 from genomic_benchmarks_qc import __version__
@@ -21,6 +20,7 @@ from genomic_benchmarks_qc.report.utils import (
     TOOL_TAGLINE,
     docs_link,
     encode_image_to_base64,
+    escape_html_text,
     escape_str,
     icon_html,
     image_or_message,
@@ -114,7 +114,7 @@ def generate_nucleotide_flags_html(summary_statuses, flag_prefix):
 
         flags_html += f'''<div class="nucleotide-flag-item">
                 <span class="status-icon-small {status_class}">{symbol}</span>
-                <span class="nucleotide-label">{html.escape(nt)}</span>
+                <span class="nucleotide-label">{escape_html_text(nt)}</span>
             </div>
             '''
 
@@ -203,7 +203,7 @@ def generate_position_window_html(stats1, stats2):
     def coverage_at(position):
         parts = []
         for stats in (stats1, stats2):
-            label = html.escape(str(stats.label if stats.label is not None else stats.filename))
+            label = escape_html_text(str(stats.label if stats.label is not None else stats.filename))
             coverage = stats.coverage_at(position)
             count = int(round(coverage * stats.stats['Number of sequences']))
             parts.append(f"{label}: {coverage:.1%} ({count:,} sequences)")
@@ -223,7 +223,7 @@ def generate_position_window_html(stats1, stats2):
             return f'{needed[0]:,} sequences in each class'
         parts = []
         for stats, count in zip((stats1, stats2), needed, strict=True):
-            label = html.escape(str(stats.label if stats.label is not None else stats.filename))
+            label = escape_html_text(str(stats.label if stats.label is not None else stats.filename))
             parts.append(f'{label}: {count:,}')
         return f'{parts[0]} and {parts[1]} sequences'
 
@@ -332,9 +332,9 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     # themselves, and the verdict saves them counting circles in the navigation.
     label1 = str(stats1.label) if stats1.label is not None else 'N/A'
     label2 = str(stats2.label) if stats2.label is not None else 'N/A'
-    subject = (f'Comparing label <strong>{html.escape(label1)}</strong> with label '
-               f'<strong>{html.escape(label2)}</strong> in '
-               f'{html.escape(str(input_paths))}')
+    subject = (f'Comparing label <strong>{escape_html_text(label1)}</strong> with label '
+               f'<strong>{escape_html_text(label2)}</strong> in '
+               f'{escape_html_text(str(input_paths))}')
     html_template = put_data(html_template, "{{report_subject}}", subject)
     html_template = put_data(html_template, "{{report_verdict}}",
                              verdict_html(summary_statuses, CHECK_NAMES))
@@ -348,7 +348,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
     column = f' ({seq_col})' if seq_col else ''
     html_template = put_data(
         html_template, "{{page_title}}",
-        html.escape(f'{stats1.filename}: {label1} vs {label2}{column} - gb-qc'))
+        escape_html_text(f'{stats1.filename}: {label1} vs {label2}{column} - gb-qc'))
 
     for placeholder, (page, anchor, text) in EXPLANATION_LINKS.items():
         html_template = put_data(html_template, placeholder,
@@ -497,7 +497,7 @@ def get_dataset_html_template(stats1, stats2, plots_path, summary_statuses, dupl
             html_template = put_data(
                 html_template, "{{sequence_duplication_levels_file}}",
                 f"All {len(duplicate_seqs)} duplicate sequences saved to "
-                f"{html.escape(str(duplicate_seqs_file))}.")
+                f"{escape_html_text(str(duplicate_seqs_file))}.")
         else:
             html_template = put_data(html_template, "{{sequence_duplication_levels_file}}", "")
 

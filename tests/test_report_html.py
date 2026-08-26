@@ -19,6 +19,7 @@ from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 from genomic_benchmarks_qc import evaluate_splits
 from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
 from genomic_benchmarks_qc.report.split_html_report import alignments_count_text
+from genomic_benchmarks_qc.report.utils import escape_str
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 
@@ -297,6 +298,47 @@ class TestUserDataIsEscaped:
 
         assert payload not in page
         assert '&lt;img src=x onerror=alert(1)&gt;' in page
+
+    def test_a_label_cannot_become_a_placeholder(self, tmp_path):
+        """The page is filled one placeholder at a time, so a value can carry one.
+
+        `{{filename1}}` is filled before `{{label1}}` is, so a file whose name
+        is literally `{{label1}}.csv` used to land in the page while `{{label1}}`
+        was still to come, and the filename cell ended up showing the class
+        name. `{` is written as `&#123;`, which renders the same and matches
+        nothing.
+        """
+        stats1 = make_stats(random_sequences(30, 20, seed=5), label='a')
+        stats1.filename = '{{label1}}.csv'
+        page = render(tmp_path, stats1,
+                      make_stats(random_sequences(30, 20, seed=6), label='b'))
+
+        assert '&#123;&#123;label1}}.csv' in page
+        assert '{{label1}}.csv' not in page
+        assert 'a.csv' not in page
+
+    def test_a_label_that_looks_like_a_placeholder_is_shown_as_one(self, tmp_path):
+        """The label reaches every place a label reaches, still as its own text."""
+        page = render(tmp_path,
+                      make_stats(random_sequences(30, 20, seed=5), label='{{label2}}'),
+                      make_stats(random_sequences(30, 20, seed=6), label='b'))
+
+        assert '&#123;&#123;label2}}' in page
+        assert re.findall(r'\{\{\w+\}\}', page) == []
+
+    def test_a_label_in_the_per_position_data_stays_data(self, tmp_path):
+        """The payload is JSON, so it escapes to \\u007b rather than to an entity."""
+        page = render(tmp_path,
+                      make_stats(random_sequences(300, 30, seed=1), label='{{report_scripts}}'),
+                      make_stats(random_sequences(300, 30, seed=2), label='b'))
+
+        assert payload_from(page, 'ppv-fwd-data')['labels'][0] == '{{report_scripts}}'
+        assert '"{{report_scripts}}"' not in page
+
+    def test_a_sequence_going_into_a_script_element_is_escaped_the_same_way(self):
+        """The duplicate-sequences listing is JSON too, and lands the same way."""
+        assert escape_str('{{label1}}') == '"\\u007b\\u007blabel1}}"'
+        assert json.loads(escape_str('{{label1}}')) == '{{label1}}'
 
     def test_a_base_that_is_a_metacharacter_stays_text(self, tmp_path):
         """Unusual bases are exactly what the Unique bases check exists to
