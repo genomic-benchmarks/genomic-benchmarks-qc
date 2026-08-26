@@ -20,10 +20,18 @@ pip install genomic-benchmarks-qc
 Python 3.12 or newer; the leakage check wants one extra thing — see
 [installation](installation.md).
 
+Point it at your own dataset, or fetch the two enhancers files to run the
+command below exactly as it stands:
+
+```bash
+curl -fLO https://raw.githubusercontent.com/genomic-benchmarks/genomic-benchmarks-qc/main/examples/enhancers/data/enhancers_train.csv
+curl -fLO https://raw.githubusercontent.com/genomic-benchmarks/genomic-benchmarks-qc/main/examples/enhancers/data/enhancers_test.csv
+```
+
 ```bash
 gb-qc evaluate-classes \
-  --input examples/enhancers/data/enhancers_train.csv \
-  --input examples/enhancers/data/enhancers_test.csv \
+  --input enhancers_train.csv \
+  --input enhancers_test.csv \
   --out-folder qc-out
 ```
 
