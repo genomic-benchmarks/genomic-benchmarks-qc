@@ -230,14 +230,12 @@ def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
         logger.debug(f"Filtering sequences by label: {label} in column: {label_column}")
         df_parsed = df[df[label_column] == label]
         if df_parsed.empty:
-            logger.error(f"No sequences found for label '{label}' in column '{label_column}'.")
             raise ValueError(f"No sequences found for label '{label}' in column '{label_column}'.")
     else:
         df_parsed = df
 
     for col in seq_columns:
         if col not in df_parsed.columns:
-            logger.error(f"Sequence column '{col}' not found in dataframe.")
             raise KeyError(f"Sequence column '{col}' not found in dataframe.")
 
     if len(seq_columns) == 1:
@@ -279,7 +277,6 @@ def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10
             yield from stream_table_sequences(
                 file, input_format, sequence_column, chunksize=chunksize)
         else:
-            logger.error(f"Unsupported input format: {input_format}")
             raise ValueError(f"Unsupported input format: {input_format}")
 
 

@@ -114,8 +114,9 @@ def run_search(
     or exits non-zero.
     """
     logger.info(
-        "Running MMSeqs2, an ultrafast and sensitive search, for test sequences "
-        "(query) against train sequences (db)."
+        "Searching the test sequences against the train sequences with MMseqs2. "
+        "This is the slowest step and it is silent here; --log-level DEBUG "
+        "follows the search's own progress."
     )
 
     check_mmseqs_preflight()

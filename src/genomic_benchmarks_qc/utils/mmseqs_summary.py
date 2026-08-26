@@ -37,6 +37,14 @@ logger = logging.getLogger(__name__)
 # between a hit and the sequence it is about.
 SEQUENCE_ID_PATTERN = re.compile(r"seq_(\d+)_(?:train|test)\Z")
 
+# Where the reverse-strand warning below sends the reader. A URL rather than a
+# path: the warning reaches people running the installed package, who have no
+# checkout to look in.
+BACKWARDS_ALIGNMENTS_DOC_URL = (
+    "https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/leakage/"
+    "#backwards-alignments-on-conda-installed-mmseqs2"
+)
+
 
 def sequence_id(index, half):
     """The FASTA id the sequence at `index` of `half` is staged under."""
@@ -161,8 +169,9 @@ def log_reversed_hit_warning(reversed_hits, reversed_leaked_hits, total_hits, th
         return
 
     if reversed_leaked_hits:
+        is_are = "is" if reversed_leaked_hits == 1 else "are"
         effect = (
-            f"{reversed_leaked_hits} of them are above the similarity threshold, so "
+            f"{reversed_leaked_hits} of them {is_are} above the similarity threshold, so "
             f"they count as leaks; where one of those reaches the report's listing, "
             f"which is capped, the pair is shown with its scores but without an "
             f"alignment"
@@ -182,8 +191,8 @@ def log_reversed_hit_warning(reversed_hits, reversed_leaked_hits, total_hits, th
         "affect. This has been seen with conda/bioconda MMSeqs2 builds running on more "
         "than one thread%s. Either re-run with --threads 1, which produced identical "
         "output to a known-good build in testing, or install MMSeqs2 from the upstream "
-        "precompiled release - see the installation notes in README.md.",
-        reversed_hits, total_hits, effect, threads_note,
+        "precompiled release: %s",
+        reversed_hits, total_hits, effect, threads_note, BACKWARDS_ALIGNMENTS_DOC_URL,
     )
 
 

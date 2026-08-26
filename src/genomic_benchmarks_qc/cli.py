@@ -198,8 +198,11 @@ def evaluate_classes(
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: str | None = typer.Option(None, help="Optional path to write logs to."),
 ):
-    """
-    Evaluate sequence characteristics across different classes/labels in the dataset.
+    """Compare every pair of classes and flag what tells them apart.
+
+    Sequence length, base and dinucleotide composition, per-position composition
+    and duplicate sequences, each flagged Pass, Warning or Fail. Reports land in
+    out-folder/class/, one directory per compared pair.
     """
     _validate_input_files(input, 'Input file')
     format = _resolve_format(input)
@@ -258,8 +261,11 @@ def evaluate_splits(
     log_level: str = typer.Option('INFO', help="Logging level."),
     log_file: str | None = typer.Option(None, help="Optional path to write logs to."),
 ):
-    """
-    Evaluate data leakage in dataset train-test split.
+    """Search the test half of a split against the train half and flag the leakage.
+
+    An MMseqs2 similarity search reports how much of the test set already appears
+    in the training set, at or above --similarity-threshold. Reports land in
+    out-folder/split/, one directory per compared pair.
     """
     _validate_input_files(train_input, 'Training input file')
     _validate_input_files(test_input, 'Test input file')

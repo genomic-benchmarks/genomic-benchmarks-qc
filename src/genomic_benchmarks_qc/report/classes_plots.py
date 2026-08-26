@@ -12,8 +12,6 @@ passing the flags in meant building the whole figure a second time to get the
 second file, on exactly the datasets that have one.
 """
 
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -24,8 +22,6 @@ from matplotlib.patches import Patch
 
 from genomic_benchmarks_qc.report.colors import CLASS_COLORS, FAIL_COLOR, WARN_COLOR
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
-
-logger = logging.getLogger(__name__)
 
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
@@ -249,7 +245,7 @@ def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
                 width=0.8
             )
         else:
-            logger.error(f"Unknown plot type: {plot_type}")
+            raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
 
         axs[index].set_ylim(-0.1, 1.1)
         # Reserve the underline margin so flagged/unflagged plots share geometry
@@ -330,7 +326,7 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
         if min_y != max_y:
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
     else:
-        logger.error(f"Unknown plot type: {plot_type}")
+        raise ValueError(f"Unknown plot type: {plot_type}. Supported types: 'violin', 'boxen'")
 
     ax.set_xlabel(x_label, fontsize=14)
     ax.set_ylabel(stats_name, fontsize=14)
