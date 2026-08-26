@@ -1,3 +1,4 @@
+import sys
 import typer
 from typing import List, Optional
 from pathlib import Path
@@ -143,7 +144,25 @@ def evaluate_splits(
         log_file=log_file,
     )
 
+# Printed rather than warned, and on every invocation. The DeprecationWarning in
+# genbenchQC/__init__.py fires on import, but Python's default filter drops a
+# warning raised inside the import machinery, so somebody running the command
+# would never see it - and they are the people this release exists for. stderr
+# rather than stdout, so a command whose output is being redirected to a file
+# still writes only its output there.
+_RENAME_NOTICE = """\
+genbenchQC has been renamed to genomic-benchmarks-qc, and this is the final
+release under the old name. Nothing here will be fixed or updated again.
+
+    pip install genomic-benchmarks-qc
+
+The command is then `gb-qc`, with the same two subcommands.
+Docs: https://genomic-benchmarks.github.io/genomic-benchmarks-qc/
+"""
+
+
 def main():
+    print(_RENAME_NOTICE, file=sys.stderr)
     app()
 
 if __name__ == "__main__":

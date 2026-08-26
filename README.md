@@ -1,3 +1,22 @@
+> ## ⚠️ genbenchQC is now `genomic-benchmarks-qc`
+>
+> This package has been renamed, and **1.2.0 is its final release** — nothing in
+> it has changed since 1.1.0 except this notice. The tool continues under the new
+> name, with the same two checks, a rewritten report and a documentation site.
+>
+> **`pip install genomic-benchmarks-qc`** — then use `gb-qc` where you used
+> `genbenchQC`. Both subcommands keep their names.
+>
+> - **PyPI** — <https://pypi.org/project/genomic-benchmarks-qc/>
+> - **Documentation** — <https://genomic-benchmarks.github.io/genomic-benchmarks-qc/>
+> - **Source** — <https://github.com/genomic-benchmarks/genomic-benchmarks-qc>
+>
+> On Python 3.12 or newer, installing this package installs the new one with it.
+>
+> Everything below describes the old tool, and is kept only for reference.
+
+---
+
 ![](https://github.com/katarinagresova/GenBenchQC/blob/main/assets/logo_with_text_transparent.png?raw=True)
 
 # Automated Quality Control for Genomic Machine Learning Datasets
