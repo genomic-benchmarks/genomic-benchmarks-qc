@@ -30,6 +30,8 @@ import numpy as np
 import pandas as pd
 from pandas.errors import EmptyDataError
 
+logger = logging.getLogger(__name__)
+
 # How a staged sequence is named in the FASTA both halves go into. MMseqs2
 # carries only the name through the search, so this is the whole of the join
 # between a hit and the sequence it is about.
@@ -111,7 +113,7 @@ def _validate_mmseqs_frame(frame, source_name):
 
     invalid_rows = frame[MMSEQS_REQUIRED_COLS].isna().any(axis=1).sum()
     if invalid_rows > 0:
-        logging.debug(
+        logger.debug(
             "Found %s rows with missing values in MMSeqs2 output from %s. Removing them.",
             invalid_rows,
             source_name,

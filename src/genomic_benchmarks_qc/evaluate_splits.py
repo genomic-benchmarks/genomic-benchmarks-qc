@@ -57,6 +57,8 @@ from genomic_benchmarks_qc.utils.split_stats import (
     get_threshold_stats,
 )
 
+logger = logging.getLogger(__name__)
+
 # The reports this command writes. Declared here rather than in the CLI, which is
 # how `json` came to be accepted and then silently ignored: there is nothing per
 # sequence to put in a JSON file for a search that reports on the split as a
@@ -282,7 +284,7 @@ def run(
     validate_report_types(report_types, REPORT_TYPES, 'evaluate-splits')
 
     setup_logger(log_level, log_file)
-    logging.info("Starting train-test split evaluation.")
+    logger.info("Starting train-test split evaluation.")
 
     # One directory per train-vs-test comparison, so different comparisons of the
     # same dataset can run concurrently into one output folder without
@@ -311,7 +313,7 @@ def run(
     try:
         os.chmod(tmp_dir, stat.S_IMODE(os.stat(comparison_dir).st_mode))
     except OSError as mode_error:
-        logging.debug(f"Could not match permissions of the temporary directory: {mode_error}")
+        logger.debug(f"Could not match permissions of the temporary directory: {mode_error}")
 
     train_fasta_path = tmp_dir / 'train_sequences.fasta'
     test_fasta_path = tmp_dir / 'test_sequences.fasta'
@@ -331,8 +333,8 @@ def run(
                     "before running split evaluation."
                 )
 
-            logging.info(f"Read {num_train_seqs} sequences from training files.")
-            logging.info(f"Read {num_test_seqs} sequences from testing files.")
+            logger.info(f"Read {num_train_seqs} sequences from training files.")
+            logger.info(f"Read {num_test_seqs} sequences from testing files.")
 
             # Run MMseqs2 search and keep raw TSV path for chunked post-processing.
             outfile = "mmseqs2_search_result.tsv"
@@ -391,13 +393,13 @@ def run(
                     test_fasta_path,
                 )
 
-        logging.info("Train-test split evaluation successfully completed.")
+        logger.info("Train-test split evaluation successfully completed.")
     finally:
         if keep_tmp_files:
-            logging.info(f"Keeping temporary files for debugging at: {tmp_dir}")
+            logger.info(f"Keeping temporary files for debugging at: {tmp_dir}")
         else:
-            logging.debug("Removing temporary files.")
+            logger.debug("Removing temporary files.")
             try:
                 shutil.rmtree(tmp_dir)
             except Exception as cleanup_error:
-                logging.warning(f"Failed to remove temporary directory: {cleanup_error}")
+                logger.warning(f"Failed to remove temporary directory: {cleanup_error}")

@@ -46,6 +46,8 @@ import pandas as pd
 from genomic_benchmarks_qc.utils.naming import slugify
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
 
+logger = logging.getLogger(__name__)
+
 # The two windows these bound are explained in the module docstring.
 DEFAULT_MIN_COVERAGE = 0.25
 MIN_SEQUENCES_PER_REPORTED_POSITION = 50
@@ -240,7 +242,7 @@ class SequenceStatistics:
             message += f", label {self.label}"
         if self.seq_column is not None:
             message += f", sequence column: {self.seq_column}"
-        logging.info(message)
+        logger.info(message)
 
         self._compute_basic_statistics()
         self._compute_per_sequence_statistics()
@@ -276,7 +278,7 @@ class SequenceStatistics:
             # still gets written for a degenerate class.
             self.end_position = 0
             self.scored_end_position = 0
-            logging.warning(
+            logger.warning(
                 f"No sequences{col_info}, so no positions are analysed in per-position statistics."
             )
             return
@@ -289,7 +291,7 @@ class SequenceStatistics:
             # max is belt and braces for a class small enough to fall back on its
             # longest sequence: a position that sets a flag has to be reported.
             self.end_position = max(self._reported_window(lengths), scored_window)
-            logging.info(
+            logger.info(
                 f"No end position given, so per-position checks cover positions "
                 f"1-{self.end_position}{col_info}, as far as at least "
                 f"{MIN_SEQUENCES_PER_REPORTED_POSITION} sequences reach."
@@ -297,13 +299,13 @@ class SequenceStatistics:
         else:
             max_length = int(max(lengths))
             if self.end_position > max_length:
-                logging.warning(
+                logger.warning(
                     f"end_position {self.end_position} is greater than the maximum "
                     f"sequence length {max_length}. Setting end_position to {max_length}."
                 )
                 self.end_position = max_length
 
-            logging.info(f"Using end position: {self.end_position}{col_info}.")
+            logger.info(f"Using end position: {self.end_position}{col_info}.")
 
         # Never past the reported window: a position no check is named for has
         # nothing to flag, so trimming the checks with an explicit `end_position`
@@ -313,7 +315,7 @@ class SequenceStatistics:
 
         required = self._required_cohort(len(lengths))
         if self.scored_end_position < 1:
-            logging.warning(
+            logger.warning(
                 f"Not enough sequences{col_info} for per-position statistics: no position is "
                 f"reached by {required:,} of them, so every position is reported as Unknown. "
                 "The figures are still drawn, with no flag on any position."
@@ -323,12 +325,12 @@ class SequenceStatistics:
         floor = (f"{required:,} sequences ({self.min_coverage:.0%} of this class)"
                  if required > MIN_SEQUENCES_PER_CLASS
                  else f"{required:,} sequences")
-        logging.info(
+        logger.info(
             f"Positions 1-{self.scored_end_position}{col_info} may be flagged, as far as "
             f"{floor} reach."
         )
         if self.end_position > self.scored_end_position:
-            logging.info(
+            logger.info(
                 f"Positions {self.scored_end_position + 1}-{self.end_position}{col_info} are "
                 "reached by too few sequences to compare, so they are reported as Unknown and "
                 "are not drawn."

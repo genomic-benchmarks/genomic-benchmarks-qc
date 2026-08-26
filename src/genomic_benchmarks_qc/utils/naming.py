@@ -20,6 +20,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 # Input extensions the CLI accepts, longest first so '.fasta' wins over '.fa'.
 SEQUENCE_EXTENSIONS = ('.fasta', '.fa', '.csv', '.tsv')
 COMPRESSION_EXTENSIONS = ('.gz',)
@@ -180,7 +182,7 @@ def unique_slugs(values, contexts=None):
             candidate = f'{_fit(base, len(marker))}{marker}'
 
         if candidate != slug:
-            logging.warning(
+            logger.warning(
                 f"Name '{slug}' derived from '{value}' is not unique among the inputs; "
                 f"using '{candidate}' for its report path instead."
             )

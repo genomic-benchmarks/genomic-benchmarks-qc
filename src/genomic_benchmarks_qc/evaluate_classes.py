@@ -44,6 +44,8 @@ from genomic_benchmarks_qc.utils.naming import (
 from genomic_benchmarks_qc.utils.seq_stats import DEFAULT_MIN_COVERAGE, SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
 
+logger = logging.getLogger(__name__)
+
 # The reports this command writes, declared beside the code that writes them so
 # the CLI cannot offer one that never arrives.
 REPORT_TYPES = ('json', 'html', 'simple')
@@ -99,10 +101,10 @@ def run_analysis(input_statistics, report_dir, report_types, plot_type):
         comparison_dir = report_dir / comparison_dirname(stat1.slug, stat2.slug)
 
         if stat1.seq_column is not None:
-            logging.info(f"Comparing classes for sequence column: {stat1.seq_column}")
-        logging.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
+            logger.info(f"Comparing classes for sequence column: {stat1.seq_column}")
+        logger.info(f"Comparing classes: {stat1.label} vs {stat2.label}")
 
-        logging.debug(f"Running significant differences analysis for {comparison_dir}.")
+        logger.debug(f"Running significant differences analysis for {comparison_dir}.")
         results, failed_by_feature = flag_significant_differences(
             stat1, stat2
         )
@@ -142,7 +144,7 @@ def _regression_labels(df, label_column):
 
     nan_count = df[label_column].isna().sum()
     if nan_count > 0:
-        logging.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
+        logger.warning(f"Dropped {nan_count} rows with non-numeric values in '{label_column}'.")
         # Copied, not just filtered: the classes are written back into the column
         # below, and assigning into a slice of the original frame only warns.
         df = df.dropna(subset=[label_column]).copy()
@@ -154,7 +156,7 @@ def _regression_labels(df, label_column):
         )
 
     threshold = df[label_column].median()
-    logging.debug(f"Inferred threshold for regression: {threshold}")
+    logger.debug(f"Inferred threshold for regression: {threshold}")
     df[label_column] = df[label_column].apply(lambda x: 'high' if x >= threshold else 'low')
     labels = ['high', 'low']
 
@@ -190,7 +192,7 @@ def _resolve_labels(df, label_column, label_list, regression):
         # is silently dropped; say so rather than reporting on classes the user
         # did not ask for.
         if not (len(label_list) == 1 and label_list[0] == 'infer'):
-            logging.warning(
+            logger.warning(
                 f"Ignoring label_list {label_list}: regression splits '{label_column}' "
                 f"into 'high' and 'low' classes."
             )
@@ -218,7 +220,7 @@ def _resolve_labels(df, label_column, label_list, regression):
                 f"median, --label-column to point at a different column, or --label-list "
                 f"to name the classes to compare."
             )
-        logging.debug(f"Inferred labels: {labels}")
+        logger.debug(f"Inferred labels: {labels}")
         return df, labels
 
     # dict.fromkeys drops repeated labels; a repeated label would otherwise be
@@ -247,9 +249,9 @@ def _evaluate_fasta_classes(input, out_folder, report_types, plot_type, end_posi
         # Rejected here so the run fails on the input, not partway through the
         # statistics - as the CSV path does for a label with no rows.
         if not sequences:
-            logging.error(f"No sequences found in FASTA file '{input_file}'.")
+            logger.error(f"No sequences found in FASTA file '{input_file}'.")
             raise ValueError(f"No sequences found in FASTA file '{input_file}'.")
-        logging.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
+        logger.debug(f"Read {len(sequences)} sequences from FASTA file {input_file}.")
         seq_stats += [SequenceStatistics(sequences, filename=Path(input_file).name,
                                          filepath=input_file, label=label, slug=slug,
                                          end_position=end_position,
@@ -268,10 +270,10 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
     """Evaluate classes given as a label column of one or more CSV/TSV files."""
     # read all files into one dataframe (single file wrapped in list)
     if len(input) > 1:
-        logging.info(f"Merging {len(input)} input files: {', '.join(input)}")
+        logger.info(f"Merging {len(input)} input files: {', '.join(input)}")
     dfs = [read_csv_file(f, format, sequence_column, label_column) for f in input]
     df = pd.concat(dfs, ignore_index=True)
-    logging.debug(f"Read {len(df)} rows from {len(dfs)} file(s)")
+    logger.debug(f"Read {len(df)} rows from {len(dfs)} file(s)")
 
     df, labels = _resolve_labels(df, label_column, label_list, regression)
 
@@ -298,7 +300,7 @@ def _evaluate_table_classes(input, format, out_folder, sequence_column, label_co
         seq_stats = []
         for label in labels:
             sequences = read_sequences_from_df(df, seq_col, label_column, label)
-            logging.debug(
+            logger.debug(
                 f"Read {len(sequences)} sequences for label '{label}' "
                 f"from column '{reported_column}'."
             )
@@ -410,7 +412,7 @@ def run(input: list[str],
     validate_report_types(report_types, REPORT_TYPES, 'evaluate-classes')
 
     setup_logger(log_level, log_file)
-    logging.info("Starting classes evaluation.")
+    logger.info("Starting classes evaluation.")
 
     ensure_directory(out_folder)
 
@@ -425,4 +427,4 @@ def run(input: list[str],
                                     label_list, regression, report_types, plot_type, end_position,
                                     min_coverage)
 
-    logging.info("Classes evaluation successfully completed.")
+    logger.info("Classes evaluation successfully completed.")

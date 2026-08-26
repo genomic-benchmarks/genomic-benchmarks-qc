@@ -15,6 +15,12 @@ from pathlib import Path
 import pandas as pd
 from Bio import SeqIO
 
+# Everything in the package logs to a child of this, so `setup_logger` can
+# configure the lot with one handler and leave the root logger alone.
+PACKAGE_LOGGER_NAME = __name__.split('.')[0]
+
+logger = logging.getLogger(__name__)
+
 
 @contextmanager
 def _open_text(file_path):
@@ -59,7 +65,7 @@ class SequenceStatsAccumulator:
 
 def stream_fasta_sequences(fasta_file):
     """Yield uppercase sequences one-by-one from a FASTA file."""
-    logging.debug(f"Streaming FASTA file: {fasta_file}")
+    logger.debug(f"Streaming FASTA file: {fasta_file}")
     with _open_text(fasta_file) as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             yield str(record.seq).upper()
@@ -67,7 +73,7 @@ def stream_fasta_sequences(fasta_file):
 
 def read_fasta(fasta_file):
     """Read all sequences from a FASTA file into a list."""
-    logging.debug(f"Reading FASTA file: {fasta_file}")
+    logger.debug(f"Reading FASTA file: {fasta_file}")
     with _open_text(fasta_file) as handle:
         return [str(record.seq).upper() for record in SeqIO.parse(handle, 'fasta')]
 
@@ -104,7 +110,7 @@ def stream_fasta_records_by_ids(fasta_path, ids_to_keep):
 
 def filter_fasta_by_ids(fasta_path, new_fasta_path, ids_to_keep):
     """Write only selected FASTA records to a new output file."""
-    logging.debug(
+    logger.debug(
         f"Filtering FASTA file: {fasta_path} -> {new_fasta_path}, "
         f"keeping {len(ids_to_keep)} IDs"
     )
@@ -191,12 +197,12 @@ def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     if label_column is not None:
         # check if label column contains any missing values
         if df[label_column].isnull().any():
-            logging.warning(
+            logger.warning(
                 f"Label column '{label_column}' contains missing values. "
                 "Dropping rows with missing labels."
             )
         df = df.dropna(subset=[label_column])
-        logging.debug(f"Dropped rows with missing labels, new shape: {df.shape}")
+        logger.debug(f"Dropped rows with missing labels, new shape: {df.shape}")
 
     # Replace NaN values in sequence columns with empty strings
     df[seq_columns] = df[seq_columns].fillna('')
@@ -204,7 +210,7 @@ def read_csv_file(file_path, input_format, seq_columns, label_column=None):
     # Convert sequences to uppercase
     df[seq_columns] = df[seq_columns].apply(lambda col: col.str.upper())
 
-    logging.debug(f"Read CSV/TSV file: {file_path}, shape: {df.shape}, columns: {columns}")
+    logger.debug(f"Read CSV/TSV file: {file_path}, shape: {df.shape}, columns: {columns}")
 
     return df
 
@@ -221,17 +227,17 @@ def read_sequences_from_df(df, seq_columns, label_column=None, label=None):
         seq_columns = [seq_columns]
 
     if label_column is not None:
-        logging.debug(f"Filtering sequences by label: {label} in column: {label_column}")
+        logger.debug(f"Filtering sequences by label: {label} in column: {label_column}")
         df_parsed = df[df[label_column] == label]
         if df_parsed.empty:
-            logging.error(f"No sequences found for label '{label}' in column '{label_column}'.")
+            logger.error(f"No sequences found for label '{label}' in column '{label_column}'.")
             raise ValueError(f"No sequences found for label '{label}' in column '{label_column}'.")
     else:
         df_parsed = df
 
     for col in seq_columns:
         if col not in df_parsed.columns:
-            logging.error(f"Sequence column '{col}' not found in dataframe.")
+            logger.error(f"Sequence column '{col}' not found in dataframe.")
             raise KeyError(f"Sequence column '{col}' not found in dataframe.")
 
     if len(seq_columns) == 1:
@@ -273,41 +279,55 @@ def stream_files_to_sequences(files, input_format, sequence_column, chunksize=10
             yield from stream_table_sequences(
                 file, input_format, sequence_column, chunksize=chunksize)
         else:
-            logging.error(f"Unsupported input format: {input_format}")
+            logger.error(f"Unsupported input format: {input_format}")
             raise ValueError(f"Unsupported input format: {input_format}")
 
 
 def setup_logger(level=logging.INFO, file=None):
-    """Configure console/file logging and suppress noisy matplotlib debug logs."""
-    if file:
-        logging.basicConfig(
-            level=level,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            handlers=[
-                logging.FileHandler(file, mode='w'),
-                logging.StreamHandler()
-            ]
-        )
-    else:
-        logging.basicConfig(
-            level=level,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            handlers=[
-                logging.StreamHandler()
-            ]
-        )
+    """Send this package's log to the console, and to `file` if one is named.
 
-    # Suppress matplotlib debug messages
-    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+    Only this package's logger is touched. `basicConfig` was what this used
+    before, and `basicConfig` configures the caller's *root* logger: importing
+    the package and calling `run()` reached into an application's logging and
+    reconfigured it, and every library in that process started reporting
+    through handlers gb-qc had installed.
+
+    It also did nothing at all the second time. `basicConfig` returns without
+    acting once the root logger has handlers, so a second `run()` in one
+    process silently ignored its `log_level` and its `log_file` - the second
+    run's log went to the first run's file. Handlers are replaced here rather
+    than added, so calling this again means what it says, and two runs do not
+    each get a copy of the other's lines.
+
+    Nothing configures the root logger any more, which is the caller's to
+    configure. That includes the matplotlib level this used to pin: it was only
+    needed because a root handler at DEBUG made matplotlib's own debug output
+    everyone's problem.
+    """
+    package_logger = logging.getLogger(PACKAGE_LOGGER_NAME)
+    for handler in package_logger.handlers[:]:
+        package_logger.removeHandler(handler)
+        handler.close()
+
+    formatter = logging.Formatter(
+        fmt='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+    handlers = [logging.StreamHandler()]
+    if file:
+        handlers.append(logging.FileHandler(file, mode='w'))
+    for handler in handlers:
+        handler.setFormatter(formatter)
+        package_logger.addHandler(handler)
+
+    package_logger.setLevel(level)
 
 
 def ensure_directory(path):
     """Create a directory and its parents, reporting the ones that were missing."""
     path = Path(path)
     if not path.exists():
-        logging.info(f"Output folder {path} does not exist. Creating it.")
+        logger.info(f"Output folder {path} does not exist. Creating it.")
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -323,10 +343,10 @@ def log_failures(operation):
     try:
         yield
     except Exception as exc:
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            logging.exception(f"{operation} failed.")
+        if logging.getLogger(PACKAGE_LOGGER_NAME).isEnabledFor(logging.DEBUG):
+            logger.exception(f"{operation} failed.")
         else:
-            logging.error(f"{operation} failed: {exc}")
+            logger.error(f"{operation} failed: {exc}")
         raise
 
 

@@ -25,6 +25,8 @@ from genomic_benchmarks_qc.report.utils import DISPLAY_DPI, FIGURE_DPI, SavedPlo
 from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 
+logger = logging.getLogger(__name__)
+
 
 def save_plot(fig, path, embed=True):
     """Write one figure to `path`, and return it with the copy the page embeds.
@@ -94,7 +96,7 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
     """
     plots_dir.mkdir(parents=True, exist_ok=True)
 
-    logging.info(f"Generating HTML report: {output_path}")
+    logger.info(f"Generating HTML report: {output_path}")
 
     plots_paths_dict = generate_split_plots(
         query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
@@ -204,17 +206,17 @@ def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_t
         with open(duplicate_seqs_path, 'w') as f:
             for seq in sorted(duplicate_seqs):
                 f.write(f"{seq}\n")
-        logging.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
+        logger.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
 
 def generate_json_report(stats_dict, output_path):
     """Dump one class's computed statistics to JSON."""
-    logging.info(f"Generating JSON report: {output_path}")
+    logger.info(f"Generating JSON report: {output_path}")
     write_stats_json(stats_dict, output_path)
 
 def generate_simple_report(results, output_path):
     """Write the per-check flags as a small CSV, one row per check."""
 
-    logging.info(f"Generating simple report: {output_path}")
+    logger.info(f"Generating simple report: {output_path}")
 
     if isinstance(results, dict):
         results = pd.DataFrame.from_dict(results, orient='index')
@@ -246,7 +248,7 @@ def generate_dataset_plots(stats1, stats2, output_path, plot_type='boxen',
         that could not be drawn.
     """
 
-    logging.info(f"Generating PNG plots at: {output_path}")
+    logger.info(f"Generating PNG plots at: {output_path}")
 
     # Deferred, for the reason in the module docstring.
     import matplotlib.pyplot as plt

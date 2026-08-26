@@ -26,6 +26,8 @@ from genomic_benchmarks_qc.report.colors import CLASS_COLORS
 from genomic_benchmarks_qc.report.utils import FAIL_COLOR, WARN_COLOR
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 
+logger = logging.getLogger(__name__)
+
 
 def plot_lengths(stats1, stats2, plot_type='boxen'):
     """
@@ -248,7 +250,7 @@ def plot_dinucleotides(stats1: SequenceStatistics, stats2: SequenceStatistics,
                 width=0.8
             )
         else:
-            logging.error(f"Unknown plot type: {plot_type}")
+            logger.error(f"Unknown plot type: {plot_type}")
 
         axs[index].set_ylim(-0.1, 1.1)
         # Reserve the underline margin so flagged/unflagged plots share geometry
@@ -329,7 +331,7 @@ def plot_one_stat(stats1, stats2, stats_name, plot_type, x_label='', title=''):
         if min_y != max_y:
             ax.set_ylim(min_y - 0.1 * abs(max_y - min_y), max_y + 0.1 * abs(max_y - min_y))
     else:
-        logging.error(f"Unknown plot type: {plot_type}")
+        logger.error(f"Unknown plot type: {plot_type}")
 
     ax.set_xlabel(x_label, fontsize=14)
     ax.set_ylabel(stats_name, fontsize=14)

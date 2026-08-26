@@ -42,6 +42,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     # Imported for annotations only: seq_stats imports this module, so a real
     # import would be circular.
@@ -794,7 +796,7 @@ def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: 
     size_2 = stats2.stats['Number of sequences']
 
     if per_sequence:
-        logging.warning(
+        logger.warning(
             f"Not enough sequences to score {len(per_sequence)} check(s): "
             f"{', '.join(per_sequence)}. '{label_1}' has {size_1:,} sequences and "
             f"'{label_2}' has {size_2:,}, and below {MIN_SEQUENCES_PER_CLASS} in the "
@@ -805,7 +807,7 @@ def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: 
         )
 
     if positional:
-        logging.warning(
+        logger.warning(
             f"Not enough sequences to score {len(positional)} check(s): "
             f"{', '.join(positional)}. Each position is compared on the sequences long "
             f"enough to reach it, and no position has at least "

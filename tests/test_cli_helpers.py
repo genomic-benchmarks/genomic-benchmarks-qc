@@ -153,7 +153,11 @@ class TestRunCommand:
         def command(log_level=None):
             raise OSError("something broke later")
 
-        with caplog.at_level(logging.DEBUG), pytest.raises(typer.Exit):
+        # On the package's own logger: that is the one `setup_logger` configures
+        # and the one _run_command asks, so configuring the root would not be
+        # the thing that was asked about.
+        with caplog.at_level(logging.DEBUG, logger='genomic_benchmarks_qc'), \
+                pytest.raises(typer.Exit):
             _run_command(command, log_level='DEBUG')
         err = capsys.readouterr().err
         assert "Traceback (most recent call last)" not in err

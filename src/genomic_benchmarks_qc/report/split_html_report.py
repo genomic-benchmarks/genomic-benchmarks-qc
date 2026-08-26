@@ -35,6 +35,8 @@ from genomic_benchmarks_qc.report.utils import (
 )
 from genomic_benchmarks_qc.utils.split_stats import flag_split_data_leakage
 
+logger = logging.getLogger(__name__)
+
 # Rows of the alignment listing that the page carries. The listing is evidence a
 # reader spot-checks, not a data file - every hit above the threshold is exported
 # to mmseqs/mmseqs2_search_result.tsv - and each row here embeds two coloured
@@ -171,7 +173,7 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         except Exception as e:
             if not alignment_error_logged:
                 alignment_error_logged = True
-                logging.warning(
+                logger.warning(
                     "Alignment visualisation failed for query=%s target=%s: %s: %s. "
                     "This is often caused by a conda-installed mmseqs2 build. See the "
                     "mmseqs2 installation notes in README.md — installing precompiled "

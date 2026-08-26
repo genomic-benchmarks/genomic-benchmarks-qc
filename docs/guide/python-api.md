@@ -87,6 +87,18 @@ route to the numbers behind the flags.
 Both functions call `setup_logger` and log progress at `INFO`. Pass
 `log_level='WARNING'` for quiet, or `log_file='qc.log'` to tee to a file.
 
+Only the `genomic_benchmarks_qc` logger is configured — your root logger, and
+every other library reporting through it, is left as you set it up. Calling
+either function again reconfigures that logger, so two runs in one process each
+get the level and the file they asked for. To route the output yourself instead,
+ignore both arguments and attach a handler:
+
+```python
+import logging
+
+logging.getLogger('genomic_benchmarks_qc').addHandler(your_handler)
+```
+
 They raise on failure rather than exiting, so wrap them as you would any other
 call. The CLI's non-zero exit codes are its own translation layer, not the
 functions' behaviour.

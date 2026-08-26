@@ -17,11 +17,14 @@ from genomic_benchmarks_qc.evaluate_classes import REPORT_TYPES as CLASSES_REPOR
 from genomic_benchmarks_qc.evaluate_classes import run as run_evaluate_classes
 from genomic_benchmarks_qc.evaluate_splits import REPORT_TYPES as SPLITS_REPORT_TYPES
 from genomic_benchmarks_qc.evaluate_splits import run as run_evaluate_splits
+from genomic_benchmarks_qc.utils.input_utils import PACKAGE_LOGGER_NAME
 from genomic_benchmarks_qc.utils.seq_stats import (
     DEFAULT_MIN_COVERAGE,
     MIN_SEQUENCES_PER_REPORTED_POSITION,
 )
 from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -125,15 +128,13 @@ def _run_command(command, *args, **kwargs):
     except Exception as exc:
         # `setup_logger` runs inside the command, so it can be what failed - an
         # unwritable `--log-file`, say - and then nothing ever configured the
-        # root logger and the DEBUG record below has nowhere to go. Decide that
-        # here, before `logging.debug` installs a default handler on its way
-        # out and makes an unconfigured logger look configured.
+        # package logger and the DEBUG record below has nowhere to go.
         debug_lost = (str(kwargs.get('log_level', '')).upper() == 'DEBUG'
-                      and not logging.getLogger().isEnabledFor(logging.DEBUG))
+                      and not logging.getLogger(PACKAGE_LOGGER_NAME).isEnabledFor(logging.DEBUG))
         # Failures inside the evaluation proper are logged twice at DEBUG, once
         # here and once by `log_failures`. Worth it: the alternative is guessing
         # whether the evaluation got far enough to have logged anything at all.
-        logging.debug("Command failed.", exc_info=True)
+        logger.debug("Command failed.", exc_info=True)
         if debug_lost:
             # Asking for DEBUG has to produce a traceback somewhere, or the one
             # failure that breaks logging is the one that explains itself least.

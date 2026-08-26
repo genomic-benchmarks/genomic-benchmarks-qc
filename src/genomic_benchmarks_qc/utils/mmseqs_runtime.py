@@ -16,6 +16,8 @@ from pathlib import Path
 
 from genomic_benchmarks_qc.utils.mmseqs_summary import MMSEQS_REQUIRED_COLS
 
+logger = logging.getLogger(__name__)
+
 SUPPORTED_CPU_FLAGS = ("avx2", "sse4_1", "sse2")
 MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC = 1.0
 
@@ -53,11 +55,11 @@ def check_mmseqs_preflight():
             "MMSeqs2 executable not found in PATH. "
             "Please install MMSeqs2 and ensure it is available in your environment."
         )
-    logging.debug("Found MMSeqs2 at: %s", mmseqs_path)
+    logger.debug("Found MMSeqs2 at: %s", mmseqs_path)
 
     system = platform.system()
     if system != "Linux":
-        logging.warning(
+        logger.warning(
             "Skipping CPU feature checks for non-Linux system (%s). "
             "Ensure your MMSeqs2 binary is compatible with this platform.",
             system,
@@ -66,7 +68,7 @@ def check_mmseqs_preflight():
 
     arch = platform.machine().lower()
     if arch not in ("x86_64", "amd64"):
-        logging.warning(
+        logger.warning(
             "Skipping CPU feature checks on %s: %s are x86_64 instruction sets and "
             "this machine is not x86_64. MMSeqs2 ships builds for other "
             "architectures, so this is not a reason to stop - if the binary here is "
@@ -87,7 +89,7 @@ def check_mmseqs_preflight():
             "CPU does not support any of the MMSeqs2-supported instruction set flags: "
             + ", ".join(SUPPORTED_CPU_FLAGS)
         )
-    logging.debug(
+    logger.debug(
         "CPU feature checks passed for MMSeqs2 using supported flags: %s",
         ", ".join(matched_flags),
     )
@@ -111,7 +113,7 @@ def run_search(
     Returns the path of that table. Raises RuntimeError if MMseqs2 is unusable
     or exits non-zero.
     """
-    logging.info(
+    logger.info(
         "Running MMSeqs2, an ultrafast and sensitive search, for test sequences "
         "(query) against train sequences (db)."
     )
@@ -140,10 +142,10 @@ def run_search(
     if split_memory_limit is not None:
         cmd.extend(["--split-memory-limit", split_memory_limit])
 
-    logging.debug("Running command: %s", " ".join(cmd))
+    logger.debug("Running command: %s", " ".join(cmd))
     mmseqs_env = os.environ.copy()
     mmseqs_env["TTY"] = "1"
-    logging.debug("Running MMSeqs2 with TTY=%s", mmseqs_env["TTY"])
+    logger.debug("Running MMSeqs2 with TTY=%s", mmseqs_env["TTY"])
 
     try:
         process = subprocess.Popen(
@@ -192,10 +194,10 @@ def run_search(
                                 >= MMSEQS_PROGRESS_LOG_MIN_INTERVAL_SEC
                             )
                             if due:
-                                logging.debug("MMSeqs2 progress: %s", line)
+                                logger.debug("MMSeqs2 progress: %s", line)
                                 last_progress_log_ts = now
                         else:
-                            log_fn = logging.error if stream_name == "stderr" else logging.debug
+                            log_fn = logger.error if stream_name == "stderr" else logger.debug
                             log_fn("MMSeqs2 %s: %s", stream_name, line)
             finally:
                 stream.close()
@@ -218,7 +220,7 @@ def run_search(
         stderr_thread.join()
 
         if return_code != 0:
-            logging.error("MMSeqs2 search failed with return code: %s", return_code)
+            logger.error("MMSeqs2 search failed with return code: %s", return_code)
             raise RuntimeError("MMSeqs2 search failed.")
 
     except Exception:
@@ -227,6 +229,6 @@ def run_search(
             process.wait()
         raise
 
-    logging.debug("MMSeqs2 easy-search completed.")
+    logger.debug("MMSeqs2 easy-search completed.")
 
     return Path(out_file)
