@@ -39,8 +39,9 @@ If you are proposing a feature:
 - make an issue for the thing you want to implement
 - create the corresponding branch
 - develop
-- write units tests in tests/
-- write documentation in markdown (see other functions for example)
+- write unit tests in tests/
+- document it: a docstring on anything public, and a page under docs/ if it
+  changes what a user does
 - push the changes
 - make a pull request
 - once the pull request is merged, the issue will be closed
@@ -62,7 +63,7 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     ```bash
     cd genomic-benchmarks-qc/
     conda env create -f dev-requirements.yml
-    source activate gb-qc-dev
+    conda activate gb-qc-dev
     pip install -e '.[develop]'
     ```
 
@@ -94,8 +95,9 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     ```
 
     The coverage settings live under `[tool.coverage.*]` in `pyproject.toml`. Branch coverage is
-    on, and the run fails if total coverage drops below 60% (currently ~85%), which is also
-    enforced in CI. Uncovered line numbers are
+    on, and the run fails if total coverage drops below 60%, which is also enforced in CI.
+    Total coverage is well above that floor - 88% at the time of writing, and CI's test job
+    prints the live figure as a per-file table in its job summary. Uncovered line numbers are
     printed per file; for a browsable line-by-line report use:
 
     ```bash
@@ -139,21 +141,55 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     checkout and is missing from the installed package. `tests/test_report_assets.py` fails when a
     new one is not.
 
-8.  If you added a file under `tests/` that is not a `test_*.py` module - a fixture, a helper, a
+8.  If you changed a docstring, a page under `docs/`, or anything under `examples/`, build the
+    documentation site. mkdocs is not in the dev environment - the docs dependencies are pinned
+    separately in `docs/requirements.txt` - so install them first:
+
+    ```bash
+    pip install -r docs/requirements.txt
+    python scripts/build_docs.py --skip-reports
+    ```
+
+    `--skip-reports` leaves `docs/reports/` alone instead of running `gb-qc` over all eight
+    examples, which takes about two and a half minutes; anything missing there gets a
+    placeholder so the report links still resolve. Drop it when you changed anything a report's
+    numbers depend on - that full run is what asserts each example still produces the flags its
+    `meta.toml` claims.
+
+    The site is built with `--strict`, so a cross-reference that stops resolving fails the build
+    rather than rendering as bracketed text. Two things to know before writing one:
+
+    - A docstring cross-reference is `[NAME][genomic_benchmarks_qc.path.NAME]`, and
+      `tests/test_docstring_references.py` checks that the target exists and that a documented
+      `Default:` still matches the constant it cites. Plain `pytest` catches a dead target; only
+      the build catches a link that fails to render.
+    - The pages under `docs/reference/api/` name their members explicitly, so a new public
+      function or constant is not published until it is added to that page's `members:` list.
+
+    The Docs workflow runs the same build on every pull request touching `src/`, `docs/`,
+    `examples/`, `mkdocs.yml` or `pyproject.toml`.
+
+9.  If you added a file under `tests/` that is not a `test_*.py` module - a fixture, a helper, a
     data file - add it to `MANIFEST.in`. setuptools finds the test modules by itself and nothing
     else, so without it the source distribution ships a suite that cannot run. The same trap as
     package data above, one directory further out:
 
     ```bash
+    pip install build
+    rm -rf dist                          # `build` adds to dist/, it does not replace it
     python -m build
     tar tzf dist/*.tar.gz | grep /tests/
     ```
+
+    The same applies to anything outside `tests/` that a test reads: the sdist carries
+    `docs/guide/` only because `tests/test_report_links.py` opens those pages, and that entry is
+    in `MANIFEST.in` for the same reason.
 
     CI's package job builds both artifacts, runs `twine check` on them, and then runs the whole
     suite from the unpacked tarball. That is the only place a file missing from the sdist shows
     up: every other check here reads your working tree, where the file is still sitting.
 
-9.  Commit your changes and push your branch to GitHub:
+10. Commit your changes and push your branch to GitHub:
 
     ```bash
     git add .
@@ -161,7 +197,7 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     git push origin name-of-your-bugfix-or-feature
     ```
 
-10. Submit a pull request through the GitHub website.
+11. Submit a pull request through the GitHub website.
 
 ## Pull Request Guidelines
 
@@ -169,5 +205,5 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1.  The pull request should include tests.
 2.  `ruff check .` should report no errors; CI runs the same check and fails the pull request otherwise.
-3.  If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring.
-4.  The pull request should work for Python >=3.12
+3.  If the pull request adds functionality, the docs should be updated: a docstring on anything public, and its name added to the relevant page under `docs/reference/api/`.
+4.  The pull request should work for Python >=3.12. CI runs the suite on 3.12, 3.13 and 3.14; the dev environment pins 3.14, so the older two are only exercised on the pull request.
