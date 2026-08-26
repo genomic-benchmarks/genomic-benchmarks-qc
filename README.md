@@ -17,7 +17,7 @@
 
 ---
 
-![](https://github.com/katarinagresova/GenBenchQC/blob/main/assets/logo_with_text_transparent.png?raw=True)
+![](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/genbenchQC-final/assets/logo_with_text_transparent.png?raw=True)
 
 # Automated Quality Control for Genomic Machine Learning Datasets
 
@@ -31,9 +31,9 @@ It helps detect biases, inconsistencies, and potential data leakage across seque
 - **genbenchQC evaluate-splits** – QC tool to evaluate data leakage in dataset train-test splits.
 
 ### General Features
-- [**Class-level QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-classes) – Compare multiple classes for feature similarity or bias.
-- [**Train–test split QC**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#evaluate-splits) – Detect potential data leakage through sequence similarity and clustering.
-- [**Multiple input formats**](https://github.com/katarinagresova/GenBenchQC/tree/main?tab=readme-ov-file#supported-input-file-formats) – Supports FASTA, CSV, and TSV datasets.
+- [**Class-level QC**](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/genbenchQC-final?tab=readme-ov-file#evaluate-classes) – Compare multiple classes for feature similarity or bias.
+- [**Train–test split QC**](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/genbenchQC-final?tab=readme-ov-file#evaluate-splits) – Detect potential data leakage through sequence similarity and clustering.
+- [**Multiple input formats**](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/genbenchQC-final?tab=readme-ov-file#supported-input-file-formats) – Supports FASTA, CSV, and TSV datasets.
 - **Customizable reporting** – Generate JSON, HTML, or simple text summaries.
 - **Integration-ready** – Available as both CLI tools and a Python API.
 - **Flexible sequence handling** – Works with single or multiple sequence columns.
@@ -57,8 +57,8 @@ conda install -c conda-forge -c bioconda mmseqs2
 Clone the repository to access example datasets:
 
 ```bash
-git clone https://github.com/katarinagresova/GenBenchQC.git
-cd GenBenchQC
+git clone -b genbenchQC-final https://github.com/genomic-benchmarks/genomic-benchmarks-qc.git
+cd genomic-benchmarks-qc
 ```
 
 ### Evaluate Classes
@@ -73,7 +73,7 @@ genbenchQC evaluate-classes \
   --out-folder example_outputs/G4_dataset
 ```
 
-Outputs with their description are in [example_outputs/G4_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/G4_dataset).
+Outputs with their description are in [example_outputs/G4_dataset](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/genbenchQC-final/example_outputs/G4_dataset).
 
 Running from CLI with tsv file and two sequence columns:
 
@@ -93,7 +93,7 @@ genbenchQC evaluate-classes \
   --input example_datasets/G4_negatives.fasta 
 ```
 
-Outputs with their description are in [example_outputs/miRNA_mRNA_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/miRNA_mRNA_dataset).
+Outputs with their description are in [example_outputs/miRNA_mRNA_dataset](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/genbenchQC-final/example_outputs/miRNA_mRNA_dataset).
 
 ### Evaluate Splits
 
@@ -106,7 +106,7 @@ genbenchQC evaluate-splits \
   --out-folder example_outputs/enhancers_dataset
 ```
 
-Outputs with their description are in [example_outputs/enhancers_dataset](https://github.com/katarinagresova/GenBenchQC/tree/main/example_outputs/enhancers_dataset).
+Outputs with their description are in [example_outputs/enhancers_dataset](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/genbenchQC-final/example_outputs/enhancers_dataset).
 
 ## Supported input file formats
 
@@ -122,8 +122,8 @@ When having CSV/TSV/CSV.GZ/TSV.GZ input, you can also decide to provide multiple
 
 ## Contributions & Support
 
-Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/katarinagresova/GenBenchQC/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. Please see the [contributing notes](https://github.com/katarinagresova/GenBenchQC/blob/main/CONTRIBUTING.md) for more information about how the process works.
+Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. Please see the [contributing notes](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/genbenchQC-final/CONTRIBUTING.md) for more information about how the process works.
 
 ## License
 
-Genomic Benchmarks QC is MIT-style licensed, as found in the [LICENSE](https://github.com/katarinagresova/GenBenchQC/blob/main/LICENSE) file.
+Genomic Benchmarks QC is MIT-style licensed, as found in the [LICENSE](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/genbenchQC-final/LICENSE) file.
