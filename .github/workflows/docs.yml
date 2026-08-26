@@ -1,26 +1,27 @@
 name: Docs
 
 # Builds the documentation site, including running gb-qc over every example to
-# generate the reports it publishes. On the publish branch it deploys to GitHub
-# Pages; on a pull request it builds and stops, so a change that breaks an
-# example or a cross-reference fails the PR rather than the deployment.
+# generate the reports it publishes. On `main` it deploys to GitHub Pages; on a
+# pull request it builds and stops, so a change that breaks an example or a
+# cross-reference fails the PR rather than the deployment.
 #
-# TEMPORARY: the publish branch is `dev`, not `main`, so that the deploy can be
-# run once and looked at before the dev -> main merge. Two `if:` conditions at
-# the bottom name it, and both go back to `refs/heads/main` before that merge.
-# Until they do, a push to main builds but does not publish.
+# The one piece of setup this depends on is not in this file: Settings -> Pages
+# -> Source has to be "GitHub Actions". While it is set to "Deploy from a
+# branch" the build here still passes and only the deploy step fails, which
+# reads as a permissions problem rather than as a setting.
 #
-# One-time setup note: this deploys through the Pages *Actions* source. While
-# Settings -> Pages is still set to "Deploy from a branch", this workflow builds
-# fine but the deploy step cannot publish. Publishing from anything other than
-# the default branch needs one more thing: `dev` added under Settings ->
-# Environments -> github-pages -> deployment branches, which by default admits
-# the default branch only. Without it the deploy job fails on a protection rule
-# rather than on anything in this file.
+# Nothing else is needed now that `main` publishes: Settings -> Environments ->
+# github-pages admits the default branch by default. The `dev` entry added
+# there while the publish branch was temporarily `dev` no longer does anything
+# and can be removed.
 
 on:
   push:
-    branches: [main, dev]
+    # `main` alone, because it is the only branch that deploys and the
+    # pull_request trigger below already builds every change on its way in,
+    # whichever branch it is heading for. A commit pushed straight to a branch
+    # rather than through a pull request is the one case this stops covering.
+    branches: [main]
     paths:
       - 'docs/**'
       - 'examples/**'
@@ -112,7 +113,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload site
-        if: github.ref == 'refs/heads/dev' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/
@@ -120,7 +121,7 @@ jobs:
   deploy:
     name: Deploy
     needs: build
-    if: github.ref == 'refs/heads/dev' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write
