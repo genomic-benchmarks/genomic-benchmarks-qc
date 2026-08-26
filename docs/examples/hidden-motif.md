@@ -56,7 +56,7 @@ it.
 Every sequence the report was built from — all 2,000 in each class — has a `G` at
 position 201, and position 202 is only ever `T` or `C`. Every window here,
 positive or negative, is centred on a `GT` or a `GC`. The positives are `GT` in
-99.0% of cases; the negatives are `GT` in 61.8% and `GC` in 38.3%. **The
+99.0% of cases; the negatives are `GT` in 61.8% and `GC` in 38.2%. **The
 negatives are not background genome — they are decoy donor-like sites that are
 not donors**, which is what makes this dataset worth benchmarking on.
 

@@ -46,6 +46,14 @@ A test sequence counts as leaked when its **best** hit exceeds
 `--similarity-threshold`, 90% by default. So the reported percentage is a count of
 test sequences with at least one near-duplicate in training, not a count of hits.
 
+The flag is a boundary on that percentage:
+<span class="flag flag-pass">Pass</span> at 0%,
+<span class="flag flag-warn">Warning</span> below 2%, and
+<span class="flag flag-fail">Fail</span> at 2% or more. There is no clean band
+above zero — any leakage at all is worth knowing about, which is why the
+<span class="flag flag-warn">Warning</span> band starts at the first leaked
+sequence.
+
 ### Queries and targets are not the same number
 
 The report gives two percentages, and they answer different questions:

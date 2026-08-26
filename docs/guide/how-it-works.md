@@ -125,8 +125,8 @@ below `--min-coverage` (25% by default) of its class, and everything past that i
 <span class="flag flag-unknown">Unknown</span>.
 
 [variable-length](../examples/variable-length.md) is the example where all of
-this is visible at once: flagging stops at position 541, scoring stops at 2636,
-and the longest sequence runs to 5964.
+this is visible at once: flagging stops at position 549, the checks report as far
+as 2636, and the longest sequence runs to 5964.
 
 ## `Unknown` is not `Pass`
 

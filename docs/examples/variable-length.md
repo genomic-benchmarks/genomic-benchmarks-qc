@@ -35,18 +35,19 @@ gb-qc evaluate-splits \
 
 ### Most of this report is `Unknown`, and that is correct
 
-Of the 26,408 per-position sub-checks in the class report, **20,870 are
-<span class="flag flag-unknown">Unknown</span>** — 79% of them. Three different
+Of the 26,360 per-position sub-checks in the class report, **20,870 are
+<span class="flag flag-unknown">Unknown</span>** — 79% of them. Four different
 boundaries are in play, and seeing them in one report is the point of this
 example:
 
 | Position | What happens there |
 |---|---|
-| **541** | As far as 25% of each class still reaches. This is the default `--min-coverage` window: the furthest a position can be *flagged*, and the last position the figures draw |
-| **2636** | As far as 250 sequences per class reach. The furthest anything is *scored* at all |
+| **549** | As far as 25% of each class still reaches. This is the default `--min-coverage` window: the furthest a position can be *flagged*, and the last position the figures draw |
+| **1358** | As far as 250 sequences of each class reach. This is the floor `--min-coverage 0` leaves, and it cannot be switched off |
+| **2636** | As far as 50 sequences of each class reach. The furthest any position is *reported on* — every one past 549 as `Unknown` |
 | **5964** | The longest sequence in the dataset |
 
-Past 541, positions are reported <span class="flag flag-unknown">Unknown</span>.
+Past 549, positions are reported <span class="flag flag-unknown">Unknown</span>.
 Not <span class="flag flag-pass">Pass</span> — the comparison was not made.
 
 The reason is not sample size. It is that a cohort far along the sequence is not
@@ -57,7 +58,7 @@ different claim from a difference between classes. No amount of data fixes that.
 Declining to score is the only honest answer.
 
 **If you need to look further out**, `--min-coverage 0` drops the fraction rule
-and leaves only the 250-sequence floor, which extends flagging to position 2636.
+and leaves only the 250-sequence floor, which extends flagging to position 1358.
 Read what comes back with the caveat above firmly in mind.
 
 ### The vocabulary check fails, and for a sharper reason than it looks

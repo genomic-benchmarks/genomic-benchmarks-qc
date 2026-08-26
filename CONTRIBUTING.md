@@ -94,7 +94,7 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     ```
 
     The coverage settings live under `[tool.coverage.*]` in `pyproject.toml`. Branch coverage is
-    on, and the run fails if total coverage drops below 60% (currently ~65%), which is also
+    on, and the run fails if total coverage drops below 60% (currently ~85%), which is also
     enforced in CI. Uncovered line numbers are
     printed per file; for a browsable line-by-line report use:
 

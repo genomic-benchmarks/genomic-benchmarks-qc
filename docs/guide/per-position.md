@@ -31,17 +31,13 @@ that the finding is genuinely invisible until you zoom.
 | **Drag** | Zoom into a horizontal range |
 | **Shift-drag** | Pan |
 | **Scroll** | Zoom in and out |
-| **Double-click** | Reset the view |
-| **◀ Prev flag** / **Next flag ▶** | Jump to the previous or next flagged position |
-| **Reset zoom** | Same as double-click |
-| **↓ Save view** | Write the current window out as a PNG |
-| **?** | Inline explanation of what the panel shows |
 | **Hover** | Per-class base frequencies and the flag at that position |
+| **◀ Prev flag** / **Next flag ▶** | Jump to the previous or next flagged position |
+| **Reset zoom** | Back to the whole window; double-clicking the figure does the same |
+| **↓ Save view** | Write the current window out as a PNG |
 
-There is also a two-button filter above the table below the plot: **All**
-positions, or only those needing attention. On a long dataset the second is
-usually what you want — [variable-length](../examples/variable-length.md) has
-26,408 per-position sub-checks, and scrolling all of them is not a plan.
+The table under the plot lists the flagged positions only, and clicking a row
+zooms the plot to it.
 
 ## A way to read it
 
@@ -88,15 +84,16 @@ the short version is that a cohort far along a variable-length dataset is a
 sample of the class's longest sequences, not of the class.
 
 For a dataset where this dominates, see
-[variable-length](../examples/variable-length.md): flagging stops at position 541,
-scoring at 2,636, and the longest sequence runs to 5,964. **79% of its
-per-position sub-checks are <span class="flag flag-unknown">Unknown</span>.**
+[variable-length](../examples/variable-length.md): flagging stops at position
+549, the checks report as far as 2,636, and the longest sequence runs to 5,964.
+**79% of its per-position sub-checks are
+<span class="flag flag-unknown">Unknown</span>.**
 
 ### Widening it
 
 `--min-coverage 0` drops the fraction rule and leaves only the 250-sequence
 floor, which is not switchable off. That extends flagging as far as the counts
-allow — on `variable-length`, from 541 to 2,636. Read what comes back with the
+allow — on `variable-length`, from 549 to 1,358. Read what comes back with the
 caveat above in mind: those positions are real comparisons on real sequences, but
 the sequences are the long ones.
 
