@@ -147,6 +147,7 @@ def run_search(
     mmseqs_env["TTY"] = "1"
     logger.debug("Running MMSeqs2 with TTY=%s", mmseqs_env["TTY"])
 
+    process = None
     try:
         process = subprocess.Popen(
             cmd,
@@ -223,8 +224,13 @@ def run_search(
             logger.error("MMSeqs2 search failed with return code: %s", return_code)
             raise RuntimeError("MMSeqs2 search failed.")
 
-    except Exception:
-        if "process" in locals() and process.poll() is None:
+    except BaseException:
+        # BaseException rather than Exception. A Ctrl-C or a cancelled task is
+        # when a search left running matters most - it is the whole machine for
+        # as long as it takes - and neither of those is an Exception. In a
+        # terminal the signal reaches MMseqs2 anyway, because it is in the same
+        # process group; called from a program, nothing else would stop it.
+        if process is not None and process.poll() is None:
             process.kill()
             process.wait()
         raise
