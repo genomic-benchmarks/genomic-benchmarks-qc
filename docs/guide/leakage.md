@@ -128,8 +128,47 @@ in the paper. The failure mode to avoid is not knowing.
   `--split-memory-limit 10G` caps them; without it there is no limit and a big
   run can exhaust the machine.
 - **Threads.** `--threads` is passed straight through; the default is whatever
-  MMseqs2 picks.
+  MMseqs2 picks. See the note below before raising it on a conda-installed
+  MMseqs2.
 - **Temporary files** go into a `gb-qc-mmseqs-*/` directory inside the comparison
   directory and are removed at the end. `--keep-tmp-files` keeps them and logs
   each path. Each run gets its own, so several runs can share one `--out-folder`
   concurrently.
+
+## Backwards alignments on conda-installed MMseqs2
+
+If a run logs
+
+```text
+MMSeqs2 returned 33 of 1107 alignments with their coordinates running backwards,
+although the search asked for the forward strand only ...
+```
+
+then MMseqs2 has reported hits on the reverse strand, which `evaluate-splits`
+never asks for — it searches the forward strand only. Such a row still counts as
+the leak it is; where one reaches the report's listing it is shown with its
+scores, and the page says what happened where the alignment would have been.
+
+**Your numbers are fine.** The leaked percentages, the histogram and the flag are
+computed from `pident`, `qcov` and `tcov`. On affected rows those three match a
+known-good build exactly; what is corrupted is the alignment — the coordinates
+and the aligned strings. Nothing is dropped, so a backwards hit still counts as
+the leak it is.
+
+The cause is the MMseqs2 build, not your data. Conda/bioconda builds produce
+these intermittently when running on more than one thread — a different subset
+each run, and often none at all. Every bioconda release from 14 to 18 does it;
+the upstream precompiled binaries do not.
+
+Two ways out, whichever suits you:
+
+- **Re-run with `--threads 1`.** In testing this gave byte-identical output to
+  the upstream binary across all five bundled examples — same hits, same scores,
+  same alignments — and was deterministic run to run.
+- **Install MMseqs2 from the [upstream precompiled
+  release](https://github.com/soedinglab/MMseqs2#installation)** rather than from
+  conda, and keep your threads.
+
+The trade is yours: single-threaded search costs whatever the rest of the machine
+would have been worth, which on a many-core node is a lot and on a small dataset
+is close to nothing.

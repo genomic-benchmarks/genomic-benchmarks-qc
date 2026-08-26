@@ -44,6 +44,8 @@ Requires Python 3.12 or newer.
 
 The leakage check uses [mmseqs2](https://github.com/soedinglab/MMseqs2), which has to be installed separately — preferably from a precompiled binary or built from source. See the [mmseqs2 installation guide](https://github.com/soedinglab/MMseqs2/wiki#installation).
 
+Conda/bioconda builds are worth avoiding here: above one thread they intermittently report hits on the reverse strand, which `evaluate-splits` never asks for, and those pairs lose their rendered alignment. The leakage numbers are unaffected, and `--threads 1` avoids it — [details](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/guide/leakage/#backwards-alignments-on-conda-installed-mmseqs2).
+
 `evaluate-classes` does not need it.
 </details>
 
