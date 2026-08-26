@@ -13,6 +13,7 @@ from pathlib import Path
 
 import typer
 
+from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.evaluate_classes import REPORT_TYPES as CLASSES_REPORT_TYPES
 from genomic_benchmarks_qc.evaluate_classes import run as run_evaluate_classes
 from genomic_benchmarks_qc.evaluate_splits import REPORT_TYPES as SPLITS_REPORT_TYPES
@@ -45,6 +46,13 @@ VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 # MMseqs2 byte sizes: 0, or a non-zero integer with an optional unit suffix.
 SPLIT_MEMORY_LIMIT_RE = re.compile(r'\A(?:0|[1-9][0-9]*[BKMGT]?)\Z')
+
+
+def _report_version(value: bool):
+    """Print the version and stop, for the `--version` option below."""
+    if value:
+        typer.echo(f"gb-qc {__version__}")
+        raise typer.Exit()
 
 
 def _fail(message: str):
@@ -141,6 +149,20 @@ def _run_command(command, *args, **kwargs):
             typer.echo(traceback.format_exc(), err=True)
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+
+# Nothing to configure at this level, but a Typer app without a callback has no
+# place to hang an option that belongs to no command, and `--version` is the one
+# thing a user asks the tool before asking it anything else - most often to say
+# which version produced a report. Eager, so it answers on its own rather than
+# needing a command after it.
+@app.callback()
+def gb_qc(
+    version: bool = typer.Option(
+        False, '--version', callback=_report_version, is_eager=True,
+        help="Show the version and exit."),
+):
+    """Quality control for genomic machine learning datasets."""
+
 
 @app.command()
 def evaluate_classes(

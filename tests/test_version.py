@@ -13,6 +13,7 @@ import re
 import tomllib
 
 import genomic_benchmarks_qc
+from genomic_benchmarks_qc import cli
 
 PYPROJECT = pathlib.Path(__file__).resolve().parents[1] / 'pyproject.toml'
 CONFIG = tomllib.loads(PYPROJECT.read_text())
@@ -39,3 +40,16 @@ def test_the_reports_do_not_read_installed_metadata():
                  if 'importlib.metadata' in path.read_text()]
 
     assert offenders == []
+
+
+def test_the_cli_reports_the_version(runner):
+    """`gb-qc --version` is how a reader of a report finds out what wrote it.
+
+    It also has to answer without a command after it, which is what `is_eager`
+    on the option buys - `gb-qc --version` alone would otherwise be a usage
+    error.
+    """
+    result = runner.invoke(cli.app, ['--version'])
+
+    assert result.exit_code == 0, result.output
+    assert genomic_benchmarks_qc.__version__ in result.output
