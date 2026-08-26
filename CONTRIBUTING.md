@@ -207,3 +207,59 @@ Before you submit a pull request, check that it meets these guidelines:
 2.  `ruff check .` should report no errors; CI runs the same check and fails the pull request otherwise.
 3.  If the pull request adds functionality, the docs should be updated: a docstring on anything public, and its name added to the relevant page under `docs/reference/api/`.
 4.  The pull request should work for Python >=3.12. CI runs the suite on 3.12, 3.13 and 3.14; the dev environment pins 3.14, so the older two are only exercised on the pull request.
+
+## Cutting a Release
+
+Releasing is a maintainer's job rather than a step in the workflow above, and it is the one
+thing in this repository that cannot be taken back: PyPI will not let you re-upload a version
+number, not after deleting it, not ever. A botched upload costs you that number permanently and
+leaves a gap in the history. Everything below exists so that the irreversible step is the last
+one and the smallest one.
+
+1.  Bump the version. It lives in exactly one place:
+
+    ```python
+    # src/genomic_benchmarks_qc/__init__.py
+    __version__ = "1.0.1"
+    ```
+
+    `pyproject.toml` reads that attribute rather than carrying its own copy, so the built
+    artifact, `gb-qc --version` and the footer of every report all move together. Land the bump
+    on `main` through a pull request like any other change.
+
+2.  Publish a GitHub Release on `main`, tagged `vX.Y.Z` - the same number with a `v` in front.
+    Publishing the Release is what fires the upload; pushing the tag on its own does not. That
+    is deliberate: a tag is easy to push by reflex, whereas a Release has a body you have to
+    write and a button you have to mean.
+
+3.  Approve the `pypi` deployment. The publish job waits on a protected environment with a
+    required reviewer, so nothing leaves the runner until someone clicks a second time. After
+    that click it is out of your hands.
+
+4.  Check that it installs from the real index, which is a different act from installing from a
+    checkout and the only one your users will perform:
+
+    ```bash
+    python -m venv /tmp/gb-qc-check
+    /tmp/gb-qc-check/bin/pip install genomic-benchmarks-qc
+    /tmp/gb-qc-check/bin/gb-qc --version
+    ```
+
+What CI does in between, all of it in `.github/workflows/ci.yml`:
+
+-   The publish job `needs` the lint job, all three Python versions and the package job, so the
+    whole suite has to be green *on the commit being released* before a byte moves. It lives in
+    `ci.yml` rather than in a release workflow of its own because `needs:` cannot reference jobs
+    in another workflow file, and a standalone one would have to either rebuild everything
+    itself or upload artifacts that nothing had verified.
+-   The package job compares the release tag against the version in the built filename and fails
+    the run on a mismatch. That check is why forgetting step 1 costs a re-run rather than a
+    version number.
+-   What the publish job uploads is what the package job built, ran `twine check` over and ran
+    the whole suite from - handed across as a workflow artifact rather than rebuilt, because
+    rebuilding would test one tarball and ship a different one.
+-   The upload uses PyPI Trusted Publishing, so there is no API token anywhere to leak or rotate:
+    GitHub mints a short-lived credential for the single run, and PEP 740 attestations recording
+    which commit built the files come along with it. PyPI's side of that pairing names this
+    workflow file and the `pypi` environment, so renaming either one breaks the upload - and it
+    fails as an unauthorised publisher rather than as anything that looks like a typo.
