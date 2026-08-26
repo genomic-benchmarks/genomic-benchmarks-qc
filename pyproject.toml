@@ -22,10 +22,20 @@ keywords = [
     "genomics",
     "quality control",
 ]
+# What PyPI files this under and who it offers it to. The audience and the topic
+# are the two that decide whether someone looking for this finds it, and both
+# were describing a different package: "Developers" and "Software Development ::
+# Build Tools" are what a cookiecutter leaves behind, and would put a dataset QC
+# tool in among the packaging helpers.
+#
+# No License classifier: the licence is declared as an SPDX expression in
+# `license` above, and PEP 639 deprecates saying it twice.
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Build Tools",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
