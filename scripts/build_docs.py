@@ -343,6 +343,7 @@ def check_prose_figures():
     the leakage rows, which are not in the same columns.
     """
     wrong = []
+    unchecked = []
     for page in sorted((DOCS / 'examples').glob('*.md')):
         if page.stem == 'index':
             continue
@@ -353,7 +354,13 @@ def check_prose_figures():
                     measured.update(float(row[col]) for col in
                                     ('AU-ROC', 'AU-PR', 'Accuracy') if row.get(col))
         if not measured:
-            continue  # a --skip-reports preview has nothing to check against
+            # A --skip-reports preview has nothing to check against. Counted
+            # and printed below rather than passed over in silence: this check
+            # skips every page in the mode the prose is actually written in,
+            # and a check that reports success when it looked at nothing is one
+            # that gets trusted when it should not be.
+            unchecked.append(page.stem)
+            continue
         for number, line in ((m, n) for n, text in
                              enumerate(page.read_text().splitlines(), 1)
                              for m in PROSE_FIGURE.finditer(text)):
@@ -370,6 +377,9 @@ def check_prose_figures():
     if wrong:
         raise SystemExit('figures on example pages that no report produced:\n  '
                          + '\n  '.join(wrong))
+    if unchecked:
+        print(f"no reports to check {len(unchecked)} example page(s) against: "
+              f"{', '.join(unchecked)}")
     print("every figure quoted on an example page is in that example's reports")
 
 

@@ -48,9 +48,10 @@ is nothing there to distinguish, not even by accident. When you see 0.500 on tha
 row it usually means fixed-length sequences rather than a lucky draw.
 
 **Calibration to take away:** on a clean dataset the checks sit near 0.5, not
-near 0.6. If a real dataset of yours comes back with everything at 0.58 —
-technically all <span class="flag flag-pass">Pass</span> — that is not this. It
-is a dataset with a faint systematic difference in everything, and worth a look.
+near 0.6. If a real dataset of yours comes back with everything in the high
+0.5s — technically all <span class="flag flag-pass">Pass</span> — that is not
+this. It is a dataset with a faint systematic difference in everything, and
+worth a look.
 
 ## The one thing that is not clean
 

@@ -75,7 +75,7 @@ two classes share carries no information about the label however conserved it is
 
 What that means for a model: **a classifier that only counts bases gets AU-ROC
 0.70 on this dataset.** Whatever your model scores, subtract that as the floor.
-A reported 0.75 is barely above counting nucleotides.
+A model reported in the mid-0.70s is barely above counting nucleotides.
 
 Two further failures are separate from the composition story and worth their own
 attention:
