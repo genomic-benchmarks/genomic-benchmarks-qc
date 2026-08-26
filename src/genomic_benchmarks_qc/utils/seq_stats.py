@@ -178,11 +178,19 @@ class SequenceStatistics:
         self.slug = slug if slug is not None else slugify(label)
         self.seq_column = seq_column
         self.sequences = sequences
-        self.end_position = end_position
         self.min_coverage = min_coverage
-        # Resolved by `compute`, alongside `end_position`.
+
+        self.end_position = end_position
+        """Last position the per-position checks reach, resolved by `compute`."""
+
         self.scored_end_position = None
+        """Last position that may be flagged, and the last one the figures draw.
+
+        Resolved by `compute`, alongside `end_position`.
+        """
+
         self.stats = {}
+        """The statistics `compute` produces, empty until it has run."""
 
     def compute(self) -> tuple[dict, int]:
         """Compute this class's statistics and resolve its per-position windows.

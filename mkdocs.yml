@@ -80,6 +80,12 @@ plugins:
             signature_crossrefs: true
             merge_init_into_class: true
             filters: ["!^_"]
+            # The reference pages name their members explicitly, in the order a
+            # reader wants them: the entry point first, its constants last.
+            # Both of these defaults would reshuffle that list - one into
+            # attributes-then-classes-then-functions, the other alphabetically.
+            group_by_category: false
+            members_order: source
 
 markdown_extensions:
   - admonition

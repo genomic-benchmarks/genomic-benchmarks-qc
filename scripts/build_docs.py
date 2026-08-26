@@ -24,6 +24,11 @@ Usage:
 a half minutes to regenerate and rarely change while you are writing. The
 published build never skips them.
 
+mkdocs is not part of the dev environment: the docs dependencies live in
+docs/requirements.txt, which only .github/workflows/docs.yml installs. Install
+them into whatever interpreter you run this from, or every mode above stops at
+the last step.
+
 Building the reports needs MMseqs2 on PATH for the four `evaluate-splits` runs.
 Both workflows in .github/workflows/ install it; locally, put its `bin` on PATH
 first or the split reports fail and the build stops.
