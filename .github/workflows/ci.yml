@@ -37,6 +37,27 @@ jobs:
       - name: Ruff
         run: ruff check --output-format=github .
 
+      # The report's scripts are real .js files rather than Python strings partly
+      # so this can run, and `report/assets/__init__.py` says it runs in CI - so
+      # it has to. Ruff never sees them, and nothing else parses them: a stray
+      # bracket would otherwise ship in the wheel and only fail in the reader's
+      # browser, silently, after the report was written.
+      #
+      # `--check` parses without executing, which is what is wanted here - these
+      # scripts run in a browser and would not survive being run by node. It is
+      # a step rather than a test so it cannot skip itself when node is missing;
+      # ubuntu-latest ships one.
+      # `|| exit 1` rather than leaning on the shell's -e: a failure inside a
+      # loop body is exactly the case where `set -e` is easy to get wrong, and a
+      # check that reports a syntax error and then exits 0 is worse than no
+      # check. Same form as the command in CONTRIBUTING.md, so both fail alike.
+      - name: JavaScript syntax
+        run: |
+          for file in src/genomic_benchmarks_qc/report/assets/*.js; do
+            echo "node --check $file"
+            node --check "$file" || exit 1
+          done
+
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest

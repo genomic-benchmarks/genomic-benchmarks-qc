@@ -132,6 +132,9 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
     (for f in src/genomic_benchmarks_qc/report/assets/*.js; do node --check "$f" || exit 1; done)
     ```
 
+    CI runs the same loop in the lint job, so a stray bracket fails the pull request rather than
+    the reader's browser.
+
     Every asset has to be declared as package data in `pyproject.toml`, otherwise it works from a
     checkout and is missing from the installed package. `tests/test_report_assets.py` fails when a
     new one is not.
