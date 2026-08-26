@@ -8,6 +8,7 @@ single standalone file that opens with no network and no sibling assets.
 """
 
 import json
+import logging
 import re
 from urllib.parse import urlparse
 
@@ -17,8 +18,12 @@ import pytest
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
+from genomic_benchmarks_qc.report.alignment_rendering import has_reversed_coordinates
 from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
-from genomic_benchmarks_qc.report.split_html_report import alignments_count_text
+from genomic_benchmarks_qc.report.split_html_report import (
+    alignment_error_html,
+    alignments_count_text,
+)
 from genomic_benchmarks_qc.report.utils import escape_str
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
@@ -350,3 +355,85 @@ class TestUserDataIsEscaped:
         # the cell listing the bases survives intact, with the odd one escaped
         assert '<td style="text-align: center;">&lt;, A, C, G, T</td>' in page
         assert '<td style="text-align: center;"><, A, C, G, T</td>' not in page
+
+
+class TestAHitThatCannotBeDrawn:
+    """What the page says when an alignment will not render.
+
+    Two causes, and only one of them is known. A hit whose coordinates run
+    backwards came from the MMseqs2 build - the search asked for the forward
+    strand only - and its scores are still right, so the page can say what
+    happened and what avoids it. Anything else is the validator refusing a hit
+    that disagrees with its sequences, and guessing at a cause there was how
+    this message came to blame conda for everything.
+    """
+
+    def test_backwards_coordinates_are_recognised(self):
+        forward = mmseqs_hit('seq_0_test', 'seq_0_train')
+        assert not has_reversed_coordinates(forward)
+        assert has_reversed_coordinates({**forward, 'tstart': 60, 'tend': 1})
+        assert has_reversed_coordinates({**forward, 'qstart': 60, 'qend': 1})
+
+    def test_a_backwards_row_is_told_what_happened_and_what_to_do(self):
+        cell = alignment_error_html(ValueError('Target end (1) < start (60)'), True)
+
+        assert 'reverse strand' in cell
+        assert 'scores in this row are unaffected' in cell
+        assert '--threads 1' in cell
+        assert 'precompiled' in cell
+
+    def test_any_other_failure_does_not_blame_the_installation(self):
+        cell = alignment_error_html(ValueError('Query alignment mismatch'), False)
+
+        assert 'disagree' in cell
+        assert 'threads' not in cell
+        assert 'conda' not in cell
+
+    def test_the_error_text_is_escaped_into_the_cell(self):
+        cell = alignment_error_html(ValueError('<img src=x onerror=alert(1)>'), False)
+
+        assert '<img src=x onerror=alert(1)>' not in cell
+        assert '&lt;img src=x onerror=alert(1)&gt;' in cell
+
+    def test_the_page_carries_the_explanation_and_keeps_the_scores(
+            self, tmp_path, monkeypatch):
+        """End to end: the pair stays in the listing with its numbers, because
+        what a backwards row loses is the picture, not the measurement."""
+        backwards = {**mmseqs_hit('seq_0_test', 'seq_0_train'), 'tstart': 60, 'tend': 1}
+        page = split_page(tmp_path, monkeypatch, [backwards])
+
+        assert 'ALIGNMENT VISUALISATION ERROR' in page
+        assert 'reverse strand' in page
+        assert '--threads 1' in page
+        assert '1 high-similarity alignment' in page
+        assert '96.9' in page                       # the pident is still on the page
+
+    def test_the_old_guess_is_gone(self, tmp_path, monkeypatch):
+        """The message used to say every failure was 'often caused by a
+        conda-installed mmseqs2' and to recommend precompiled binaries over
+        compiling from source - a contrast that was never the one that mattered."""
+        backwards = {**mmseqs_hit('seq_0_test', 'seq_0_train'), 'tstart': 60, 'tend': 1}
+        page = split_page(tmp_path, monkeypatch, [backwards])
+
+        assert 'often caused by' not in page
+        assert 'compiling from source' not in page
+
+    def test_a_backwards_row_is_counted_and_reported_once(
+            self, tmp_path, monkeypatch, caplog):
+        """The summariser says it once, with the totals. The per-row branch must
+        not say it again for every row, which is what a build emitting hundreds
+        of them would otherwise produce."""
+        hits = [
+            {**mmseqs_hit(f'seq_{i}_test', f'seq_{i}_train'), 'tstart': 60, 'tend': 1}
+            for i in range(3)
+        ]
+        with caplog.at_level(logging.WARNING, logger='genomic_benchmarks_qc'):
+            split_page(tmp_path, monkeypatch, hits)
+
+        backwards_warnings = [
+            record for record in caplog.records
+            if 'running backwards' in record.getMessage()
+        ]
+        assert len(backwards_warnings) == 1
+        assert '3 of 3' in backwards_warnings[0].getMessage()
+        assert 'Alignment visualisation failed' not in caplog.text

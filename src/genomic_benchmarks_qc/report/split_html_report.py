@@ -16,7 +16,10 @@ from datetime import datetime
 
 from genomic_benchmarks_qc import __version__
 from genomic_benchmarks_qc.report import assets
-from genomic_benchmarks_qc.report.alignment_rendering import build_alignment_string
+from genomic_benchmarks_qc.report.alignment_rendering import (
+    build_alignment_string,
+    has_reversed_coordinates,
+)
 from genomic_benchmarks_qc.report.utils import (
     COMMON_CSS,
     LOGO_CSS,
@@ -60,6 +63,36 @@ def alignments_count_text(total, shown):
     plural = '' if total == 1 else 's'
     capped = f' (first {shown} shown)' if shown < total else ''
     return f'{total} high-similarity alignment{plural}{capped}'
+
+
+def alignment_error_html(error, reversed_coords):
+    """The cell shown in place of an alignment that could not be drawn.
+
+    Two cases, because only one of them has a known cause. Coordinates running
+    backwards come from the MMseqs2 build rather than from the data, and the
+    row's scores are still right, so the cell says so and names what avoids it.
+    Anything else is the validator refusing to draw a hit that disagrees with
+    the sequences it was matched back to, and the honest thing there is to say
+    only that.
+    """
+    if reversed_coords:
+        detail = (
+            'MMseqs2 reported this hit on the reverse strand, which the '
+            'forward-strand-only search did not ask for, so its alignment cannot '
+            'be drawn. The scores in this row are unaffected. Seen with '
+            'conda/bioconda MMseqs2 above one thread \u2014 re-running with '
+            '--threads 1, or installing the upstream precompiled release, avoids it.'
+        )
+    else:
+        detail = (
+            'The hit and the sequences it was matched back to disagree, so drawing '
+            'it would produce a confident-looking but wrong alignment.'
+        )
+    return (
+        '<span class="aln-error">ALIGNMENT VISUALISATION ERROR</span><br>'
+        f'{escape_html_text(type(error).__name__)}: {escape_html_text(str(error))}<br>'
+        f'<span class="aln-error-detail">{detail}</span>'
+    )
 
 
 def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_paths_dict,
@@ -171,22 +204,19 @@ def get_splits_html_template(basic_stats, threshold_stats, results_filt, plots_p
         try:
             alignment_str_color = build_alignment_string(row, color=True)
         except Exception as e:
-            if not alignment_error_logged:
+            # A row whose coordinates run backwards has a known cause, already
+            # counted and explained once by `log_reversed_hit_warning`. Only the
+            # failures that do not have one are logged here, so a build emitting
+            # hundreds of backwards rows does not say it twice.
+            reversed_coords = has_reversed_coordinates(row)
+            if not reversed_coords and not alignment_error_logged:
                 alignment_error_logged = True
                 logger.warning(
                     "Alignment visualisation failed for query=%s target=%s: %s: %s. "
-                    "This is often caused by a conda-installed mmseqs2 build. See the "
-                    "mmseqs2 installation notes in README.md — installing precompiled "
-                    "binaries is recommended over compiling from source. "
                     "Further alignment errors in this report are not logged.",
                     row['query'], row['target'], type(e).__name__, e,
                 )
-            alignment_str_color = (
-                '<span class="aln-error">ALIGNMENT VISUALISATION ERROR</span><br>'
-                f'{escape_html_text(type(e).__name__)}: {escape_html_text(str(e))}<br>'
-                '<span class="aln-error-detail">This can happen with a '
-                'conda-installed mmseqs2 — see the installation notes in README.md.</span>'
-            )
+            alignment_str_color = alignment_error_html(e, reversed_coords)
         rows.append(f"""
     <tr>
         <td class="qc-mono">{escape_html_text(str(row['query']))}</td>

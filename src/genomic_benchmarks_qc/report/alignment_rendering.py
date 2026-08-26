@@ -10,6 +10,16 @@ from itertools import zip_longest
 from genomic_benchmarks_qc.report.utils import escape_html_text
 
 
+def has_reversed_coordinates(row):
+    """True if the hit's coordinates run backwards on either sequence.
+
+    The one failure of `build_alignment_string` with a known cause, so the
+    report can name it instead of guessing. See
+    `mmseqs_summary._reversed_coordinate_mask` for what produces these.
+    """
+    return int(row["qstart"]) > int(row["qend"]) or int(row["tstart"]) > int(row["tend"])
+
+
 def _validate_alignment_coords(start, end, sequence_length, label):
     """Check one sequence's 1-based alignment range lies inside the sequence."""
     if start < 1:
