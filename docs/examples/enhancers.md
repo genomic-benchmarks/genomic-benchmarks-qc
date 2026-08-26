@@ -6,9 +6,8 @@
 [Genomic Benchmarks](https://doi.org/10.1186/s12863-023-01123-8)'s
 `human_enhancers_ensembl`, running from 4 to 568 nucleotides.
 
-This is the dataset the README's examples use, and the one the threshold
-simulations in `analyses/` read. Both quote numbers measured on exactly these
-bytes, so it ships unchanged.
+This is the dataset the README's examples use, and its numbers are measured on
+exactly these bytes, so it ships unchanged.
 
 ## Run it
 

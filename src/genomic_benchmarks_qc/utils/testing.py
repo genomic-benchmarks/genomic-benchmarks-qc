@@ -28,9 +28,8 @@ the risk; the fraction binds on large ones, where a tail cohort can clear the
 count many times over and still describe only the longest sequences.
 
 The size floor was chosen by simulation against the class comparisons this tool
-was built for; the study is in `analyses/`. The coverage floor is not a question
-about power and was not simulated - no sample size makes a subset of the class
-stand for the class.
+was built for. The coverage floor is not a question about power and was not
+simulated - no sample size makes a subset of the class stand for the class.
 
 An underpowered comparison reports Unknown rather than Pass: no evidence of a
 difference is not evidence of no difference.
@@ -61,7 +60,7 @@ METRICS_TO_COMPUTE = ['AU-ROC', 'AU-PR', 'Accuracy']
 # 0.9% at 200. The per-position checks reach 0.0% at 250 across every class size
 # simulated, which is what lets them share one fixed boundary with the
 # per-sequence checks instead of correcting for the hundreds of tests they
-# aggregate. `analyses/` holds both studies.
+# aggregate.
 MIN_SEQUENCES_PER_CLASS = 250
 
 def _compute_best_threshold_accuracy(labels: np.ndarray, scores: np.ndarray) -> float:

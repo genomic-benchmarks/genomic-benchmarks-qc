@@ -192,6 +192,9 @@ reports/
 mmseqs/
 .DS_Store
 .prototype/
+# Working scripts for the simulations behind the 250-sequence floor. Kept out
+# of this repository deliberately: the tool states what they measured, and
+# where the analysis is published is a question for the paper, not for here.
 analyses/
 # Flag tables generated from the example reports by scripts/build_docs.py.
 docs/_generated/

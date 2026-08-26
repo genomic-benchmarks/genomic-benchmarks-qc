@@ -61,8 +61,7 @@ measure, not where a motif starts and stops.
 The 0.6 boundary is not a round number picked for looking sensible. It comes out
 of simulation against datasets with no real difference between the classes: below
 250 sequences per class, noise alone pushes the worst per-sequence check over 0.6
-in a substantial fraction of replicates, and at 250 it essentially stops. The
-studies are in `analyses/` in the repository.
+in a substantial fraction of replicates, and at 250 it essentially stops.
 
 What the boundaries do **not** encode is whether a finding matters for *your*
 task. A <span class="flag flag-fail">Fail</span> on a splice-site dataset's

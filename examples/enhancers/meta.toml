@@ -1,11 +1,9 @@
-# The example the README leads with, and the one analyses/ reads.
+# The example the README leads with.
 #
-# Two reasons it cannot be retired or moved casually: the README's headline claim
-# that GC content alone separates these classes at AU-ROC 0.66 is measured here,
-# and analyses/null_coverage_window.py reads data/ by path. Both are measured on
-# exactly these bytes, so this is the one example whose data must not be
-# resampled - a different draw would change the 0.66 the README quotes and the
-# coverage-window figures the analysis reports.
+# It cannot be retired or moved casually: the README's headline claim that GC
+# content alone separates these classes at AU-ROC 0.66 is measured on exactly
+# these bytes, so this is the one example whose data must not be resampled - a
+# different draw would change the 0.66 the README quotes.
 
 name = "enhancers"
 title = "Human enhancers, and a little real leakage"
