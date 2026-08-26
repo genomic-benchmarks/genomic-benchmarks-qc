@@ -31,7 +31,7 @@ keywords = [
 # No License classifier: the licence is declared as an SPDX expression in
 # `license` above, and PEP 639 deprecates saying it twice.
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
