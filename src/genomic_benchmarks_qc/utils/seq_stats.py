@@ -3,38 +3,24 @@
 One `SequenceStatistics` holds the sequences of a single class and the features
 computed from them - lengths, GC content, nucleotide and dinucleotide
 composition, per-position composition, duplication levels. The comparison in
-`genomic_benchmarks_qc.utils.testing` reads these; the plots and HTML report
-read them too.
+`genomic_benchmarks_qc.utils.testing` reads these, and so do the plots and the
+HTML report.
 
-Two windows govern the per-position features, and they answer different
-questions.
-
-The scored window is where the flags may be set. Per-position statistics
-compare only the sequences long enough to reach a position, so a position needs
-a cohort that is both large enough to measure and representative enough to
-speak for the class: at least
+Two windows bound the per-position features, because a position is compared only
+on the sequences long enough to reach it. `scored_end_position` is as far as a
+position may be flagged: it needs a cohort of at least
 [MIN_SEQUENCES_PER_CLASS][genomic_benchmarks_qc.utils.testing.MIN_SEQUENCES_PER_CLASS]
-sequences, and at least
+sequences and at least
 [DEFAULT_MIN_COVERAGE][genomic_benchmarks_qc.utils.seq_stats.DEFAULT_MIN_COVERAGE]
-of the class. The count is what binds on small and mid-sized classes; the
-fraction binds on large ones, where a tail cohort can clear the count many times
-over and still be nothing but the class's longest sequences.
+of the class. It is also the window the figures draw. `end_position` reaches
+further, as far as
+[MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION]
+sequences: the positions in between are named in the report as Unknown, so a
+dataset whose sequences simply end is not read as one whose tail was too thin to
+compare.
 
-The reported window is how far the per-position checks are named at all, and it
-reaches much further. Past the scored window they can only say Unknown, and
-saying it is the point: a report that stopped at the scored window would not
-distinguish a dataset whose sequences end there from one whose tail was too thin
-to compare. It stops where cohorts fall below
-[MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION],
-past which a position is reached by so few sequences that there is nothing left
-to report about it either.
-
-The figures draw the scored window and stop there. The tail is described in the
-report's prose instead of drawn, because a curve is read as a measurement and
-nothing out there was measured. The exception is a comparison with no scored
-window at all: there the figures draw the reported one, every position Unknown,
-which is what the rest of the report does with a comparison too small to score -
-plot it, flag nothing.
+What the two windows mean for reading a report is on the
+[per-position checks](../../guide/per-position.md) page.
 """
 
 import logging
@@ -49,6 +35,11 @@ from genomic_benchmarks_qc.utils.testing import MIN_SEQUENCES_PER_CLASS
 logger = logging.getLogger(__name__)
 
 # The two windows these bound are explained in the module docstring.
+#
+# Unlike MIN_SEQUENCES_PER_CLASS, this floor was not chosen by simulation: it is
+# not a question about statistical power. A cohort far out along the sequence can
+# clear the count many times over and still be nothing but the class's longest
+# sequences, and no sample size fixes that - only stopping does.
 DEFAULT_MIN_COVERAGE = 0.25
 MIN_SEQUENCES_PER_REPORTED_POSITION = 50
 
@@ -110,21 +101,15 @@ def _as_frequencies(counts, totals):
 
 
 def cohort_floor(stats1, stats2) -> float:
-    """The cohort floor a comparison of two classes runs under.
+    """The share of a class a position's cohort has to reach to be flagged.
 
     Each class requires its own number of sequences behind a position - the
     larger of `MIN_SEQUENCES_PER_CLASS` and `min_coverage` of the class - so as a
     share of a class the floor differs between the two, and the binding one is
     the larger share: a position has to clear the floor in both classes.
 
-    Not drawn. It sets the compared window, and the window is what the figures
-    show: they stop where the floor stops them. Saying it a second time as a line
-    across the coverage panel only added a rule to a panel that already carries
-    two curves, so what the floor is gets said once, in the section's `?`
-    explanation.
-
     Returns:
-        Fraction of a class, or 0.0 when neither class has a floor worth drawing.
+        Fraction of a class, or 0.0 when neither class has a floor.
     """
     binding = 0.0
     for stats in (stats1, stats2):
@@ -173,9 +158,8 @@ class SequenceStatistics:
             end_position: Last position the per-position checks reach, 1-based and
                 inclusive. Defaults to the last position at least
                 [MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION]
-                of these sequences reach. It does not decide which positions may be
-                flagged - the scored window does - and it is not what the figures draw,
-                which is the scored window.
+                of these sequences reach. It cannot widen what gets flagged - the
+                scored window decides that - so an explicit value only ever trims.
             slug: Path form of `label`; derived from it when not given, but normally
                 passed in by the caller, which is the only place that can tell whether it
                 collides with another class.
@@ -201,13 +185,9 @@ class SequenceStatistics:
         self.stats = {}
 
     def compute(self) -> tuple[dict, int]:
-        """
-        Compute various statistics from the given list of sequences.
+        """Compute this class's statistics and resolve its per-position windows.
 
-        Results are also cached on `self.stats`, and the per-position windows
-        (`self.end_position`, `self.scored_end_position`) are resolved here.
-
-        The statistics dictionary holds:
+        Results are cached on `self.stats`. The statistics dictionary holds:
 
         - Filename: str
         - Filepath: str
@@ -235,7 +215,8 @@ class SequenceStatistics:
           holding only the sequences that occur more than once
 
         Returns:
-            A tuple of that statistics dictionary and `end_position`.
+            That statistics dictionary, and `end_position` - the last position
+            the per-position checks reach.
         """
         message = f"Computing statistics for {self.filename}"
         if self.label is not None:

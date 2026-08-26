@@ -1,38 +1,24 @@
-"""
-Testing utilities for Genomic Benchmarks QC.
+"""Turn a per-class statistic into a Pass, Warning, Fail or Unknown flag.
 
-This module provides functions to compute quality metrics (AU-ROC, AU-PR, Accuracy)
-and generate flags for comparing two datasets.
+Every check asks one question: can a single feature tell the two classes apart?
+The feature's values are read as if they were a classifier's scores, and the
+AU-ROC is the answer - 0.5 for a feature that says nothing about the class, 1.0
+for one that settles it by itself. A fixed boundary makes that a flag: Pass up
+to 0.6, Warning up to 0.7, Fail above that.
 
-Every check here asks the same question: can a single feature tell the two
-classes apart? The answer is an AU-ROC, and a fixed boundary on it decides the
-flag. That boundary only means what it says when there are enough sequences
-behind it, and when those sequences are the class rather than a corner of it, so
-two guards sit in front of the scoring:
+Two floors sit in front of the scoring, and a check has to clear both. Nothing
+is scored on fewer than
+[MIN_SEQUENCES_PER_CLASS][genomic_benchmarks_qc.utils.testing.MIN_SEQUENCES_PER_CLASS]
+sequences per class - counted per position for the per-position checks, since a
+position is compared only on the sequences long enough to have it. And a
+per-position check additionally stops where fewer than
+[DEFAULT_MIN_COVERAGE][genomic_benchmarks_qc.utils.seq_stats.DEFAULT_MIN_COVERAGE]
+of a class reaches the position. A check that misses either floor reports
+Unknown, which says the comparison was not made, not that it came out clean.
 
-- Nothing is scored on fewer than `MIN_SEQUENCES_PER_CLASS` sequences. For the
-  per-sequence checks that is a floor on the smaller class; for the per-position
-  checks it is a floor on the cohort reaching each position, since a position is
-  compared only on the sequences long enough to have it.
-- The per-position checks additionally stop where the cohort reaching a position
-  falls below `seq_stats.DEFAULT_MIN_COVERAGE` of its class, well before the
-  plots stop drawing it. A cohort far out along the sequence can be large and
-  still not stand for the class - it is all of the class's long sequences, and a
-  difference there can be a difference between those subsets rather than between
-  the classes. Size does not bound that; only stopping does.
-
-Together the two put the same requirement on every comparison: at least
-`MIN_SEQUENCES_PER_CLASS` sequences, and at least `DEFAULT_MIN_COVERAGE` of the
-class. The count binds on small and mid-sized classes, where sampling noise is
-the risk; the fraction binds on large ones, where a tail cohort can clear the
-count many times over and still describe only the longest sequences.
-
-The size floor was chosen by simulation against the class comparisons this tool
-was built for. The coverage floor is not a question about power and was not
-simulated - no sample size makes a subset of the class stand for the class.
-
-An underpowered comparison reports Unknown rather than Pass: no evidence of a
-difference is not evidence of no difference.
+`flag_significant_differences` runs every check on one pair of classes, and is
+what both commands call. Why the boundaries and the floors are where they are is
+on the [How a flag is decided](../../guide/how-it-works.md) page.
 """
 
 import logging
@@ -626,16 +612,18 @@ def _score_dataframe_features(
 
 def direct_feature_model(stats1: 'SequenceStatistics',
                          stats2: 'SequenceStatistics') -> dict:
-    """Compute all direct feature comparison metrics between two datasets.
-
-    Uses full datasets (no subsampling) for raw-feature metrics.
+    """Score every feature of one class against the same feature of another.
 
     Args:
-        stats1: Statistics for the first dataset.
-        stats2: Statistics for the second dataset.
+        stats1: Computed statistics for the first class.
+        stats2: Computed statistics for the second class.
 
     Returns:
-        Nested dictionary with all computed metrics and flags.
+        One entry per check and per sub-check, keyed by name - `'Sequence
+        lengths'`, `'Per sequence nucleotide content - A'`, `'Per position
+        nucleotide content - A position 52'` - each holding its AU-ROC, AU-PR,
+        Accuracy and Flag. A check made of sub-checks also gets a headline entry
+        under its own name, holding the worst of them.
     """
     indices_1 = np.arange(len(stats1.sequences))
     indices_2 = np.arange(len(stats2.sequences))
@@ -704,23 +692,25 @@ def direct_feature_model(stats1: 'SequenceStatistics',
 
 def flag_significant_differences(stats1: 'SequenceStatistics',
                                  stats2: 'SequenceStatistics') -> tuple[dict, dict]:
-    """Generate comprehensive QC comparison between two datasets.
+    """Run every check on one pair of classes.
 
     Args:
-        stats1: Statistics for the first dataset.
-        stats2: Statistics for the second dataset.
+        stats1: Computed statistics for the first class.
+        stats2: Computed statistics for the second class.
 
     Returns:
-        Tuple of `(summary_statuses, failed_by_feature)`, where
-        `summary_statuses` is an ordered dictionary of every flag and metric,
-        and `failed_by_feature` carries the per-feature detail the plots need:
+        Tuple of `(summary_statuses, failed_by_feature)`. `summary_statuses` is
+        every flag and metric in report order: the headline checks first, then
+        their sub-checks. `failed_by_feature` is what the plots shade - only the
+        sub-checks that came out Warning or Fail, keyed by feature and then by
+        what was flagged:
 
             {
-                'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
-                'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
+                'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
+                'Per sequence dinucleotide content': {'GG': 'Fail'},
                 'Per position nucleotide content':
-                    {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-                'Per position reversed nucleotide content': {...},
+                    {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}},
+                'Per position reversed nucleotide content': {},
             }
     """
     results = {}
@@ -823,13 +813,13 @@ def _extract_failed_features(all_results: dict) -> dict:
         all_results: Dictionary from direct_feature_model + manual flags.
 
     Returns:
-        Nested dict structured as:
+        Only the sub-checks that came out Warning or Fail, structured as:
         {
-            'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail', ...},
-            'Per sequence dinucleotide content': {'AA': 'Pass', 'GG': 'Fail', ...},
+            'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
+            'Per sequence dinucleotide content': {'GG': 'Fail'},
             'Per position nucleotide content':
-                {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}, ...},
-            'Per position reversed nucleotide content': {'A': {10: 'Fail'}, ...},
+                {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}},
+            'Per position reversed nucleotide content': {'A': {10: 'Fail'}},
         }
     """
     failed_by_feature = {
@@ -898,11 +888,11 @@ def _flag_on_score(score: float) -> str:
     """Assign Pass/Warning/Fail flag based on AU-ROC score.
 
     Args:
-        score: AU-ROC value (must be finite).
+        score: AU-ROC value, or None/non-finite for a check that was not scored.
 
     Returns:
-        'Pass' if score <= 0.6, 'Warning' if <= 0.7, 'Fail' otherwise.
-        Returns 'Unknown' for non-finite scores instead of raising.
+        'Pass' if score <= 0.6, 'Warning' if <= 0.7, 'Fail' otherwise, and
+        'Unknown' when there is no score to flag, rather than raising.
     """
     if score is None or not np.isfinite(score):
         return 'Unknown'

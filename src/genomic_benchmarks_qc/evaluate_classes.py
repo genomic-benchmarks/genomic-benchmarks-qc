@@ -344,63 +344,53 @@ def run(input: list[str],
         log_level: str | None = 'INFO',
         log_file: str | None = None
     ):
-    """Run the dataset evaluation.
+    """Compare every pair of classes in a dataset and write the reports.
 
-    This function reads sequences from the provided input files, performs analysis, and
-    generates reports about the sequences.
-
-    Reports are written to '<out_folder>/class/<column>/<classA>_vs_<classB>/',
-    one directory per compared pair of classes. FASTA inputs have no sequence
-    column and use 'sequence', so the layout is the same for every input format.
-    Any grouping above that - collection, dataset, split - is left to the caller,
-    who expresses it through `out_folder`.
+    Reports go to '<out_folder>/class/<column>/<classA>_vs_<classB>/', one
+    directory per compared pair. FASTA inputs have no sequence column and use
+    'sequence', so the layout is the same for every input format. Any grouping
+    above that - collection, dataset, split - is left to the caller, who
+    expresses it through `out_folder`.
 
     Args:
-        input: List of paths to input files. Can be a list of files, each containing
-            sequences from one class.
+        input: Paths to the input files. For FASTA, one file per class. For CSV/TSV, the
+            files are read together and the classes come from `label_column`.
         format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
         out_folder: Path to the output folder; reports go into '<out_folder>/class/'.
             Default: `'.'`.
-        sequence_column: Name of the columns with sequences to analyze for datasets in
-            CSV/TSV format. Either one column or list of columns. Each column is analyzed
-            separately, and all of them together in an extra 'merged' report.
+        sequence_column: Columns holding the sequences, for CSV/TSV input. Each is
+            compared separately, and all of them together in an extra 'merged' report.
             Default: `['sequence']`.
-        label_column: Name of the label column for datasets in CSV/TSV format.
+        label_column: Column holding the class of each row, for CSV/TSV input.
             Default: `'label'`.
-        label_list: List of label classes to consider or "infer" to parse different labels
-            automatically from label column. For datasets in CSV/TSV format. Inference
-            stops at
+        label_list: Classes to compare, for CSV/TSV input, or "infer" to take them from
+            `label_column`. Inference stops at
             [MAX_INFERRED_LABELS][genomic_benchmarks_qc.evaluate_classes.MAX_INFERRED_LABELS]
             classes, past which the column is taken to be something other than a label
-            column; an explicit list is not capped.
-            Default: `['infer']`.
-        regression: If True, label column is considered as a regression target and values
-            are split into 2 classes at the median. Raises ValueError if that does not
-            produce two non-empty classes.
+            column; an explicit list is not capped. Default: `['infer']`.
+        regression: Treat `label_column` as a continuous target and split it at the
+            median into two classes. Raises ValueError if that does not produce two
+            non-empty classes. Default: `False`.
         report_types: Types of reports to generate, from
             [REPORT_TYPES][genomic_benchmarks_qc.evaluate_classes.REPORT_TYPES].
             Default: `['html', 'simple']`.
-        end_position: Last position of the sequences the per-position checks reach,
-            1-based and inclusive. If not provided, the last position that at least
+        end_position: Last position the per-position checks report on, 1-based and
+            inclusive. Defaults to the last position at least
             [MIN_SEQUENCES_PER_REPORTED_POSITION][genomic_benchmarks_qc.utils.seq_stats.MIN_SEQUENCES_PER_REPORTED_POSITION]
-            of each class's sequences reach is used; the smaller of the two classes'
-            values applies to the comparison. It does not decide which positions are
-            flagged, and it is not what the figures draw - they draw the flagged window.
+            sequences of each class reach, whichever class runs out first. It cannot
+            widen what gets flagged, so an explicit value only ever trims.
             Default: `None`.
-        min_coverage: Fraction of each class's sequences that must reach a position before
-            it may be flagged, on top of the
+        min_coverage: Fraction of each class that must reach a position before it may be
+            flagged, on top of the
             [MIN_SEQUENCES_PER_CLASS][genomic_benchmarks_qc.utils.testing.MIN_SEQUENCES_PER_CLASS]
-            sequences every compared position needs. This window is what the per-position
-            figures draw. Positions past it are reported as Unknown and not drawn, because
-            they are reached by too few of each class for a difference there to be a
-            difference between the classes rather than between their longest sequences.
+            sequences every compared position needs. This is also the window the
+            per-position figures draw; positions past it are reported as Unknown.
             Default: `0.25`
             ([DEFAULT_MIN_COVERAGE][genomic_benchmarks_qc.utils.seq_stats.DEFAULT_MIN_COVERAGE]).
-        plot_type: Type of plot to use for visualizations. For bigger datasets, "boxen" is
-            recommended. Default: `'boxen'`.
-        log_level: Logging level, default to INFO.
-        log_file: Path to the log file. If provided, logs will be written to this file as
-            well as to the console.
+        plot_type: Distribution plot for the length and content figures, 'boxen' or
+            'violin'. 'boxen' reads better on large classes. Default: `'boxen'`.
+        log_level: Logging level. Default: `'INFO'`.
+        log_file: Path to a log file. Logs go to the console either way.
     """
 
     if sequence_column is None:

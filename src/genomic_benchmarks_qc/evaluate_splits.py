@@ -1,6 +1,6 @@
 """Detect data leakage between the train and test halves of a dataset split.
 
-Stages both halves to FASTA, runs an MMseqs2 all-vs-all search of test against
+Stages both halves to FASTA, runs an MMseqs2 `easy-search` of test against
 train, and reports how much of the test set has a near-identical counterpart in
 training - sequences a model can score correctly by memorisation alone.
 
@@ -241,41 +241,37 @@ def run(
     log_level: str | None = 'INFO',
     log_file: str | None = None,
 ):
-    """Run the train-test split evaluation.
+    """Search the test half of a split against the train half and report the leakage.
 
-    This function reads sequences from the provided training and testing files, performs
-    easy-search using MMseqs2, and generates reports about potential data leakage between
-    the training and testing datasets.
-
-    Reports are written into a 'split/<column>/<train>_vs_<test>/'
-    sub-directory of `out_folder`, matching the layout of the classes command.
-    FASTA inputs have no sequence column and use 'sequence'; several columns are
-    searched concatenated and land in 'merged'. Any grouping above that -
-    collection, dataset - is left to the caller, who expresses it through
-    `out_folder`.
+    Reports go to '<out_folder>/split/<column>/<train>_vs_<test>/', matching the
+    layout of the classes command. FASTA inputs have no sequence column and use
+    'sequence'; several columns are searched concatenated and land in 'merged'.
+    Any grouping above that - collection, dataset - is left to the caller, who
+    expresses it through `out_folder`.
 
     Args:
-        train_files: List of paths to training files.
-        test_files: List of paths to testing files.
+        train_files: Paths to the training files.
+        test_files: Paths to the testing files.
         format: Format of the input files (fasta, csv, csv.gz, tsv, tsv.gz).
         out_folder: Path to the output folder; reports go into '<out_folder>/split/'.
             Default: `'.'`.
-        sequence_column: Name of the columns with sequences to analyze for datasets in
-            CSV/TSV format. Several columns are concatenated per row and searched
-            together. Default: `['sequence']`.
+        sequence_column: Columns holding the sequences, for CSV/TSV input. Several
+            columns are concatenated per row and searched together.
+            Default: `['sequence']`.
         report_types: Types of reports to generate, from
             [REPORT_TYPES][genomic_benchmarks_qc.evaluate_splits.REPORT_TYPES].
             Default: `['html', 'simple']`.
-        similarity_threshold: Similarity threshold for flagging potential data leakage
-            (between 0 and 100). Default: `90.0`.
+        similarity_threshold: Percent similarity at which a test sequence counts as
+            leaked. Similarity is `min(query coverage, target coverage) x percent
+            identity`, so a short exact match inside a long sequence does not reach it.
+            Between 0 and 100. Default: `90.0`.
         threads: Maximum number of threads MMseqs2 will use. Default: `None`.
         split_memory_limit: Upper RAM limit for MMseqs2 prefilter structures (e.g., 10G,
             1T). Default: `None`.
-        keep_tmp_files: Keep temporary files generated for MMseqs2 debugging.
+        keep_tmp_files: Keep the MMseqs2 scratch files instead of deleting them.
             Default: `False`.
-        log_level: Logging level, default to INFO.
-        log_file: Path to the log file. If provided, logs will be written to this file as
-            well as to the console.
+        log_level: Logging level. Default: `'INFO'`.
+        log_file: Path to a log file. Logs go to the console either way.
     """
 
     if sequence_column is None:
