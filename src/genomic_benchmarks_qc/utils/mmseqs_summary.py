@@ -132,6 +132,61 @@ def _score_mmseqs_chunk(chunk):
     return scored_chunk
 
 
+def _reversed_coordinate_mask(chunk):
+    """Mark hits whose coordinates run backwards on either sequence.
+
+    The search is run forward-strand only - `--strand 1`, in `mmseqs_runtime` -
+    so every hit it reports should have its coordinates ascending. A row where
+    they descend is a reverse-complement alignment nothing asked for, and its
+    `qaln`/`taln` do not describe the sequences the coordinates point at.
+
+    Some MMseqs2 builds emit such rows anyway: bioconda builds running on more
+    than one thread produce them intermittently, a different subset each run,
+    while the same search at `--threads 1` does not. What they corrupt is the
+    alignment - `pident`, `qcov` and `tcov` on those rows match a good build
+    exactly - so they are counted and reported rather than dropped, and the row
+    keeps its place in the leakage numbers.
+    """
+    return (chunk["qstart"] > chunk["qend"]) | (chunk["tstart"] > chunk["tend"])
+
+
+def log_reversed_hit_warning(reversed_hits, reversed_leaked_hits, total_hits, threads=None):
+    """Report backwards alignments to the user, with what can be done about them.
+
+    Says nothing when there are none. The remedies are listed rather than
+    applied: `--threads 1` costs whatever the rest of the machine would have
+    been worth, and which trade is right is not this code's call.
+    """
+    if not reversed_hits:
+        return
+
+    if reversed_leaked_hits:
+        effect = (
+            f"{reversed_leaked_hits} of them are above the similarity threshold, so "
+            f"they count as leaks; where one of those reaches the report's listing, "
+            f"which is capped, the pair is shown with its scores but without an "
+            f"alignment"
+        )
+    else:
+        effect = (
+            "none of them are above the similarity threshold, so this report is "
+            "unaffected - but the same search on other data may not be"
+        )
+
+    threads_note = "" if threads in (None, 1) else f" (this run used --threads {threads})"
+
+    logger.warning(
+        "MMSeqs2 returned %s of %s alignments with their coordinates running backwards, "
+        "although the search asked for the forward strand only; %s. The similarity, "
+        "coverage and leakage flag come from pident/qcov/tcov, which this does not "
+        "affect. This has been seen with conda/bioconda MMSeqs2 builds running on more "
+        "than one thread%s. Either re-run with --threads 1, which produced identical "
+        "output to a known-good build in testing, or install MMSeqs2 from the upstream "
+        "precompiled release - see the installation notes in README.md.",
+        reversed_hits, total_hits, effect, threads_note,
+    )
+
+
 def _update_similarity_max(current_max, grouped_max, source_name):
     """Merge a chunk's per-sequence maxima into the running maxima, in place.
 
@@ -239,6 +294,10 @@ def summarize_mmseqs_output(results_path, similarity_threshold, query_count, tar
     search found; `leaked_hits`, the ones at or above the threshold; and
     `results_filt`, the `top_n` most similar of those for the alignment view.
 
+    Also `reversed_hits` and `reversed_leaked_hits`: alignments whose coordinates
+    run backwards, which the forward-strand-only search should never produce, and
+    how many of those are above the threshold. See `_reversed_coordinate_mask`.
+
     `total_hits` and `leaked_hits` are easy to reach for interchangeably and are
     not the same number: a search reports far more alignments than it finds
     leaks, and it is the leaks the report counts.
@@ -257,6 +316,8 @@ def summarize_mmseqs_output(results_path, similarity_threshold, query_count, tar
     row_order = 0
     total_hits = 0
     leaked_hits = 0
+    reversed_hits = 0
+    reversed_leaked_hits = 0
     exported_any = False
 
     try:
@@ -285,7 +346,15 @@ def summarize_mmseqs_output(results_path, similarity_threshold, query_count, tar
             results_path,
         )
 
-        leaked = scored_chunk[scored_chunk["min_cov*pident"] >= similarity_threshold]
+        # Counted before the empty-leak shortcut below: a build returning
+        # backwards alignments is worth saying so even in a run where none of
+        # them are similar enough to be reported as a leak.
+        reversed_mask = _reversed_coordinate_mask(scored_chunk)
+        above_threshold = scored_chunk["min_cov*pident"] >= similarity_threshold
+        reversed_hits += int(reversed_mask.sum())
+        reversed_leaked_hits += int((reversed_mask & above_threshold).sum())
+
+        leaked = scored_chunk[above_threshold]
         if leaked.empty:
             continue
 
@@ -317,4 +386,6 @@ def summarize_mmseqs_output(results_path, similarity_threshold, query_count, tar
         "results_filt": results_filt,
         "total_hits": total_hits,
         "leaked_hits": leaked_hits,
+        "reversed_hits": reversed_hits,
+        "reversed_leaked_hits": reversed_leaked_hits,
     }

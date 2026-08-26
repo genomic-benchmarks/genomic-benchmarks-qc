@@ -35,6 +35,7 @@ from genomic_benchmarks_qc.utils.input_utils import (
     stream_files_to_sequences,
 )
 from genomic_benchmarks_qc.utils.mmseqs_summary import (
+    log_reversed_hit_warning,
     sequence_id,
     staged_ids,
     summarize_mmseqs_output,
@@ -366,6 +367,15 @@ def run(
                 target_count=num_train_seqs,
                 top_n=ROW_CAP,
                 export_path=export_path,
+            )
+
+            # Said here rather than inside the summariser, which reads the table
+            # in chunks and would otherwise say it once per chunk.
+            log_reversed_hit_warning(
+                summary["reversed_hits"],
+                summary["reversed_leaked_hits"],
+                summary["total_hits"],
+                threads=threads,
             )
 
             # Get threshold stats

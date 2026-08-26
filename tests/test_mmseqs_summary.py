@@ -8,31 +8,37 @@ one whose best hit scored nothing, and that a table from somewhere else is
 refused rather than quietly mis-joined.
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from genomic_benchmarks_qc.utils.mmseqs_summary import (
     MMSEQS_REQUIRED_COLS,
+    log_reversed_hit_warning,
     sequence_id,
     staged_ids,
     summarize_mmseqs_output,
 )
 
 
-def write_hits(path, hits):
+def write_hits(path, hits, backwards=()):
     """Write a hit table in the columns MMseqs2 is asked for.
 
     `hits` is (query index, target index, coverage, percent identity); the
-    similarity the summariser scores by is their product.
+    similarity the summariser scores by is their product. `backwards` is the
+    positions in `hits` whose target coordinates should run the wrong way,
+    which is what a build reporting a hit on a strand nobody asked for does.
     """
     rows = []
-    for query, target, coverage, pident in hits:
+    for position, (query, target, coverage, pident) in enumerate(hits):
+        tstart, tend = (100, 1) if position in backwards else (1, 100)
         rows.append({
             'query': sequence_id(query, 'test'),
             'target': sequence_id(target, 'train'),
             'qcov': coverage, 'tcov': coverage, 'pident': pident,
-            'evalue': 1e-9, 'qstart': 1, 'qend': 100, 'tstart': 1, 'tend': 100,
+            'evalue': 1e-9, 'qstart': 1, 'qend': 100, 'tstart': tstart, 'tend': tend,
             'alnlen': 100, 'qaln': 'A' * 10, 'taln': 'A' * 10,
         })
     frame = pd.DataFrame(rows, columns=MMSEQS_REQUIRED_COLS)
@@ -167,3 +173,102 @@ class TestStagedIds:
         mask[[0, 4]] = True
 
         assert staged_ids(mask, 'train') == {sequence_id(0, 'train'), sequence_id(4, 'train')}
+
+
+class TestBackwardsAlignments:
+    """Hits reported on a strand the search never asked for.
+
+    The search is run forward-strand only, so a hit whose coordinates descend
+    cannot be drawn against the sequences it names. Some MMseqs2 builds emit
+    them anyway. They are counted rather than dropped: what they corrupt is the
+    alignment, not the scores, so the pair still belongs in the leakage numbers.
+    """
+
+    def test_a_clean_table_counts_none(self, tmp_path):
+        path = write_hits(tmp_path / 'hits.tsv', [(0, 0, 1.0, 100.0), (1, 1, 1.0, 95.0)])
+        summary = summarize_mmseqs_output(path, 90.0, query_count=2, target_count=2)
+        assert summary['reversed_hits'] == 0
+        assert summary['reversed_leaked_hits'] == 0
+
+    def test_backwards_coordinates_are_counted(self, tmp_path):
+        path = write_hits(
+            tmp_path / 'hits.tsv',
+            [(0, 0, 1.0, 100.0), (1, 1, 1.0, 95.0), (2, 2, 1.0, 99.0)],
+            backwards=(0, 2),
+        )
+        summary = summarize_mmseqs_output(path, 90.0, query_count=3, target_count=3)
+        assert summary['reversed_hits'] == 2
+
+    def test_only_the_ones_that_reach_the_report_are_counted_separately(self, tmp_path):
+        # 1.0 * 40.0 is below the threshold, so that backwards hit never reaches
+        # the listing; the other one does.
+        path = write_hits(
+            tmp_path / 'hits.tsv',
+            [(0, 0, 1.0, 100.0), (1, 1, 1.0, 40.0)],
+            backwards=(0, 1),
+        )
+        summary = summarize_mmseqs_output(path, 90.0, query_count=2, target_count=2)
+        assert summary['reversed_hits'] == 2
+        assert summary['reversed_leaked_hits'] == 1
+
+    def test_a_backwards_hit_still_counts_as_a_leak(self, tmp_path):
+        # The scores on these rows match a good build exactly, so dropping them
+        # would under-report the leakage the command exists to measure.
+        straight = write_hits(tmp_path / 'a.tsv', [(0, 0, 1.0, 100.0)])
+        backwards = write_hits(tmp_path / 'b.tsv', [(0, 0, 1.0, 100.0)], backwards=(0,))
+        clean = summarize_mmseqs_output(straight, 90.0, query_count=1, target_count=1)
+        dirty = summarize_mmseqs_output(backwards, 90.0, query_count=1, target_count=1)
+        assert dirty['leaked_hits'] == clean['leaked_hits'] == 1
+        assert dirty['query_above_threshold'].tolist() == [True]
+
+    def test_they_are_counted_even_when_nothing_leaked(self, tmp_path):
+        # The early exit for a chunk with no leaks used to be taken before the
+        # count, which hid exactly the case worth warning about: a build that is
+        # returning nonsense on a split that happens to be clean.
+        path = write_hits(tmp_path / 'hits.tsv', [(0, 0, 1.0, 40.0)], backwards=(0,))
+        summary = summarize_mmseqs_output(path, 90.0, query_count=1, target_count=1)
+        assert summary['leaked_hits'] == 0
+        assert summary['reversed_hits'] == 1
+
+    def test_they_are_counted_across_chunk_boundaries(self, tmp_path):
+        hits = [(i, i, 1.0, 100.0) for i in range(6)]
+        path = write_hits(tmp_path / 'hits.tsv', hits, backwards=(0, 3, 5))
+        summary = summarize_mmseqs_output(
+            path, 90.0, query_count=6, target_count=6, chunksize=2)
+        assert summary['reversed_hits'] == 3
+
+
+class TestSayingSoToTheUser:
+
+    def test_nothing_is_said_when_there_are_none(self, caplog):
+        with caplog.at_level(logging.WARNING, logger='genomic_benchmarks_qc'):
+            log_reversed_hit_warning(0, 0, 100, threads=4)
+        assert caplog.records == []
+
+    def test_the_counts_and_both_remedies_are_named(self, caplog):
+        with caplog.at_level(logging.WARNING, logger='genomic_benchmarks_qc'):
+            log_reversed_hit_warning(12, 3, 400, threads=8)
+        message = caplog.text
+        assert '12 of 400' in message
+        assert '--threads 1' in message
+        assert 'precompiled' in message
+        assert '--threads 8' in message
+
+    def test_a_report_that_got_away_with_it_is_told_so(self, caplog):
+        # Worth separating: a user whose report is fine still wants to know the
+        # build is returning nonsense, but should not go looking for damage.
+        with caplog.at_level(logging.WARNING, logger='genomic_benchmarks_qc'):
+            log_reversed_hit_warning(12, 0, 400, threads=2)
+        assert 'this report is unaffected' in caplog.text
+
+    def test_a_report_that_did_not_says_what_is_missing(self, caplog):
+        with caplog.at_level(logging.WARNING, logger='genomic_benchmarks_qc'):
+            log_reversed_hit_warning(12, 3, 400, threads=2)
+        assert 'without an alignment' in caplog.text
+        assert 'count as leaks' in caplog.text
+        assert 'this report is unaffected' not in caplog.text
+
+    def test_single_threaded_runs_are_not_told_to_use_one_thread_they_already_use(self, caplog):
+        with caplog.at_level(logging.WARNING, logger='genomic_benchmarks_qc'):
+            log_reversed_hit_warning(12, 3, 400, threads=1)
+        assert 'this run used' not in caplog.text
