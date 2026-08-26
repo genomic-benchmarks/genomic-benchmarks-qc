@@ -135,7 +135,7 @@ SCROLL_MAX_STEPS = 11
 # of the same length.
 SCROLL_RETURN_PX = 900
 
-SCROLL_GLIDE_MS = 55       # while the page is moving
+SCROLL_GLIDE_MS = 80       # while the page is moving
 SCROLL_HOLD_MS = 850       # on a section, long enough to see what it says
 SCROLL_TOP_MS = 1400       # at the top, where the loop begins and ends
 SCROLL_END_MS = 1700       # on the last section, before the rewind
