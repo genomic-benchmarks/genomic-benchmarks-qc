@@ -3,7 +3,7 @@
 [![CI](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/actions/workflows/ci.yml/badge.svg)](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/genomic-benchmarks-qc)](https://pypi.org/project/genomic-benchmarks-qc/)
 [![Python](https://img.shields.io/pypi/pyversions/genomic-benchmarks-qc)](https://pypi.org/project/genomic-benchmarks-qc/)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-genomic--benchmarks.github.io-1f6fd0)](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/)
 
 ### Find the shortcut. Learn the biology.
@@ -17,7 +17,7 @@ Everything you need is below. The [documentation site](https://genomic-benchmark
 When the classes differ in something trivial, a high score no longer tells you what a model learned — the biology, or the shortcut. `gb-qc` looks for the differences a classifier could exploit without understanding anything:
 
 - **Your negatives are shorter than your positives.** A length classifier now beats your model.
-- **Your classes differ in GC content, base composition or dinucleotide frequencies.** In the bundled enhancers example, GC content alone separates the two classes at AU-ROC 0.66.
+- **Your classes differ in GC content, base composition or dinucleotide frequencies.** In the enhancers example, GC content alone separates the two classes at AU-ROC 0.66.
 - **Position 1 is `N` in one class only**, or every sequence in one class starts with the same adapter — a per-position give-away that no summary statistic would show.
 - **The same sequence appears in both classes, or your test set repeats your training set.** `evaluate-splits` catches near-duplicates too, with an MMseqs2 similarity search.
 
@@ -29,7 +29,7 @@ Each check gets a **Pass / Warning / Fail** flag, an [HTML report](https://genom
      the one the site is serving. -->
 <a href="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/composition-bias/class/sequence/0_vs_1/gb-qc-report.html"><img src="https://genomic-benchmarks.github.io/genomic-benchmarks-qc/assets/report-scroll.webp" alt="The gb-qc report for the composition-bias example, scrolled from top to bottom: the sidebar's flag summary stays in view with two green ticks, an orange warning and six red failures, while the page moves through the descriptive statistics, the duplicate-sequence tables, the GC-content, nucleotide and dinucleotide plots and the two interactive per-position panels, each headed by the flag it was given" width="1200" /></a>
 
-The report for the bundled `composition-bias` example, scrolled end to end — click it to open the real one. It is the worst case in the gallery, and the one report that carries all three flags at once: six checks **Fail** — the classes share sequences outright, and GC content, nucleotide and dinucleotide composition and both per-position checks all sit above the 0.7 line, the worst at AU-ROC 0.717 — one **Warning**, two **Pass**.
+The report for the `composition-bias` example, scrolled end to end — click it to open the real one. It is the worst case in the gallery, and the one report that carries all three flags at once: six checks **Fail** — the classes share sequences outright, and GC content, nucleotide and dinucleotide composition and both per-position checks all sit above the 0.7 line, the worst at AU-ROC 0.717 — one **Warning**, two **Pass**.
 
 ## Installation
 
@@ -51,12 +51,17 @@ Conda/bioconda builds are worth avoiding here: above one thread they intermitten
 
 ## Quick Start
 
-Point the tool at your dataset and give it somewhere to write:
+Point the tool at your dataset and give it somewhere to write. To run the commands below exactly as they stand — and compare what you get against the reports they link to — fetch the two enhancers example files first:
+
+```bash
+curl -fLO https://raw.githubusercontent.com/genomic-benchmarks/genomic-benchmarks-qc/main/examples/enhancers/data/enhancers_train.csv
+curl -fLO https://raw.githubusercontent.com/genomic-benchmarks/genomic-benchmarks-qc/main/examples/enhancers/data/enhancers_test.csv
+```
 
 ```bash
 gb-qc evaluate-classes \
-  --input examples/enhancers/data/enhancers_train.csv \
-  --input examples/enhancers/data/enhancers_test.csv \
+  --input enhancers_train.csv \
+  --input enhancers_test.csv \
   --out-folder qc-out
 ```
 
@@ -73,8 +78,8 @@ To check whether your test set leaks into your training set:
 
 ```bash
 gb-qc evaluate-splits \
-  --train-input examples/enhancers/data/enhancers_train.csv \
-  --test-input examples/enhancers/data/enhancers_test.csv \
+  --train-input enhancers_train.csv \
+  --test-input enhancers_test.csv \
   --sequence-column sequence \
   --out-folder qc-out
 ```
@@ -141,7 +146,7 @@ flags one when it exceeds `--similarity-threshold` (90% by default). The report 
 percentage of leaked queries and targets, a histogram of the similarity distribution, and
 a panel listing the leaked pairs — up to the first 100, each expanding into its rendered
 alignment, so you can see what is actually shared. Every flagged pair, listed or
-not, is exported to `mmseqs/mmseqs2_search_result.tsv` beside the report. The bundled enhancers example carries a little real leakage: 0.67% of queries and
+not, is exported to `mmseqs/mmseqs2_search_result.tsv` beside the report. The enhancers example carries a little real leakage: 0.67% of queries and
 0.33% of targets — [see the report](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/reports/enhancers/split/sequence/enhancers_train_vs_enhancers_test/gb-qc-report.html).
 
 ## Input Formats
@@ -152,6 +157,8 @@ not, is exported to `mmseqs/mmseqs2_search_result.tsv` beside the report. The bu
 | `.csv` / `.tsv` | One or more CSV/TSV files. Multiple will be pooled and evaluated as one. |
 
 All of the input formats are supported in `.gz` version as well.
+
+The commands in this section name files from the repository's [`examples/`](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/tree/main/examples) directory to show the option shapes; substitute your own paths.
 
 **CSV/TSV** needs a sequence column and a label column. By default they are called `sequence` and `label`:
 
@@ -333,7 +340,7 @@ position. It can only narrow what gets flagged, never widen it.
 
 ## Contributions & Support
 
-Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. See the [contributing notes](CONTRIBUTING.md) for more information about how the process works.
+Contributions and suggestions for new features are welcome, as are bug reports! Please create a new [issue](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/issues/new) for any of these, including example reports where possible. Pull-requests for fixes and additions are very welcome. See the [contributing notes](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/CONTRIBUTING.md) for more information about how the process works.
 
 ## Citation
 
@@ -343,4 +350,4 @@ If you use `genomic-benchmarks-qc` in your research, please cite this repository
 
 ## License
 
-MIT-style. See [LICENSE](LICENSE).
+MIT-style. See [LICENSE](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/LICENSE).
