@@ -9,7 +9,6 @@ from pathlib import Path
 
 from genomic_benchmarks_qc.report import assets
 
-
 # A figure is written to plots/ at print resolution and embedded in the page at
 # half of it. The images are most of a report's bytes - the four a class report
 # shows were 65% of an 890 KB one at 300 dpi - and nothing on the page is drawn

@@ -22,8 +22,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
-from genomic_benchmarks_qc.report.colors import CLASS_COLORS
-from genomic_benchmarks_qc.report.colors import FAIL_COLOR, WARN_COLOR
+from genomic_benchmarks_qc.report.colors import CLASS_COLORS, FAIL_COLOR, WARN_COLOR
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 
 logger = logging.getLogger(__name__)
