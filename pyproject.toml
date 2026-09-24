@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Automated quality control for genomic machine learning datasets: scores the biases, duplicates and data leakage a classifier could exploit before you train on it."
 readme = "README.md"
 requires-python = ">=3.12"
-license = "MIT"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [
     { name = "Katarina Gresova", email = "gresova11@gmail.com" },

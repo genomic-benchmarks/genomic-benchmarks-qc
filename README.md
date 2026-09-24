@@ -3,7 +3,7 @@
 [![CI](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/actions/workflows/ci.yml/badge.svg)](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/genomic-benchmarks-qc)](https://pypi.org/project/genomic-benchmarks-qc/)
 [![Python](https://img.shields.io/pypi/pyversions/genomic-benchmarks-qc)](https://pypi.org/project/genomic-benchmarks-qc/)
-[![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-genomic--benchmarks.github.io-1f6fd0)](https://genomic-benchmarks.github.io/genomic-benchmarks-qc/)
 
 ### Find the shortcut. Learn the biology.
@@ -350,4 +350,4 @@ If you use `genomic-benchmarks-qc` in your research, please cite this repository
 
 ## License
 
-MIT-style. See [LICENSE](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/LICENSE).
+Apache License 2.0. See [LICENSE](https://github.com/genomic-benchmarks/genomic-benchmarks-qc/blob/main/LICENSE).
