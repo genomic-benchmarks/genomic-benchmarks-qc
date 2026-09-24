@@ -19,7 +19,7 @@ site_url: https://genomic-benchmarks.github.io/genomic-benchmarks-qc/
 repo_url: https://github.com/genomic-benchmarks/genomic-benchmarks-qc
 repo_name: genomic-benchmarks-qc
 edit_uri: edit/main/docs/
-copyright: MIT licensed
+copyright: Apache License 2.0
 
 theme:
   name: material
