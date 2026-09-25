@@ -28,7 +28,10 @@ def score(stats1, stats2) -> CheckResult:
 
 def render(context) -> SectionContent:
     """The first shared sequences on the page, and every one of them in a file beside it."""
-    duplicate_seqs = list(set(context.stats1.sequences).intersection(context.stats2.sequences))
+    # Sorted, so the page lists the same sequences every run, and the first of
+    # them are the first lines of the file. A set's order depends on the hash
+    # seed, which Python draws afresh for every process.
+    duplicate_seqs = sorted(set(context.stats1.sequences) & set(context.stats2.sequences))
     # The report lives in a directory of its own, so this is a plain sibling.
     duplicate_seqs_path = context.report_dir / DUPLICATES_FILE
 
@@ -38,7 +41,7 @@ def render(context) -> SectionContent:
         """})
 
     with open(duplicate_seqs_path, 'w') as handle:
-        for seq in sorted(duplicate_seqs):
+        for seq in duplicate_seqs:
             handle.write(f"{seq}\n")
     logger.info(f"Duplicate sequences saved to {duplicate_seqs_path}")
 

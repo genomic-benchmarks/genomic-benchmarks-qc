@@ -206,6 +206,22 @@ class TestDuplicateSequences:
         block = re.search(r'id="duplicate-sequences">(.*?)</script>', page, re.S).group(1)
         assert json.loads(block) == [shared]
 
+    def test_the_page_lists_the_first_of_them_in_sorted_order(self, tmp_path):
+        """Which ten the page showed used to depend on the hash seed, which Python
+        draws afresh for every process: two runs over the same data could list
+        different sequences. Now they are the first ten lines of the file."""
+        shared = random_sequences(25, 30, seed=7)
+        stats1 = make_stats(shared + random_sequences(20, 30, seed=8), label='a')
+        stats2 = make_stats(shared[::-1] + random_sequences(20, 30, seed=9), label='b')
+
+        page = render(tmp_path, stats1, stats2)
+
+        block = re.search(r'id="duplicate-sequences">(.*?)</script>', page, re.S).group(1)
+        listed = json.loads(block)
+        assert listed == sorted(shared)[:10]
+        assert (tmp_path / 'gb-qc-duplicates.txt').read_text().splitlines()[:10] == listed
+        assert 'And 15 more.' in page
+
 
 def split_page(tmp_path, monkeypatch, hits):
     """Run the split report end to end against a fixed set of MMseqs2 hits."""
