@@ -14,6 +14,7 @@ from html.parser import HTMLParser
 
 import pytest
 
+from genomic_benchmarks_qc.checks.classes import CLASS_CHECKS
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.colors import FAIL_COLOR, PASS_COLOR, UNKNOWN_COLOR, WARN_COLOR
 
@@ -22,9 +23,13 @@ ASSET_FILES = sorted(path.name for path in ASSET_DIR.iterdir()
                      if path.suffix in ('.html', '.css', '.js'))
 TEMPLATES = [name for name in ASSET_FILES if name.endswith('.html')]
 # A template is either a whole report page or a fragment dropped into one. Listed
-# rather than sniffed, so that adding a template is a decision about which it is.
+# rather than sniffed, so that adding a template is a decision about which it is -
+# except a check's own fragment, which its section names, so a file no check
+# claims still fails to be accounted for.
 PAGE_TEMPLATES = ('classes_report.html', 'split_report_page.html')
-FRAGMENT_TEMPLATES = ('split_results_table.html',)
+CHECK_TEMPLATES = tuple(check.section.template for check in CLASS_CHECKS)
+FRAGMENT_TEMPLATES = ('split_results_table.html', 'check_section.html',
+                      'check_nav_item.html') + CHECK_TEMPLATES
 # Elements that carry no closing tag, so an unbalanced-tag check must not wait
 # for one. <p> and <li> may also be left open in HTML; the templates close both.
 VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
@@ -144,3 +149,15 @@ def test_a_fragment_is_not_a_page(name):
 
     assert '<!DOCTYPE' not in markup
     assert '<html' not in markup
+
+
+@pytest.mark.parametrize('name', CHECK_TEMPLATES)
+def test_a_check_fragment_carries_what_its_section_fills(name):
+    """The shell fills these two into every check's fragment, and `put_data`
+    raises on a placeholder that is not there - so a fragment missing one fails
+    the first report that renders it, which this finds first."""
+    markup = assets.template(name)
+
+    assert '<div id="{{explanation_id}}" class="explanation-text">' in markup
+    assert '{{docs_link}}' in markup
+

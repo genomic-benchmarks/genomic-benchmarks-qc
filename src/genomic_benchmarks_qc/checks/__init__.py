@@ -77,7 +77,7 @@ class Check:
 
     name: str
     score: Callable[..., CheckResult]
-    section: 'Section | None' = None
+    section: 'Section'
     floor: Literal['per_sequence', 'per_position'] | None = None
 
 

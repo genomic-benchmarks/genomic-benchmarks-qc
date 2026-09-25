@@ -6,6 +6,8 @@ fails, and there is no Warning.
 """
 
 from genomic_benchmarks_qc.checks import Check, CheckResult
+from genomic_benchmarks_qc.report.sections import Section, SectionContent
+from genomic_benchmarks_qc.report.utils import escape_html_text
 
 NAME = 'Unique bases'
 
@@ -16,4 +18,26 @@ def score(stats1, stats2) -> CheckResult:
     return CheckResult({NAME: {'Flag': 'Pass' if same_bases else 'Fail'}})
 
 
-CHECK = Check(name=NAME, score=score)
+def render(context) -> SectionContent:
+    """The two sets of characters, side by side."""
+    return SectionContent({
+        '{{label1}}': escape_html_text(context.label1),
+        '{{label2}}': escape_html_text(context.label2),
+        '{{unique_bases1}}': escape_html_text(', '.join(context.stats1.stats['Unique bases'])),
+        '{{unique_bases2}}': escape_html_text(', '.join(context.stats2.stats['Unique bases'])),
+    })
+
+
+CHECK = Check(
+    name=NAME,
+    score=score,
+    section=Section(
+        title='Unique Bases',
+        anchor='unique-bases',
+        explanation_id='unique-bases-explanation',
+        template='check_unique_bases.html',
+        render=render,
+        docs=(('checks', 'unique-bases', 'What to do about it'),),
+        css_class='table-section',
+    ),
+)
