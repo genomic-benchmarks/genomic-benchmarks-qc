@@ -15,6 +15,7 @@ from html.parser import HTMLParser
 import pytest
 
 from genomic_benchmarks_qc.checks.classes import CLASS_CHECKS
+from genomic_benchmarks_qc.checks.splits import SPLIT_CHECKS
 from genomic_benchmarks_qc.report import assets
 from genomic_benchmarks_qc.report.colors import FAIL_COLOR, PASS_COLOR, UNKNOWN_COLOR, WARN_COLOR
 
@@ -27,7 +28,7 @@ TEMPLATES = [name for name in ASSET_FILES if name.endswith('.html')]
 # except a check's own fragment, which its section names, so a file no check
 # claims still fails to be accounted for.
 PAGE_TEMPLATES = ('classes_report.html', 'split_report_page.html')
-CHECK_TEMPLATES = tuple(check.section.template for check in CLASS_CHECKS)
+CHECK_TEMPLATES = tuple(check.section.template for check in CLASS_CHECKS + SPLIT_CHECKS)
 FRAGMENT_TEMPLATES = ('split_results_table.html', 'check_section.html',
                       'check_nav_item.html') + CHECK_TEMPLATES
 # Elements that carry no closing tag, so an unbalanced-tag check must not wait

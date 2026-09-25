@@ -18,12 +18,12 @@ import pytest
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
-from genomic_benchmarks_qc.report.alignment_rendering import has_reversed_coordinates
-from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
-from genomic_benchmarks_qc.report.split_html_report import (
+from genomic_benchmarks_qc.checks.splits.data_leakage import (
     alignment_error_html,
     alignments_count_text,
 )
+from genomic_benchmarks_qc.report.alignment_rendering import has_reversed_coordinates
+from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
 from genomic_benchmarks_qc.report.utils import escape_str
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences

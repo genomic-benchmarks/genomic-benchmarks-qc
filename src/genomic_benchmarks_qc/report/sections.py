@@ -148,7 +148,8 @@ class SplitReportContext:
         threshold_stats: The leakage counts and percentages, from
             `get_threshold_stats`.
         results_filt: The hits the page lists, with their aligned sequences.
-        leaked_hits: How many hits reached the threshold, listed or not.
+        leaked_hits: How many hits reached the threshold, listed or not, or
+            None to count the rows of `results_filt`.
         query_similarity_max, target_similarity_max: Each test and each train
             sequence's best similarity, NaN for one without a hit.
         plots_dir: The report's plots/ directory, which exists.
@@ -157,7 +158,7 @@ class SplitReportContext:
     basic_stats: dict
     threshold_stats: dict
     results_filt: 'pd.DataFrame'
-    leaked_hits: int
+    leaked_hits: int | None
     query_similarity_max: Any
     target_similarity_max: Any
     plots_dir: Path

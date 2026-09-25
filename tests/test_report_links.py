@@ -16,16 +16,16 @@ import re
 import pytest
 
 from genomic_benchmarks_qc.checks.classes import CLASS_CHECKS
+from genomic_benchmarks_qc.checks.splits import SPLIT_CHECKS
 from genomic_benchmarks_qc.report import utils
 
 DOCS = pathlib.Path(__file__).resolve().parents[1] / 'docs'
 
 # Every link a ? explanation carries, as (page key, anchor): whatever each
-# registered check's section links to, so a new check's links are checked too,
-# plus the ones the reports build by hand.
-LINKS = [(page, anchor) for check in CLASS_CHECKS
+# registered check's section links to, in both reports, so a new check's links
+# are checked too - plus the one the reports build by hand.
+LINKS = [(page, anchor) for check in CLASS_CHECKS + SPLIT_CHECKS
          for page, anchor, _ in check.section.docs] + [
-    ('leakage', None),                               # the split report's check
     ('flags', None),                                 # from the verdict line
 ]
 

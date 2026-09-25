@@ -21,9 +21,8 @@ import pandas as pd
 
 from genomic_benchmarks_qc.report.classes_html_report import render_dataset_html
 from genomic_benchmarks_qc.report.per_position_payload import drawn_window
-from genomic_benchmarks_qc.report.sections import ClassReportContext
-from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
-from genomic_benchmarks_qc.report.utils import save_plot
+from genomic_benchmarks_qc.report.sections import ClassReportContext, SplitReportContext
+from genomic_benchmarks_qc.report.split_html_report import render_splits_html
 from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 
 logger = logging.getLogger(__name__)
@@ -59,36 +58,25 @@ def generate_splits_html_report(basic_stats, threshold_stats, results_filt, outp
     `results_filt` holds the hits the page lists; `leaked_hits` is how many were
     at or above the similarity threshold, so the listing can say what it is not
     showing. It defaults to the number of rows given, for a caller that does not
-    cap.
+    cap. Every check draws its own figures into `plots_dir` as its section is
+    rendered.
     """
     plots_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Generating HTML report: {output_path}")
 
-    plots_paths_dict = generate_split_plots(
-        query_similarity_max, target_similarity_max, threshold_stats, plots_dir)
-
-    template = get_splits_html_template(basic_stats, threshold_stats, results_filt,
-                                        plots_paths_dict, leaked_hits=leaked_hits)
+    context = SplitReportContext(
+        basic_stats=basic_stats,
+        threshold_stats=threshold_stats,
+        results_filt=results_filt,
+        leaked_hits=leaked_hits,
+        query_similarity_max=query_similarity_max,
+        target_similarity_max=target_similarity_max,
+        plots_dir=plots_dir,
+    )
+    page = render_splits_html(context)
     with open(output_path, 'w') as file:
-        file.write(template)
-
-def generate_split_plots(query_similarity_max, target_similarity_max, threshold_stats, plots_dir):
-    """Save the split figures and return {plot title: SavedPlot} for the template."""
-    # Deferred, for the reason in the module docstring.
-    import matplotlib.pyplot as plt
-
-    from genomic_benchmarks_qc.report import splits_plots
-
-    plots_paths_dict = {}
-
-    fig = splits_plots.plot_similarity_histograms(
-        query_similarity_max, target_similarity_max, threshold_stats)
-    plots_paths_dict['Similarity histograms'] = save_plot(
-        fig, plots_dir / 'similarity_histograms.png')
-    plt.close(fig)
-
-    return plots_paths_dict
+        file.write(page)
 
 def generate_dataset_html_report(stats1, stats2, output_path, plots_path, plot_type, results,
                                  failed_by_feature):
