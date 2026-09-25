@@ -12,7 +12,6 @@ paid by `gb-qc --help`, and by every run that asks only for `simple` or `json`
 reports and never draws anything. `test_startup.py` holds that line.
 """
 
-import io
 import logging
 from pathlib import Path
 
@@ -21,45 +20,11 @@ import pandas as pd
 from genomic_benchmarks_qc.report.classes_html_report import get_dataset_html_template
 from genomic_benchmarks_qc.report.per_position_payload import X_LABELS, build_payload, drawn_window
 from genomic_benchmarks_qc.report.split_html_report import get_splits_html_template
-from genomic_benchmarks_qc.report.utils import DISPLAY_DPI, FIGURE_DPI, SavedPlot
+from genomic_benchmarks_qc.report.utils import save_plot
 from genomic_benchmarks_qc.utils.input_utils import write_stats_json
 from genomic_benchmarks_qc.utils.naming import DUPLICATES_FILE
 
 logger = logging.getLogger(__name__)
-
-
-def save_plot(fig, path, embed=True):
-    """Write one figure to `path`, and return it with the copy the page embeds.
-
-    Two renderings of the same figure and no second build of it: the file, at
-    print resolution, and the smaller copy that goes into the report's data
-    URI. See `SavedPlot` for why the page does not simply embed the file.
-
-    Args:
-        fig: The figure to write.
-        path: Where to write it.
-        embed: Whether the page shows this figure. The per-position PNGs are
-            written for whoever wants the file, but the page draws those two
-            with the interactive viewer instead, so there is nothing to embed.
-
-    Returns:
-        A `SavedPlot`.
-    """
-    # Deferred, for the reason in the module docstring.
-    import matplotlib
-
-    # `bbox_inches='tight'` makes savefig lay the figure out to measure it and
-    # then again to draw it, once per file. Measuring here instead and handing
-    # both writes the box turns three layout passes into one. The box is the
-    # figure as it stands at this call, so nothing about it has to hold across
-    # calls - the padding is the one thing savefig would have added itself.
-    crop = fig.get_tightbbox().padded(matplotlib.rcParams['savefig.pad_inches'])
-    fig.savefig(path, dpi=FIGURE_DPI, bbox_inches=crop)
-    if not embed:
-        return SavedPlot(path, None)
-    display = io.BytesIO()
-    fig.savefig(display, format='png', dpi=DISPLAY_DPI, bbox_inches=crop)
-    return SavedPlot(path, display.getvalue())
 
 
 def validate_report_types(report_types, valid_types, command):
