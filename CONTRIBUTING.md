@@ -199,6 +199,77 @@ Ready to contribute? Here’s how to set up Genomic Benchmarks QC for local deve
 
 11. Submit a pull request through the GitHub website.
 
+## Adding a check
+
+Every check is one module, listed in a registry, and the registry is all the rest of the tool
+reads: the results and their order, `gb-qc-report.csv`, the figures' shading, and the report's
+navigation, sections and verdict. A new check is therefore a module and one line, not an edit
+to every place a check is named, and two new checks are two independent pieces of work.
+
+There is one registry per command:
+
+- `checks/classes/__init__.py` holds `CLASS_CHECKS`, the checks `evaluate-classes` runs on every
+  pair of classes. A class check scores two `SequenceStatistics`.
+- `checks/splits/__init__.py` holds `SPLIT_CHECKS`, the checks `evaluate-splits` runs. A split
+  check scores the threshold statistics of the MMseqs2 search.
+
+A check is a `Check` (in `checks/__init__.py`): its `name`, a `score` function returning a
+`CheckResult`, a `floor` saying which minimum it has to clear before it is scored, and a
+`Section` (in `report/sections.py`) saying how the report shows it. A check that asks whether
+one feature tells two classes apart does not score anything itself - it names the feature and
+hands it to a factory in `checks/scorers.py`, which scores and flags it the way every other
+such check is scored and flagged:
+
+```python
+NAME = 'Per sequence CpG count'
+
+def cpg_steps(stats):
+    """One row per sequence, one column: the feature being compared."""
+    return pd.DataFrame({NAME: [float(seq.count('CG')) for seq in stats.sequences]})
+
+CHECK = Check(
+    name=NAME,
+    score=scalar_feature(NAME, cpg_steps),      # or column_features, one sub-check per column
+    floor='per_sequence',
+    section=Section(
+        title='Per Sequence CpG Count',
+        anchor='per-sequence-cpg-count',
+        explanation_id='cpg-explanation',
+        template='check_cpg_count.html',
+        render=render,
+        docs=(('checks', 'per-sequence-cpg-count', 'What to do about it'),),
+    ),
+)
+```
+
+To add one:
+
+1.  Write its module beside the others in `checks/classes/` or `checks/splits/`. The existing
+    modules are the examples: `gc_content.py` scores one value per sequence,
+    `nucleotide_content.py` one column per base, `unique_bases.py` is decided by a rule instead
+    of a score.
+2.  Write its `render`. It is given the report's context (`ClassReportContext` or
+    `SplitReportContext`), draws the check's figures into `context.plots_dir` with
+    `save_figure`, and returns a `SectionContent` filling its fragment's placeholders. Anything
+    that came out of the input files goes through `escape_html_text` first. Import the plotting
+    modules inside `render`, never at the top of the module: the check modules are imported by
+    `gb-qc --help`, and `tests/test_startup.py` fails when matplotlib arrives with them.
+3.  Add its fragment, `report/assets/check_<name>.html`: the explanation block
+    `<div id="{{explanation_id}}" class="explanation-text">`, ending in `{{docs_link}}`, then
+    the section's body. The shell around it - heading, flag, the `?` button - is shared, so a
+    fragment holds only what is the check's own.
+4.  List it in the registry, at the position it should have in the report.
+5.  Give it a `##` heading in `docs/guide/checks.md`, which is where its docs link points.
+    `tests/test_report_links.py` fails until the heading exists.
+6.  Run `python examples/build.py --out-folder build/examples --print-expect` and add the new
+    check's flag to every example's `[expect]` table in `examples/*/meta.toml`. `--check` only
+    compares the checks a table names, so it will not notice a missing one.
+7.  Search the docs and the README for the number of checks ("Nine checks") and update it.
+
+`tests/test_check_registry.py` holds what every check has to satisfy - names the sub-check
+convention can tell apart, section ids that do not collide - and shows a check that is not part
+of the tool passing through both reports with nothing else edited.
+
 ## Pull Request Guidelines
 
 Before you submit a pull request, check that it meets these guidelines:

@@ -9,9 +9,9 @@ editing every place that used to name the checks one by one.
 There is one registry per command, because the two compare different things:
 
 - `checks.classes.CLASS_CHECKS` - two classes of one dataset, each a
-  `SequenceStatistics`. Nine checks.
+  `SequenceStatistics`.
 - `checks.splits.SPLIT_CHECKS` - the test half of a split searched against the
-  train half. One check, Data Leakage.
+  train half.
 
 The order of a registry is the order of its report - the navigation, the
 sections, and the rows of `gb-qc-report.csv`.

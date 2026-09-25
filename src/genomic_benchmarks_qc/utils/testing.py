@@ -617,8 +617,8 @@ def direct_feature_model(stats1: 'SequenceStatistics',
                          stats2: 'SequenceStatistics') -> dict:
     """Score every feature of one class against the same feature of another.
 
-    The checks that score a feature - every check in the registry but the three
-    decided by a rule - in registry order.
+    The checks that score a feature - the ones in the registry with a `floor`,
+    which leaves out those decided by a rule - in registry order.
 
     Args:
         stats1: Computed statistics for the first class.
