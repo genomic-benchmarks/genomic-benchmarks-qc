@@ -28,7 +28,6 @@ CHECK = Check(
     floor='per_sequence',
     section=Section(
         title='Sequence Lengths',
-        nav_label='Sequence lengths',
         anchor='sequence-lengths',
         explanation_id='lengths-explanation',
         template='check_lengths.html',

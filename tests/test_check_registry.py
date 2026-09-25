@@ -75,12 +75,22 @@ class TestEveryRegistry:
 
 
 class TestClassRegistry:
-    def test_the_duplicate_listing_keeps_the_id_the_page_script_fills(self):
-        """report_ui.js fills the table of shared sequences through
-        '#sequence-duplication-levels tbody'."""
-        anchors = {check.name: check.section.anchor for check in class_checks.CLASS_CHECKS}
+    def test_every_section_is_named_as_the_guide_names_it(self):
+        """A section's id is its check's heading anchor in docs/guide/checks.md,
+        the page its first docs link points to."""
+        for check in class_checks.CLASS_CHECKS:
+            page, anchor, _ = check.section.docs[0]
+            assert (page, anchor) == ('checks', check.section.anchor), check.name
 
-        assert anchors['Duplicate Sequences between Labels'] == 'sequence-duplication-levels'
+    def test_the_duplicate_listing_is_found_by_its_section_id(self):
+        """report_ui.js fills the table of shared sequences, and the stylesheets
+        lay it out, through the section's id."""
+        anchors = {check.name: check.section.anchor for check in class_checks.CLASS_CHECKS}
+        anchor = anchors['Duplicate Sequences between Labels']
+
+        assert f"'#{anchor} tbody'" in assets.read_asset('report_ui.js')
+        for stylesheet in ('report.css', 'report_design.css'):
+            assert f'#{anchor} table' in assets.read_asset(stylesheet), stylesheet
 
     def test_every_row_belongs_to_exactly_one_check(self):
         """A row is a headline or one of its sub-checks, and no check's rows can be

@@ -20,7 +20,7 @@
    * The list arrives as JSON in a script element rather than as a JS literal,
    * so a sequence containing markup cannot break out of the script. */
   function fillDuplicateSequences() {
-    var body = document.querySelector('#sequence-duplication-levels tbody');
+    var body = document.querySelector('#duplicate-sequences-between-labels tbody');
     var data = document.getElementById('duplicate-sequences');
     if (!body || !data) return;
     var sequences;

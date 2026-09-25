@@ -58,9 +58,11 @@ class Section:
 
     Attributes:
         title: The section's heading.
-        anchor: The section's id, which its navigation entry links to. Keep it
-            once published: `report_ui.js`, the tests and a reader's bookmark
-            into a report find a section by it.
+        anchor: The section's id, which its navigation entry links to. A class
+            check's is the anchor of its heading in `docs/guide/checks.md`, so
+            the report and the guide name the section alike. The stylesheets,
+            `report_ui.js` and a reader's bookmark into a report find a section
+            by it, so a rename has to be followed there.
         explanation_id: The id of the explanation block the ? button toggles.
         template: The check's fragment in `report.assets`. It holds the
             explanation block, `<div id="{{explanation_id}}"
@@ -72,8 +74,6 @@ class Section:
             it keeps beside the report, and return its `SectionContent`.
         docs: The links that close the explanation, as `docs_link` arguments
             `(page, anchor, text)`, in the order they appear.
-        nav_label: What the navigation calls the section, where that is not
-            its title.
         css_class: A class for the <section> element, e.g. 'table-section'.
         stylesheets: Stylesheets in `report.assets` the section needs on the
             page, included once however many sections ask for them.
@@ -85,7 +85,6 @@ class Section:
     template: str
     render: Callable[[Any], SectionContent]
     docs: tuple[tuple[str, str | None, str], ...] = ()
-    nav_label: str | None = None
     css_class: str | None = None
     stylesheets: tuple[str, ...] = ()
 
@@ -171,7 +170,7 @@ def render_nav(checks, summary_statuses) -> str:
         section = check.section
         item = put_data(NAV_ITEM_TEMPLATE, '{{icon}}', icon_html(summary_statuses, check.name))
         item = put_data(item, '{{anchor}}', section.anchor)
-        items.append(put_text(item, '{{nav_label}}', section.nav_label or section.title))
+        items.append(put_text(item, '{{title}}', section.title))
     return ''.join(items)
 
 

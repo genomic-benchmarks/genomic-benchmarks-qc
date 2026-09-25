@@ -260,7 +260,8 @@ To add one:
     fragment holds only what is the check's own.
 4.  List it in the registry, at the position it should have in the report.
 5.  Give it a `##` heading in `docs/guide/checks.md`, which is where its docs link points.
-    `tests/test_report_links.py` fails until the heading exists.
+    `tests/test_report_links.py` fails until the heading exists. A class check's `anchor` is
+    that heading's anchor, and `tests/test_check_registry.py` checks the two agree.
 6.  Run `python examples/build.py --out-folder build/examples --print-expect` and add the new
     check's flag to every example's `[expect]` table in `examples/*/meta.toml`. `--check` only
     compares the checks a table names, so it will not notice a missing one.

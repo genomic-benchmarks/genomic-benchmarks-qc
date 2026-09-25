@@ -64,7 +64,7 @@ def render(context) -> SectionContent:
                             <!-- Table rows will be dynamically populated -->
                         </tbody>
                 </table>
-                <div id="sequence-duplication-levels-info">
+                <div id="duplicate-sequences-between-labels-info">
                     <p>{rest} {saved}</p>
                 </div>
         """
@@ -78,8 +78,9 @@ CHECK = Check(
     score=score,
     section=Section(
         title='Duplicate Sequences between Labels',
-        # report_ui.js fills the table of shared sequences through this id.
-        anchor='sequence-duplication-levels',
+        # report_ui.js fills the table of shared sequences through this id, and
+        # report.css and report_design.css lay the table out by it.
+        anchor='duplicate-sequences-between-labels',
         explanation_id='between-dup-explanation',
         template='check_duplicates_between.html',
         render=render,

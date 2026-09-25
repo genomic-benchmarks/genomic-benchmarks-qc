@@ -149,8 +149,7 @@ section {
 .section-header { gap: 8px; align-items: center; }
 /* Each check heading is a .sidebar-item too - the status circle and the
  * heading on one row - and report.css gives that row no gap, so the circle
- * crowds the words. 8px puts the heading text at 34px, which is where
- * .nucleotide-flags-container is indented to. */
+ * crowds the words. */
 .content .sidebar-item { gap: 8px; }
 .content h2 {
   font-size: 19px; font-weight: 650; color: var(--ink);
@@ -179,9 +178,6 @@ h3 { color: var(--ink-2); }
 .status-warn { background-color: var(--warn); }
 .status-fail { background-color: var(--fail); }
 .status-unknown { background-color: var(--unknown); }
-/* the chips under Unique Bases are positioned for the old 40px icons */
-.nucleotide-flags-container { margin: 2px 0 14px 34px; }
-.nucleotide-flag-item .nucleotide-label { font-weight: 600; color: var(--ink-2); }
 
 /* ---------------- explanations and notes ---------------- */
 .toggle-btn {
@@ -242,8 +238,8 @@ pre { background: var(--line-2); border-radius: 8px; }
 .table-section > table tr:hover { background: var(--accent-soft); }
 .table-section > table tr:first-child td { font-weight: 600; color: var(--ink); }
 .table-section > table span { font-weight: 600; }
-#sequence-duplication-levels table th,
-#sequence-duplication-levels table td { border: 1px solid var(--line); }
+#duplicate-sequences-between-labels table th,
+#duplicate-sequences-between-labels table td { border: 1px solid var(--line); }
 
 /* ---------------- findings panels ----------------
  * A check whose evidence is a list - the flagged positions under the
