@@ -15,16 +15,25 @@ to a sequence is an array index. Keyed by the id string instead, the two
 per-sequence maxima were 240 MB at 300,000 sequences a half, which is the same
 scale as the search itself and for two floats per sequence.
 
-The hits above the threshold are also written out as they go past, if the caller
-asks for it. That is a side effect in a module otherwise made of returns, and it
-is here for the same reason the rest of it is: the export holds every leaked hit,
-there can be far more of them than the report lists, and collecting them to write
-at the end would give back the bound this module exists to keep.
+The hits above the threshold are also written out, if the caller asks for it.
+That is a side effect in a module otherwise made of returns, and it is here for
+the same reason the rest of it is: the export holds every leaked hit, there can
+be far more of them than the report lists, and collecting them to write at the
+end would give back the bound this module exists to keep. So they are sorted a
+chunk's worth at a time, and the sorted runs merged into the export at the end.
+
+Both the report's listing and the export are in one order, `LISTING_ORDER`, and
+it is read off the hits themselves. The order MMseqs2 writes them in is not
+something to build on: the same search on more than one thread returns the same
+hits in a different order from run to run.
 """
 
 import heapq
 import logging
 import re
+import shutil
+import tempfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -99,6 +108,15 @@ MMSEQS_REQUIRED_COLS = [
 
 MMSEQS_DERIVED_COLS = ["min_cov", "min_cov*pident"]
 MMSEQS_RESULT_COLUMNS = MMSEQS_REQUIRED_COLS + MMSEQS_DERIVED_COLS
+
+# The order leaked hits are listed in, on the page and in the export: the most
+# similar first, then by test sequence and by train sequence - numbered, so in
+# staging order rather than as strings - and last by where the alignment sits.
+# Every part of it is a property of the hit, so it is a total order over any
+# table MMseqs2 can write, and the same hits always come out the same way.
+# `_query` and `_target` are the staged positions, added while a chunk is read.
+LISTING_ORDER = ["min_cov*pident", "_query", "_target", "qstart", "qend", "tstart", "tend"]
+LISTING_ASCENDING = [False, True, True, True, True, True, True]
 
 
 def _missing_required_columns(frame_columns):
@@ -208,46 +226,103 @@ def _update_similarity_max(current_max, grouped_max, source_name):
     np.fmax.at(current_max, indices, grouped_max.to_numpy(dtype=np.float32))
 
 
-def _push_top_rows(top_rows_heap, rows, row_order, top_n):
-    """Keep the `top_n` most similar hits seen so far in a min-heap.
+def _in_listing_order(hits):
+    """The hits sorted by `LISTING_ORDER`, most similar first."""
+    return hits.sort_values(LISTING_ORDER, ascending=LISTING_ASCENDING)
 
-    The heap holds (similarity, arrival order, row), so the weakest hit is
-    always the one dropped and equally similar hits keep the order they were
-    read in. Returns the updated arrival counter.
+
+def _listing_key(fields, positions):
+    """`LISTING_ORDER` for one exported row, read back from its text.
+
+    The same order `_in_listing_order` sorts by, so rows it sorted merge back
+    together as they were: the similarity negated for most-similar-first, the
+    staged positions from the ids, and the coordinates as numbers.
     """
-    for _, row in rows.iterrows():
-        row_dict = row.to_dict()
-        heapq.heappush(
-            top_rows_heap,
-            (float(row_dict["min_cov*pident"]), row_order, row_dict),
-        )
-        row_order += 1
-        if len(top_rows_heap) > top_n:
-            heapq.heappop(top_rows_heap)
-
-    return row_order
+    return (
+        -float(fields[positions["min_cov*pident"]]),
+        int(SEQUENCE_ID_PATTERN.match(fields[positions["query"]]).group(1)),
+        int(SEQUENCE_ID_PATTERN.match(fields[positions["target"]]).group(1)),
+        *(float(fields[positions[column]]) for column in ("qstart", "qend", "tstart", "tend")),
+    )
 
 
-def _finalize_results_frame(top_rows_heap):
-    """Turn the heap of top hits into a frame sorted most-similar first.
+class _SortedExport:
+    """Every leaked hit, written to the export in `LISTING_ORDER`.
 
-    The sort key is (similarity descending, arrival order), which is a total
-    order over the rows: two equally similar hits are separated by the counter
-    `_push_top_rows` stamped them with, so the same input always produces the
-    same table. That is the whole ordering - the frame is built in this order
-    and left in it. Sorting the frame again afterwards was where the
-    determinism went: `sort_values` defaults to quicksort, which is not stable,
-    so it was free to shuffle the ties this key had just settled.
+    Holds about `run_rows` hits at a time - the ones gathered so far, plus one
+    chunk's. Once there are that many they are sorted and written out as a run
+    in a scratch directory beside the search output; `write` merges the runs
+    into the export, reading one row of each at a time. A split whose leaked
+    hits fit in one run - nearly every one - never touches the scratch
+    directory at all.
+
+    The merge reads the runs a line at a time, which holds because nothing in a
+    hit can contain a newline: ids, numbers and alignment strings.
     """
-    top_rows = [
-        row_dict
-        for _, _, row_dict in sorted(top_rows_heap, key=lambda item: (-item[0], item[1]))
-    ]
-    if top_rows:
-        results_filt = pd.DataFrame(top_rows)
-    else:
-        results_filt = pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
-    return results_filt.reindex(columns=MMSEQS_RESULT_COLUMNS)
+
+    def __init__(self, export_path, run_rows, scratch_parent):
+        self.export_path = Path(export_path)
+        self.run_rows = run_rows
+        self.scratch_parent = Path(scratch_parent)
+        self.scratch_dir = None
+        self.pending = []
+        self.pending_rows = 0
+        self.runs = []
+
+    def add(self, leaked):
+        self.pending.append(leaked)
+        self.pending_rows += len(leaked)
+        if self.pending_rows >= self.run_rows:
+            self._write_run()
+
+    def _sorted_pending(self):
+        if not self.pending:
+            return None
+        hits = _in_listing_order(pd.concat(self.pending))
+        self.pending, self.pending_rows = [], 0
+        return hits
+
+    def _write_run(self):
+        if self.scratch_dir is None:
+            self.scratch_dir = Path(tempfile.mkdtemp(dir=self.scratch_parent,
+                                                     prefix="gb-qc-export-"))
+        run = self.scratch_dir / f"run_{len(self.runs)}.tsv"
+        _write_export(run, self._sorted_pending())
+        self.runs.append(run)
+
+    def write(self):
+        """Write the export, in `LISTING_ORDER`, from everything added."""
+        if not self.runs:
+            # Everything fitted in one run: write it straight to the export.
+            _write_export(self.export_path, self._sorted_pending())
+            return
+        if self.pending:
+            self._write_run()
+        self._merge_runs()
+
+    def discard_scratch(self):
+        """Remove the scratch runs, if there were any. Safe to call twice."""
+        if self.scratch_dir is not None:
+            shutil.rmtree(self.scratch_dir, ignore_errors=True)
+            self.scratch_dir = None
+
+    def _merge_runs(self):
+        positions = {column: index for index, column in enumerate(MMSEQS_RESULT_COLUMNS)}
+        handles = [run.open(newline="") for run in self.runs]
+        try:
+            header = [next(handle) for handle in handles][0]
+
+            def keyed(handle):
+                for line in handle:
+                    yield _listing_key(line.rstrip("\r\n").split("\t"), positions), line
+
+            with self.export_path.open("w", newline="") as export:
+                export.write(header)
+                for _, line in heapq.merge(*(keyed(handle) for handle in handles)):
+                    export.write(line)
+        finally:
+            for handle in handles:
+                handle.close()
 
 
 def build_mmseqs_export_frame(results_filt):
@@ -268,15 +343,9 @@ def build_mmseqs_export_frame(results_filt):
     return export_frame.loc[:, MMSEQS_RESULT_COLUMNS]
 
 
-def _append_leaked_hits(export_path, leaked, first_write):
-    """Append one chunk's above-threshold hits to the export TSV."""
-    build_mmseqs_export_frame(leaked).to_csv(
-        export_path,
-        sep="\t",
-        index=False,
-        mode="w" if first_write else "a",
-        header=first_write,
-    )
+def _write_export(path, hits):
+    """Write hits as an export TSV, with the header even when there are none."""
+    build_mmseqs_export_frame(hits).to_csv(path, sep="\t", index=False)
 
 
 def summarize_mmseqs_output(results_path, similarity_threshold, query_count, target_count,
@@ -312,8 +381,11 @@ def summarize_mmseqs_output(results_path, similarity_threshold, query_count, tar
     leaks, and it is the leaks the report counts.
 
     When `export_path` is given, every leaked hit is written there as a TSV, in
-    the columns of `MMSEQS_RESULT_COLUMNS`. The file is created even when nothing
-    leaked, so a clean split leaves a header rather than a missing file.
+    the columns of `MMSEQS_RESULT_COLUMNS` and in `LISTING_ORDER`, so the hits
+    the report lists are the first rows of the file. The file is created even
+    when nothing leaked, so a clean split leaves a header rather than a missing
+    file. Runs too large to sort in one piece are sorted in scratch files beside
+    `results_path`, which are removed once the export is written.
     """
     # NaN, not zero: a sequence the search said nothing about has to stay
     # distinguishable from one whose best alignment scored nothing.
@@ -321,71 +393,86 @@ def summarize_mmseqs_output(results_path, similarity_threshold, query_count, tar
     target_similarity_max = np.full(target_count, np.nan, dtype=np.float32)
     query_above_threshold = np.zeros(query_count, dtype=bool)
     target_above_threshold = np.zeros(target_count, dtype=bool)
-    top_rows_heap = []
-    row_order = 0
+    top_hits = None
     total_hits = 0
     leaked_hits = 0
     reversed_hits = 0
     reversed_leaked_hits = 0
-    exported_any = False
+    export = (None if export_path is None
+              else _SortedExport(export_path, chunksize, Path(results_path).parent))
 
     try:
         chunk_iter = pd.read_csv(results_path, sep="\t", chunksize=chunksize)
     except EmptyDataError:
         chunk_iter = []
 
-    for chunk in chunk_iter:
-        chunk = _validate_mmseqs_frame(chunk, results_path)
-        if chunk.empty:
-            continue
+    try:
+        for chunk in chunk_iter:
+            chunk = _validate_mmseqs_frame(chunk, results_path)
+            if chunk.empty:
+                continue
 
-        scored_chunk = _score_mmseqs_chunk(chunk)
-        total_hits += len(scored_chunk)
+            scored_chunk = _score_mmseqs_chunk(chunk)
+            total_hits += len(scored_chunk)
 
-        # Which sequences had a hit at all falls out of the maxima: the entries
-        # that are no longer NaN.
-        _update_similarity_max(
-            query_similarity_max,
-            scored_chunk.groupby("query")["min_cov*pident"].max(),
-            results_path,
-        )
-        _update_similarity_max(
-            target_similarity_max,
-            scored_chunk.groupby("target")["min_cov*pident"].max(),
-            results_path,
-        )
+            # Which sequences had a hit at all falls out of the maxima: the
+            # entries that are no longer NaN.
+            _update_similarity_max(
+                query_similarity_max,
+                scored_chunk.groupby("query")["min_cov*pident"].max(),
+                results_path,
+            )
+            _update_similarity_max(
+                target_similarity_max,
+                scored_chunk.groupby("target")["min_cov*pident"].max(),
+                results_path,
+            )
 
-        # Counted before the empty-leak shortcut below: a build returning
-        # backwards alignments is worth saying so even in a run where none of
-        # them are similar enough to be reported as a leak.
-        reversed_mask = _reversed_coordinate_mask(scored_chunk)
-        above_threshold = scored_chunk["min_cov*pident"] >= similarity_threshold
-        reversed_hits += int(reversed_mask.sum())
-        reversed_leaked_hits += int((reversed_mask & above_threshold).sum())
+            # Counted before the empty-leak shortcut below: a build returning
+            # backwards alignments is worth saying so even in a run where none of
+            # them are similar enough to be reported as a leak.
+            reversed_mask = _reversed_coordinate_mask(scored_chunk)
+            above_threshold = scored_chunk["min_cov*pident"] >= similarity_threshold
+            reversed_hits += int(reversed_mask.sum())
+            reversed_leaked_hits += int((reversed_mask & above_threshold).sum())
 
-        leaked = scored_chunk[above_threshold]
-        if leaked.empty:
-            continue
+            leaked = scored_chunk[above_threshold]
+            if leaked.empty:
+                continue
 
-        leaked_hits += len(leaked)
-        if export_path is not None:
-            _append_leaked_hits(export_path, leaked, first_write=not exported_any)
-            exported_any = True
+            # The staged positions, which `LISTING_ORDER` sorts by and which mark
+            # the sequences above the threshold.
+            leaked = leaked.assign(
+                _query=_staged_indices(leaked["query"], query_count, results_path),
+                _target=_staged_indices(leaked["target"], target_count, results_path),
+            )
+            leaked_hits += len(leaked)
+            if export is not None:
+                export.add(leaked)
 
-        query_above_threshold[
-            _staged_indices(pd.Index(leaked["query"].unique()), query_count, results_path)
-        ] = True
-        target_above_threshold[
-            _staged_indices(pd.Index(leaked["target"].unique()), target_count, results_path)
-        ] = True
+            query_above_threshold[leaked["_query"].to_numpy()] = True
+            target_above_threshold[leaked["_target"].to_numpy()] = True
 
-        leaked_top = leaked.nlargest(top_n, "min_cov*pident")
-        row_order = _push_top_rows(top_rows_heap, leaked_top, row_order, top_n)
+            # The listing so far, and this chunk's candidates for it, in one
+            # sort: whichever `top_n` come first in `LISTING_ORDER` stay.
+            candidates = leaked if top_hits is None else pd.concat([top_hits, leaked])
+            top_hits = _in_listing_order(candidates).head(top_n)
 
-    results_filt = _finalize_results_frame(top_rows_heap)
+        if export is not None:
+            export.write()
+    finally:
+        # Written or not - an unreadable table stops the run - the scratch runs
+        # are this function's own, and nothing else would remove them.
+        if export is not None:
+            export.discard_scratch()
 
-    if export_path is not None and not exported_any:
-        _append_leaked_hits(export_path, None, first_write=True)
+    # Numbered from 0 in listing order: the report names each row's alignment
+    # after its position here.
+    if top_hits is None:
+        results_filt = pd.DataFrame(columns=MMSEQS_RESULT_COLUMNS)
+    else:
+        results_filt = top_hits.reset_index(drop=True)
+    results_filt = results_filt.reindex(columns=MMSEQS_RESULT_COLUMNS)
 
     return {
         "query_similarity_max": query_similarity_max,
