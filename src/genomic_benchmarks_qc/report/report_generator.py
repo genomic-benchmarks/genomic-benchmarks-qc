@@ -187,6 +187,11 @@ def generate_simple_report(results, output_path):
         results = pd.DataFrame.from_dict(results, orient='index')
     # 'Percent Remaining' is computed only for plotting, exclude it from the CSV report
     results = results.drop(columns=['Percent Remaining'], errors='ignore')
+    # The flag first, whatever the other columns are. A table built from a dict
+    # takes its columns in the order they first appear, so left to that the
+    # header would depend on which check happens to open the table.
+    if 'Flag' in results.columns:
+        results = results[['Flag', *(column for column in results.columns if column != 'Flag')]]
     results.index.name = 'Check'
     results.to_csv(output_path)
 
