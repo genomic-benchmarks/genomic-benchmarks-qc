@@ -2,9 +2,9 @@
 
 One `SequenceStatistics` holds the sequences of a single class and the features
 computed from them - lengths, GC content, nucleotide and dinucleotide
-composition, per-position composition, duplication levels. The comparison in
-`genomic_benchmarks_qc.utils.testing` reads these, and so do the plots and the
-HTML report.
+composition, per-position composition, duplication levels. The checks in
+`genomic_benchmarks_qc.checks` each name the feature they compare, scored by the
+arithmetic in `genomic_benchmarks_qc.utils.testing`, and draw it in the report.
 
 Two windows bound the per-position features, because a position is compared only
 on the sequences long enough to reach it. `scored_end_position` is as far as a

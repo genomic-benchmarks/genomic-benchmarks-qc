@@ -17,12 +17,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from genomic_benchmarks_qc.checks import run_checks
+from genomic_benchmarks_qc.checks import splits as split_checks
+from genomic_benchmarks_qc.checks.splits.data_leakage import ROW_CAP
 from genomic_benchmarks_qc.report.report_generator import (
     generate_simple_report,
     generate_splits_html_report,
     validate_report_types,
 )
-from genomic_benchmarks_qc.report.split_html_report import ROW_CAP
 from genomic_benchmarks_qc.utils import mmseqs_runtime
 from genomic_benchmarks_qc.utils.input_utils import (
     SequenceStatsAccumulator,
@@ -53,7 +55,6 @@ from genomic_benchmarks_qc.utils.naming import (
     unique_slugs,
 )
 from genomic_benchmarks_qc.utils.split_stats import (
-    flag_split_data_leakage,
     get_basic_stats_from_aggregates,
     get_threshold_stats,
 )
@@ -135,15 +136,9 @@ def _build_comparison_dirname(train_files, test_files):
 
 
 def _build_simple_report_frame(threshold_stats):
-    """Build the one-row leakage verdict written as the simple CSV report."""
-    result = {
-        "Data Leakage": {
-            "Flag": flag_split_data_leakage(threshold_stats['perc_queries_above_thr']),
-            "Percentage of leaked queries": f"{threshold_stats['perc_queries_above_thr']:.2f}%",
-            "Percentage of leaked targets": f"{threshold_stats['perc_targets_above_thr']:.2f}%",
-        }
-    }
-    return pd.DataFrame.from_dict(result, orient='index')
+    """Build the split checks' rows, written as the simple CSV report."""
+    results, _ = run_checks(split_checks.SPLIT_CHECKS, threshold_stats)
+    return pd.DataFrame.from_dict(results, orient='index')
 
 
 def _write_mmseqs_report_bundle(

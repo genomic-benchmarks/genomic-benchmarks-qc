@@ -1,0 +1,6 @@
+                <div id="{{explanation_id}}" class="explanation-text">
+                    <p>Sequences that appear under both labels: identical input, opposite label, so no model can get both right. One shared sequence fails; there is no Warning.</p>
+                    <p>It puts a hard ceiling on achievable accuracy, and the offending sequences are listed in <code>gb-qc-duplicates.txt</code> beside this report. {{docs_link}}</p>
+                </div>
+                <!-- Either a table of the shared sequences, filled in by report_ui.js, or a message saying there are none -->
+                {{duplicates}}

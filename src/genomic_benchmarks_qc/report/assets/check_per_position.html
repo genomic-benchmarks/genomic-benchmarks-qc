@@ -1,0 +1,6 @@
+                <div id="{{explanation_id}}" class="explanation-text">
+                    <p>One panel per base, one line per label, running 5' to 3' along the sequence. <strong>The shaded bands are the flagged positions</strong> - orange Warning, red Fail, grey not scored. Every position is scored separately and <strong>the flag is the worst single one</strong>. The lower panel is how much of each label still reaches each position.</p>
+                    <p>A flag means something at a fixed location gives the label away: an adapter or barcode left on one label, a padding convention applied to one only, or a real motif - which is the signal, not a leak. Where the flags sit tells you which: a cluster is a motif, position 1 alone is an artefact. {{docs_link}}</p>
+                    {{position_window_note}}
+                </div>
+                {{plot}}

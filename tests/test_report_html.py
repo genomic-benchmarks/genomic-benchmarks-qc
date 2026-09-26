@@ -18,12 +18,12 @@ import pytest
 from helpers import mmseqs_hit, write_csv, write_mmseqs_output
 
 from genomic_benchmarks_qc import evaluate_splits
-from genomic_benchmarks_qc.report.alignment_rendering import has_reversed_coordinates
-from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
-from genomic_benchmarks_qc.report.split_html_report import (
+from genomic_benchmarks_qc.checks.splits.data_leakage import (
     alignment_error_html,
     alignments_count_text,
 )
+from genomic_benchmarks_qc.report.alignment_rendering import has_reversed_coordinates
+from genomic_benchmarks_qc.report.report_generator import generate_dataset_html_report
 from genomic_benchmarks_qc.report.utils import escape_str
 from genomic_benchmarks_qc.utils.seq_stats import SequenceStatistics
 from genomic_benchmarks_qc.utils.testing import flag_significant_differences
@@ -205,6 +205,22 @@ class TestDuplicateSequences:
 
         block = re.search(r'id="duplicate-sequences">(.*?)</script>', page, re.S).group(1)
         assert json.loads(block) == [shared]
+
+    def test_the_page_lists_the_first_of_them_in_sorted_order(self, tmp_path):
+        """Which ten the page showed used to depend on the hash seed, which Python
+        draws afresh for every process: two runs over the same data could list
+        different sequences. Now they are the first ten lines of the file."""
+        shared = random_sequences(25, 30, seed=7)
+        stats1 = make_stats(shared + random_sequences(20, 30, seed=8), label='a')
+        stats2 = make_stats(shared[::-1] + random_sequences(20, 30, seed=9), label='b')
+
+        page = render(tmp_path, stats1, stats2)
+
+        block = re.search(r'id="duplicate-sequences">(.*?)</script>', page, re.S).group(1)
+        listed = json.loads(block)
+        assert listed == sorted(shared)[:10]
+        assert (tmp_path / 'gb-qc-duplicates.txt').read_text().splitlines()[:10] == listed
+        assert 'And 15 more.' in page
 
 
 def split_page(tmp_path, monkeypatch, hits):

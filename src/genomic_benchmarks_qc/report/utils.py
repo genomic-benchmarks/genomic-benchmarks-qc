@@ -2,6 +2,7 @@
 
 import base64
 import html
+import io
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -36,6 +37,71 @@ class SavedPlot:
 
     path: Path
     embedded: bytes | None
+
+
+def save_plot(fig, path, embed=True):
+    """Write one figure to `path`, and return it with the copy the page embeds.
+
+    Two renderings of the same figure and no second build of it: the file, at
+    print resolution, and the smaller copy that goes into the report's data
+    URI. See `SavedPlot` for why the page does not simply embed the file.
+
+    Args:
+        fig: The figure to write.
+        path: Where to write it.
+        embed: Whether the page shows this figure. The per-position PNGs are
+            written for whoever wants the file, but the page draws those two
+            with the interactive viewer instead, so there is nothing to embed.
+
+    Returns:
+        A `SavedPlot`.
+    """
+    # Deferred: matplotlib is a second of startup that a run drawing nothing
+    # should not pay. See `report_generator` and `test_startup.py`.
+    import matplotlib
+
+    # `bbox_inches='tight'` makes savefig lay the figure out to measure it and
+    # then again to draw it, once per file. Measuring here instead and handing
+    # both writes the box turns three layout passes into one. The box is the
+    # figure as it stands at this call, so nothing about it has to hold across
+    # calls - the padding is the one thing savefig would have added itself.
+    crop = fig.get_tightbbox().padded(matplotlib.rcParams['savefig.pad_inches'])
+    fig.savefig(path, dpi=FIGURE_DPI, bbox_inches=crop)
+    if not embed:
+        return SavedPlot(path, None)
+    display = io.BytesIO()
+    fig.savefig(display, format='png', dpi=DISPLAY_DPI, bbox_inches=crop)
+    return SavedPlot(path, display.getvalue())
+
+
+def save_figure(fig, plots_dir, stem, *, flagged=None, mark=None, embed=True):
+    """Save a check's figure, and again with its flags marked when it has any.
+
+    The pair is one figure saved twice: clean as `<stem>.png`, then - once
+    `mark` has drawn the flags onto it - as `<stem>_with_flags.png`. The copy
+    returned is the one the page shows, which is the flagged one when there is
+    one. The figure is closed either way.
+
+    Args:
+        fig: The figure, drawn and not yet marked.
+        plots_dir: The report's plots/ directory.
+        stem: File name without the extension.
+        flagged: What the check flagged, as its `CheckResult.flagged`; nothing
+            is marked when it is empty or None.
+        mark: Called as `mark(fig, flagged)` to draw the flags on the figure.
+        embed: As for `save_plot`.
+
+    Returns:
+        A `SavedPlot`.
+    """
+    import matplotlib.pyplot as plt
+
+    saved = save_plot(fig, plots_dir / f'{stem}.png', embed=embed)
+    if flagged and mark is not None:
+        mark(fig, flagged)
+        saved = save_plot(fig, plots_dir / f'{stem}_with_flags.png', embed=embed)
+    plt.close(fig)
+    return saved
 
 
 def put_file_details(html_template, filename):

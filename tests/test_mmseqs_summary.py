@@ -8,7 +8,9 @@ one whose best hit scored nothing, and that a table from somewhere else is
 refused rather than quietly mis-joined.
 """
 
+import io
 import logging
+import random
 
 import numpy as np
 import pandas as pd
@@ -16,6 +18,7 @@ import pytest
 
 from genomic_benchmarks_qc.utils.mmseqs_summary import (
     MMSEQS_REQUIRED_COLS,
+    MMSEQS_RESULT_COLUMNS,
     log_reversed_hit_warning,
     sequence_id,
     staged_ids,
@@ -120,35 +123,69 @@ class TestTheJoinBackToSequences:
 class TestTheOrderOfTheTopHits:
     """The alignment table is a listing, so its order has to be reproducible.
 
-    Every hit here scores the same, which is not a corner case: `min_cov*pident`
+    Most hits here score the same, which is not a corner case: `min_cov*pident`
     is a product of two rounded percentages, so a real search returns ties by
-    the hundred and the page has to put them somewhere.
+    the hundred and the page has to put them somewhere. Nor can it put them
+    where they were read: MMseqs2 on more than one thread writes the same hits
+    in a different order from one run to the next.
     """
 
-    def make_ties(self, tmp_path, count=40):
-        """`count` hits that all score exactly 95.0, in a known reading order."""
-        return write_hits(tmp_path / 'hits.tsv',
-                          [(i, i, 1.0, 95.0) for i in range(count)])
+    def make_ties(self, tmp_path, order, name='hits.tsv'):
+        """Hits that all score exactly 95.0, read in `order` of their query."""
+        return write_hits(tmp_path / name, [(i, i, 1.0, 95.0) for i in order])
 
-    def test_ties_keep_the_order_they_were_read_in(self, tmp_path):
-        hits = self.make_ties(tmp_path)
+    def test_ties_come_in_staging_order_whatever_order_they_were_read_in(self, tmp_path):
+        order = list(range(40))
+        random.Random(0).shuffle(order)
+        hits = self.make_ties(tmp_path, order)
 
         summary = summarize_mmseqs_output(hits, 90.0, query_count=40, target_count=40)
 
         assert list(summary['results_filt']['query']) == [
             sequence_id(i, 'test') for i in range(40)]
 
-    def test_the_same_table_summarises_to_the_same_order_twice(self, tmp_path):
-        """The listing a reader cites has to still say that tomorrow."""
-        hits = self.make_ties(tmp_path)
+    def test_staging_order_is_numeric_not_alphabetical(self, tmp_path):
+        """seq_9 is staged before seq_10, and 'seq_10' < 'seq_9' as strings."""
+        hits = self.make_ties(tmp_path, [10, 9])
 
-        first = summarize_mmseqs_output(hits, 90.0, query_count=40, target_count=40)
-        second = summarize_mmseqs_output(hits, 90.0, query_count=40, target_count=40)
+        summary = summarize_mmseqs_output(hits, 90.0, query_count=11, target_count=11)
 
-        assert list(first['results_filt']['query']) == list(second['results_filt']['query'])
+        assert list(summary['results_filt']['query']) == [
+            sequence_id(9, 'test'), sequence_id(10, 'test')]
+
+    def test_a_query_with_several_hits_lists_them_by_train_sequence(self, tmp_path):
+        hits = write_hits(tmp_path / 'hits.tsv',
+                          [(0, 7, 1.0, 95.0), (0, 2, 1.0, 95.0), (0, 5, 1.0, 95.0)])
+
+        summary = summarize_mmseqs_output(hits, 90.0, query_count=1, target_count=8)
+
+        assert list(summary['results_filt']['target']) == [
+            sequence_id(i, 'train') for i in (2, 5, 7)]
+
+    def test_the_cap_keeps_the_same_hits_however_they_arrive(self, tmp_path):
+        """Which ties make the cut is part of the order too, chunk by chunk."""
+        shuffled = list(range(40))
+        random.Random(1).shuffle(shuffled)
+        in_order = summarize_mmseqs_output(
+            self.make_ties(tmp_path, range(40), 'a.tsv'), 90.0,
+            query_count=40, target_count=40, top_n=10)
+        out_of_order = summarize_mmseqs_output(
+            self.make_ties(tmp_path, shuffled, 'b.tsv'), 90.0,
+            query_count=40, target_count=40, top_n=10, chunksize=7)
+
+        assert list(in_order['results_filt']['query']) == [
+            sequence_id(i, 'test') for i in range(10)]
+        pd.testing.assert_frame_equal(in_order['results_filt'], out_of_order['results_filt'])
+
+    def test_the_rows_are_numbered_in_listing_order(self, tmp_path):
+        """The report names each alignment after its row's position."""
+        hits = self.make_ties(tmp_path, [3, 1, 2, 0])
+
+        summary = summarize_mmseqs_output(hits, 90.0, query_count=4, target_count=4)
+
+        assert list(summary['results_filt'].index) == [0, 1, 2, 3]
 
     def test_more_similar_hits_still_come_first(self, tmp_path):
-        """Dropping the second sort must not drop the sorting."""
         hits = write_hits(tmp_path / 'hits.tsv', [
             (0, 0, 1.0, 91.0), (1, 1, 1.0, 99.0), (2, 2, 1.0, 95.0),
         ])
@@ -157,6 +194,61 @@ class TestTheOrderOfTheTopHits:
 
         assert list(summary['results_filt']['query']) == [
             sequence_id(1, 'test'), sequence_id(2, 'test'), sequence_id(0, 'test')]
+
+
+class TestTheExportedHits:
+    """Every leaked hit goes to a file, in the listing's order.
+
+    So the same search always writes the same file, and the pairs the page
+    lists are its first rows. The file is written without holding every hit:
+    past one chunk's worth they are sorted in runs and merged.
+    """
+
+    def hits(self, count=30):
+        """Leaked hits of varied similarity, several per query, in a mixed order."""
+        rows = [(i % 7, i, 1.0, 90.0 + i % 4) for i in range(count)]
+        random.Random(2).shuffle(rows)
+        return rows
+
+    def export(self, tmp_path, rows, name, **kwargs):
+        path = write_hits(tmp_path / f'{name}.tsv', rows)
+        export_path = tmp_path / f'{name}-export.tsv'
+        summary = summarize_mmseqs_output(path, 90.0, query_count=7, target_count=30,
+                                          export_path=export_path, **kwargs)
+        return summary, export_path.read_text()
+
+    def test_the_file_does_not_depend_on_the_order_the_hits_came_in(self, tmp_path):
+        rows = self.hits()
+        _, forward = self.export(tmp_path, rows, 'forward')
+        _, backward = self.export(tmp_path, rows[::-1], 'backward')
+
+        assert forward == backward
+
+    def test_the_file_does_not_depend_on_how_it_was_read(self, tmp_path):
+        """Chunks of four make several sorted runs to merge; one chunk makes none."""
+        rows = self.hits()
+        _, whole = self.export(tmp_path, rows, 'whole')
+        _, merged = self.export(tmp_path, rows, 'merged', chunksize=4)
+
+        assert merged == whole
+
+    def test_the_listing_is_the_top_of_the_file(self, tmp_path):
+        summary, text = self.export(tmp_path, self.hits(), 'hits', top_n=5, chunksize=4)
+
+        exported = pd.read_csv(io.StringIO(text), sep='\t')
+        assert list(exported['query'][:5]) == list(summary['results_filt']['query'])
+        assert list(exported['target'][:5]) == list(summary['results_filt']['target'])
+        assert len(exported) == summary['leaked_hits']
+
+    def test_the_sorted_runs_are_cleaned_up(self, tmp_path):
+        self.export(tmp_path, self.hits(), 'hits', chunksize=4)
+
+        assert not list(tmp_path.glob('gb-qc-export-*'))
+
+    def test_a_clean_split_still_gets_the_header(self, tmp_path):
+        _, text = self.export(tmp_path, [(0, 0, 1.0, 40.0)], 'clean')
+
+        assert text.splitlines() == ['\t'.join(MMSEQS_RESULT_COLUMNS)]
 
 
 class TestStagedIds:
