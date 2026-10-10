@@ -112,11 +112,16 @@ MMSEQS_RESULT_COLUMNS = MMSEQS_REQUIRED_COLS + MMSEQS_DERIVED_COLS
 # The order leaked hits are listed in, on the page and in the export: the most
 # similar first, then by test sequence and by train sequence - numbered, so in
 # staging order rather than as strings - and last by where the alignment sits.
-# Every part of it is a property of the hit, so it is a total order over any
-# table MMseqs2 can write, and the same hits always come out the same way.
+# Every part of it is a property of the hit, not of when MMseqs2 wrote it.
 # `_query` and `_target` are the staged positions, added while a chunk is read.
 LISTING_ORDER = ["min_cov*pident", "_query", "_target", "qstart", "qend", "tstart", "tend"]
 LISTING_ASCENDING = [False, True, True, True, True, True, True]
+
+# Two hits can agree on all of `LISTING_ORDER` and still differ in the rest of
+# what is exported - the same span aligned with its gaps in other places, say -
+# so those columns break the tie, ascending. That makes the order total over
+# what is written: only hits that export as the same line are left as they came.
+LISTING_TIE_BREAK = ["qcov", "tcov", "pident", "evalue", "alnlen", "qaln", "taln"]
 
 
 def _missing_required_columns(frame_columns):
@@ -227,22 +232,28 @@ def _update_similarity_max(current_max, grouped_max, source_name):
 
 
 def _in_listing_order(hits):
-    """The hits sorted by `LISTING_ORDER`, most similar first."""
-    return hits.sort_values(LISTING_ORDER, ascending=LISTING_ASCENDING)
+    """The hits sorted by `LISTING_ORDER`, most similar first, then `LISTING_TIE_BREAK`."""
+    return hits.sort_values(LISTING_ORDER + LISTING_TIE_BREAK,
+                            ascending=LISTING_ASCENDING + [True] * len(LISTING_TIE_BREAK))
 
 
 def _listing_key(fields, positions):
-    """`LISTING_ORDER` for one exported row, read back from its text.
+    """`LISTING_ORDER` and `LISTING_TIE_BREAK` for one exported row, read back from its text.
 
     The same order `_in_listing_order` sorts by, so rows it sorted merge back
     together as they were: the similarity negated for most-similar-first, the
-    staged positions from the ids, and the coordinates as numbers.
+    staged positions from the ids, the coordinates and the other numbers as
+    numbers, and the alignments as text.
     """
     return (
         -float(fields[positions["min_cov*pident"]]),
         int(SEQUENCE_ID_PATTERN.match(fields[positions["query"]]).group(1)),
         int(SEQUENCE_ID_PATTERN.match(fields[positions["target"]]).group(1)),
         *(float(fields[positions[column]]) for column in ("qstart", "qend", "tstart", "tend")),
+        *(float(fields[positions[column]])
+          for column in ("qcov", "tcov", "pident", "evalue", "alnlen")),
+        fields[positions["qaln"]],
+        fields[positions["taln"]],
     )
 
 

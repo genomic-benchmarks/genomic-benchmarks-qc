@@ -232,6 +232,24 @@ class TestTheExportedHits:
 
         assert merged == whole
 
+    def test_hits_alike_but_for_their_alignment_still_come_out_one_way(self, tmp_path):
+        """Same pair, span and similarity: the rest of the row breaks the tie."""
+        path = write_hits(tmp_path / 'tied.tsv', [(0, 0, 1.0, 95.0)] * 3)
+        tied = pd.read_csv(path, sep='\t').assign(qaln=['C-GT', 'AC-T', 'B-CT'])
+        outputs = []
+        for name, frame in (('forward', tied), ('backward', tied[::-1])):
+            frame.to_csv(tmp_path / f'{name}.tsv', sep='\t', index=False)
+            for chunksize in (100, 1):
+                export_path = tmp_path / f'{name}-{chunksize}-export.tsv'
+                summary = summarize_mmseqs_output(
+                    tmp_path / f'{name}.tsv', 90.0, query_count=1, target_count=1,
+                    chunksize=chunksize, export_path=export_path)
+                outputs.append((export_path.read_text(),
+                                list(summary['results_filt']['qaln'])))
+
+        assert outputs[0][1] == ['AC-T', 'B-CT', 'C-GT']
+        assert all(output == outputs[0] for output in outputs)
+
     def test_the_listing_is_the_top_of_the_file(self, tmp_path):
         summary, text = self.export(tmp_path, self.hits(), 'hits', top_n=5, chunksize=4)
 
