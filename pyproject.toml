@@ -9,7 +9,7 @@ description = "Automated quality control for genomic machine learning datasets: 
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE"]
 authors = [
     { name = "Katarina Gresova", email = "gresova11@gmail.com" },
 ]
