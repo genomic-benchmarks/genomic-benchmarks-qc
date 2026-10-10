@@ -15,17 +15,17 @@ import re
 
 import pytest
 
+from genomic_benchmarks_qc.checks.classes import CLASS_CHECKS
+from genomic_benchmarks_qc.checks.splits import SPLIT_CHECKS
 from genomic_benchmarks_qc.report import utils
-from genomic_benchmarks_qc.report.classes_html_report import EXPLANATION_LINKS
 
 DOCS = pathlib.Path(__file__).resolve().parents[1] / 'docs'
 
-# Every link a ? explanation carries, as (page key, anchor): the class report's
-# map, plus the four the two reports build by hand.
-LINKS = [(page, anchor) for page, anchor, _ in EXPLANATION_LINKS.values()] + [
-    ('checks', 'per-position-nucleotide-content'),   # the forward position check
-    ('viewer', None),                                # driving the same figure
-    ('leakage', None),                               # the split report's check
+# Every link a ? explanation carries, as (page key, anchor): whatever each
+# registered check's section links to, in both reports, so a new check's links
+# are checked too - plus the one the reports build by hand.
+LINKS = [(page, anchor) for check in CLASS_CHECKS + SPLIT_CHECKS
+         for page, anchor, _ in check.section.docs] + [
     ('flags', None),                                 # from the verdict line
 ]
 

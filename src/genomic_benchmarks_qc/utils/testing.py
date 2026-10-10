@@ -16,9 +16,12 @@ per-position check additionally stops where fewer than
 of a class reaches the position. A check that misses either floor reports
 Unknown, which says the comparison was not made, not that it came out clean.
 
-`flag_significant_differences` runs every check on one pair of classes, and is
-what both commands call. Why the boundaries and the floors are where they are is
-on the [How a flag is decided](../../guide/how-it-works.md) page.
+This module is the arithmetic the checks share. The checks themselves - which
+feature each one compares, and how the report shows it - are one module each in
+`genomic_benchmarks_qc.checks`, and `flag_significant_differences` runs all of
+them on one pair of classes for `evaluate-classes`. Why the boundaries and the
+floors are where they are is on the
+[How a flag is decided](../../guide/how-it-works.md) page.
 """
 
 import logging
@@ -614,6 +617,9 @@ def direct_feature_model(stats1: 'SequenceStatistics',
                          stats2: 'SequenceStatistics') -> dict:
     """Score every feature of one class against the same feature of another.
 
+    The checks that score a feature - the ones in the registry with a `floor`,
+    which leaves out those decided by a rule - in registry order.
+
     Args:
         stats1: Computed statistics for the first class.
         stats2: Computed statistics for the second class.
@@ -625,74 +631,24 @@ def direct_feature_model(stats1: 'SequenceStatistics',
         Accuracy and Flag. A check made of sub-checks also gets a headline entry
         under its own name, holding the worst of them.
     """
-    indices_1 = np.arange(len(stats1.sequences))
-    indices_2 = np.arange(len(stats2.sequences))
+    # Imported here: every check is built on the scorers in this module, so the
+    # registry imports this one, and importing it back at the top would be a
+    # cycle.
+    from genomic_benchmarks_qc.checks import classes as class_checks
 
     results = {}
-
-    # Scalar features
-    results['Sequence lengths'] = _score_scalar_feature(
-        stats1.stats['Sequence lengths'],
-        stats2.stats['Sequence lengths'],
-        'Sequence lengths',
-        indices_1, indices_2,
-    )
-
-    results['Per sequence GC content'] = _score_scalar_feature(
-        stats1.stats['Per sequence GC content'],
-        stats2.stats['Per sequence GC content'],
-        'Per sequence GC content',
-        indices_1, indices_2,
-    )
-
-    # DataFrame features
-    results.update(_score_dataframe_features(
-        stats1.stats['Per sequence nucleotide content'],
-        stats2.stats['Per sequence nucleotide content'],
-        'Per sequence nucleotide content',
-        indices_1, indices_2,
-    ))
-
-    results.update(_score_dataframe_features(
-        stats1.stats['Per sequence dinucleotide content'],
-        stats2.stats['Per sequence dinucleotide content'],
-        'Per sequence dinucleotide content',
-        indices_1, indices_2,
-    ))
-
-    # Position features (forward)
-    bases = sorted(set(stats1.stats['Unique bases']) | set(stats2.stats['Unique bases']))
-    end_position, scored_end_position = position_windows(stats1, stats2)
-
-    pos_results, per_base_agg = _score_position_features(
-        stats1.sequences, stats2.sequences, bases,
-        'Per position nucleotide content',
-        end_position=end_position, scored_end_position=scored_end_position,
-        reverse=False,
-    )
-    results.update(pos_results)
-    if per_base_agg:
-        results['Per position nucleotide content'] = _aggregate_worst_case_metrics(
-            per_base_agg.values())
-
-    # Position features (reverse)
-    pos_results_rev, per_base_agg_rev = _score_position_features(
-        stats1.sequences, stats2.sequences, bases,
-        'Per position reversed nucleotide content',
-        end_position=end_position, scored_end_position=scored_end_position,
-        reverse=True,
-    )
-    results.update(pos_results_rev)
-    if per_base_agg_rev:
-        results['Per position reversed nucleotide content'] = (
-            _aggregate_worst_case_metrics(per_base_agg_rev.values()))
-
+    for check in class_checks.CLASS_CHECKS:
+        if check.floor is not None:
+            results.update(check.score(stats1, stats2).rows)
     return results
 
 
 def flag_significant_differences(stats1: 'SequenceStatistics',
                                  stats2: 'SequenceStatistics') -> tuple[dict, dict]:
     """Run every check on one pair of classes.
+
+    The checks are the ones `genomic_benchmarks_qc.checks.classes` lists, in its
+    order.
 
     Args:
         stats1: Computed statistics for the first class.
@@ -713,50 +669,16 @@ def flag_significant_differences(stats1: 'SequenceStatistics',
                 'Per position reversed nucleotide content': {},
             }
     """
-    results = {}
+    # Imported here, for the reason in `direct_feature_model`.
+    from genomic_benchmarks_qc.checks import classes as class_checks
+    from genomic_benchmarks_qc.checks import run_checks
 
-    ordered_stats = [
-        'Unique bases',
-        'Sequence Duplications within Labels',
-        'Duplicate Sequences between Labels',
-        'Sequence lengths',
-        'Per sequence GC content',
-        'Per sequence nucleotide content',
-        'Per sequence dinucleotide content',
-        'Per position nucleotide content',
-        'Per position reversed nucleotide content',
-    ]
-
-    all_results = {}
-
-    all_results['Unique bases'] = {'Flag': _flag_unique_bases(stats1, stats2)}
-    all_results['Sequence Duplications within Labels'] = _flag_duplicate_sequences(stats1, stats2)
-    all_results['Duplicate Sequences between Labels'] = {
-        'Flag': _flag_duplication_between_datasets(stats1.sequences, stats2.sequences)
-    }
-
-    model_results = direct_feature_model(stats1, stats2)
-    all_results.update(model_results)
-
-    _warn_about_unscored_checks(stats1, stats2, all_results, ordered_stats)
-
-    # Order: aggregates first, then details
-    for stat_name in ordered_stats:
-        if stat_name in all_results:
-            results[stat_name] = all_results[stat_name]
-
-    for stat_name in ordered_stats:
-        for key in all_results:
-            if key.startswith(f"{stat_name} - ") and key != stat_name:
-                results[key] = all_results[key]
-
-    # Build failed_by_feature dict for visualization
-    failed_by_feature = _extract_failed_features(all_results)
-
+    results, failed_by_feature = run_checks(class_checks.CLASS_CHECKS, stats1, stats2)
+    _warn_about_unscored_checks(stats1, stats2, results, class_checks.CLASS_CHECKS)
     return results, failed_by_feature
 
 
-def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: list[str]):
+def _warn_about_unscored_checks(stats1, stats2, results: dict, checks):
     """Say on the terminal which checks were not scored, and why.
 
     A check that reports Unknown looks much like one that reports Pass in a
@@ -767,17 +689,18 @@ def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: 
 
     Args:
         stats1, stats2: SequenceStatistics objects for the two classes.
-        all_results: Every computed check, keyed by name.
-        check_names: The top-level check names, in report order.
+        results: Every computed check, keyed by name.
+        checks: The registry the results came from, in report order. Each
+            check's `floor` says which of the two explanations it gets.
     """
-    unknown = [name for name in check_names
-               if isinstance(all_results.get(name), dict)
-               and all_results[name].get('Flag') == 'Unknown']
+    unknown = [check for check in checks
+               if isinstance(results.get(check.name), dict)
+               and results[check.name].get('Flag') == 'Unknown']
     if not unknown:
         return
 
-    positional = [name for name in unknown if 'position' in name.lower()]
-    per_sequence = [name for name in unknown if name not in positional]
+    positional = [check.name for check in unknown if check.floor == 'per_position']
+    per_sequence = [check.name for check in unknown if check.floor != 'per_position']
 
     label_1 = stats1.label if stats1.label is not None else stats1.filename
     label_2 = stats2.label if stats2.label is not None else stats2.filename
@@ -806,84 +729,6 @@ def _warn_about_unscored_checks(stats1, stats2, all_results: dict, check_names: 
         )
 
 
-def _extract_failed_features(all_results: dict) -> dict:
-    """Extract failure information organized by feature type for plotting.
-
-    Args:
-        all_results: Dictionary from direct_feature_model + manual flags.
-
-    Returns:
-        Only the sub-checks that came out Warning or Fail, structured as:
-        {
-            'Per sequence nucleotide content': {'A': 'Warning', 'G': 'Fail'},
-            'Per sequence dinucleotide content': {'GG': 'Fail'},
-            'Per position nucleotide content':
-                {'A': {52: 'Warning'}, 'G': {66: 'Fail', 70: 'Fail'}},
-            'Per position reversed nucleotide content': {'A': {10: 'Fail'}},
-        }
-    """
-    failed_by_feature = {
-        'Per sequence nucleotide content': {},
-        'Per sequence dinucleotide content': {},
-        'Per position nucleotide content': {},
-        'Per position reversed nucleotide content': {},
-    }
-
-    for key, value in all_results.items():
-        flag = value.get('Flag', 'Unknown') if isinstance(value, dict) else 'Unknown'
-
-        if key.startswith('Per sequence nucleotide content - '):
-            nucleotide = key.replace('Per sequence nucleotide content - ', '')
-            if flag in ('Fail', 'Warning'):
-                failed_by_feature['Per sequence nucleotide content'][nucleotide] = flag
-
-        elif key.startswith('Per sequence dinucleotide content - '):
-            dinucleotide = key.replace('Per sequence dinucleotide content - ', '')
-            if flag in ('Fail', 'Warning'):
-                failed_by_feature['Per sequence dinucleotide content'][dinucleotide] = flag
-
-        elif key.startswith('Per position nucleotide content - ') and ' position ' in key:
-            # Parse "Per position nucleotide content - G position 52"
-            # Split from the right to handle "Per position" in the prefix
-            parts = key.rsplit(' position ', 1)
-            if len(parts) == 2:
-                base = parts[0].replace('Per position nucleotide content - ', '')
-                try:
-                    position = int(parts[1])
-                    # Only flagged positions go in. An entry per base regardless
-                    # would leave the dict truthy for a comparison with nothing
-                    # to shade, and the report would draw a second, identical
-                    # copy of every per-position plot.
-                    if flag in ('Fail', 'Warning'):
-                        per_position = failed_by_feature['Per position nucleotide content']
-                        per_position.setdefault(base, {})[position] = flag
-                except ValueError:
-                    # Not a position entry (e.g., aggregate "Per position nucleotide content - A")
-                    pass
-
-        elif key.startswith('Per position reversed nucleotide content - ') and ' position ' in key:
-            # Parse "Per position reversed nucleotide content - G position 52"
-            parts = key.rsplit(' position ', 1)
-            if len(parts) == 2:
-                base = parts[0].replace('Per position reversed nucleotide content - ', '')
-                try:
-                    position = int(parts[1])
-                    # Only flagged positions go in. An entry per base regardless
-                    # would leave the dict truthy for a comparison with nothing
-                    # to shade, and the report would draw a second, identical
-                    # copy of every per-position plot.
-                    if flag in ('Fail', 'Warning'):
-                        per_position = failed_by_feature[
-                            'Per position reversed nucleotide content']
-                        per_position.setdefault(base, {})[position] = flag
-                except ValueError:
-                    # Not a position entry (e.g., the aggregate
-                    # "Per position reversed nucleotide content - A")
-                    pass
-
-    return failed_by_feature
-
-
 def _flag_on_score(score: float) -> str:
     """Assign Pass/Warning/Fail flag based on AU-ROC score.
 
@@ -901,40 +746,3 @@ def _flag_on_score(score: float) -> str:
     if score > 0.6:
         return 'Warning'
     return 'Pass'
-
-
-def _flag_unique_bases(stats1, stats2) -> str:
-    """Check if both datasets have identical base sets."""
-    same_bases = set(stats1.stats['Unique bases']) == set(stats2.stats['Unique bases'])
-    return 'Pass' if same_bases else 'Fail'
-
-
-def _flag_duplicate_sequences(stats1, stats2) -> dict:
-    """Check for duplicates within each dataset.
-
-    Computes combined deduplication ratio across both datasets.
-    Returns:
-        Dict with 'Flag' and 'percent_remaining' keys.
-        Flag is 'Fail' if < 98% sequences remain, 'Warning' if >= 98% but < 100%, 'Pass' otherwise.
-    """
-    total_sequences = 0
-    unique_sequences = 0
-    for stats in [stats1, stats2]:
-        total_sequences += stats.stats['Number of sequences']
-        unique_sequences += stats.stats['Number of sequences left after deduplication']
-
-    percent_remaining = unique_sequences / total_sequences if total_sequences > 0 else 1.0
-
-    if percent_remaining < 0.98:
-        flag = 'Fail'
-    elif percent_remaining < 1.0:
-        flag = 'Warning'
-    else:
-        flag = 'Pass'
-
-    return {'Flag': flag, 'Percent Remaining': percent_remaining}
-
-
-def _flag_duplication_between_datasets(sequences1: list[str], sequences2: list[str]) -> str:
-    """Check for overlapping sequences between datasets."""
-    return "Fail" if bool(set(sequences1) & set(sequences2)) else "Pass"

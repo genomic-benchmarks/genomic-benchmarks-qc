@@ -54,10 +54,12 @@ def read_asset(name: str) -> str:
 
 
 def template(name: str) -> str:
-    """Return one HTML page template, ready for report.utils.put_data to fill.
+    """Return one HTML template, ready for report.utils.put_data to fill.
 
-    A template is markup with `{{placeholder}}` slots, and it is the whole page:
-    the class report is one file, the split report another. Kept out of the
+    A template is markup with `{{placeholder}}` slots: either a whole page - the
+    class report is one file, the split report another - or a fragment that goes
+    into one, which is what each check's section is (`check_<name>.html`, inside
+    the shell every section shares, `check_section.html`). Kept out of the
     Python for the same reason as the stylesheets - 260 lines of HTML in a triple
     quoted string is 260 lines no tool can read.
     """

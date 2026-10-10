@@ -8,19 +8,6 @@ def _calculate_percentage(part, whole):
     return (part / whole) * 100 if whole > 0 else 0.0
 
 
-def flag_split_data_leakage(perc_queries_above_thr, fail_threshold=2.0):
-    """Grade a split by the share of test sequences with a near-identical match.
-
-    Any leakage at all is worth knowing about, so a non-zero share is a Warning
-    and only `fail_threshold` percent or more is a Fail.
-    """
-    if perc_queries_above_thr >= fail_threshold:
-        return "Fail"
-    if perc_queries_above_thr > 0:
-        return "Warning"
-    return "Pass"
-
-
 def get_basic_stats_from_aggregates(filename_train, train_stats, filename_test, test_stats):
     """Combine the two halves' sequence counts and lengths for the report header."""
     return {

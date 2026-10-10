@@ -1,7 +1,7 @@
 """What importing the CLI is allowed to cost.
 
-`report_generator` defers seaborn and matplotlib into the two functions that
-draw, and `testing` defers sklearn into the one function that scores a
+Every check defers seaborn and matplotlib into the `render` that draws its
+figures, and `testing` defers sklearn into the one function that scores a
 continuous feature. Both are load-bearing rather than tidy: between them they
 are most of a second and half the memory of starting the tool up, paid by
 `gb-qc --help` and by every run that asks for `simple` or `json` reports and
@@ -35,8 +35,9 @@ class TestNothingHeavyLoadsWithTheCli:
         arrived = [name for name in DEFERRED if name in loaded]
         assert arrived == [], (
             f"{', '.join(arrived)} loaded just by importing the CLI. Something took an "
-            f"import back to the top of a module - see the docstrings in "
-            f"report_generator and utils.testing for why they are where they are."
+            f"import back to the top of a module - a check module's, most likely: see "
+            f"the docstrings in report_generator and utils.testing for why they are "
+            f"where they are."
         )
 
     def test_help_does_not_load_them_either(self):

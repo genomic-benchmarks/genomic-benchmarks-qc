@@ -14,6 +14,7 @@ questions, and the figures draw the second.
 import numpy as np
 import pytest
 
+from genomic_benchmarks_qc.checks.classes.per_position import _flagged_positions
 from genomic_benchmarks_qc.report.per_position_payload import _coverage
 from genomic_benchmarks_qc.utils.seq_stats import (
     DEFAULT_MIN_COVERAGE,
@@ -24,9 +25,9 @@ from genomic_benchmarks_qc.utils.seq_stats import (
 from genomic_benchmarks_qc.utils.testing import (
     MIN_SEQUENCES_PER_CLASS,
     _compute_position_binary_scores,
-    _extract_failed_features,
     _position_cohorts,
     _score_position_features,
+    flag_significant_differences,
 )
 
 
@@ -508,26 +509,39 @@ class TestFailedFeatureExtraction:
         """An entry per base regardless of its flag leaves the dict truthy, and
         the report then renders a second, identical copy of every per-position
         plot."""
-        results = {
+        rows = {
             'Per position nucleotide content - A position 1': {'Flag': 'Pass'},
             'Per position nucleotide content - A': {'Flag': 'Pass'},
         }
 
-        failed = _extract_failed_features(results)
-
-        assert failed['Per position nucleotide content'] == {}
+        assert _flagged_positions(rows, 'Per position nucleotide content', ['A'], 1) == {}
 
     def test_flagged_positions_are_kept_under_their_base(self):
-        results = {
-            'Per position nucleotide content - A position 1': {'Flag': 'Pass'},
-            'Per position nucleotide content - G position 7': {'Flag': 'Fail'},
-            'Per position reversed nucleotide content - T position 2': {'Flag': 'Warning'},
-        }
+        name = 'Per position nucleotide content'
+        rows = {f'{name} - {base} position {position}': {'Flag': 'Pass'}
+                for base in 'AG' for position in range(1, 8)}
+        rows[f'{name} - G position 7'] = {'Flag': 'Fail'}
+        # Not scored is not a finding, so there is nothing to shade for it.
+        rows[f'{name} - A position 3'] = {'Flag': 'Unknown'}
 
-        failed = _extract_failed_features(results)
+        assert _flagged_positions(rows, name, ['A', 'G'], 7) == {'G': {7: 'Fail'}}
 
-        assert failed['Per position nucleotide content'] == {'G': {7: 'Fail'}}
-        assert failed['Per position reversed nucleotide content'] == {'T': {2: 'Warning'}}
+    def test_a_warning_is_kept_in_the_reversed_direction_too(self):
+        name = 'Per position reversed nucleotide content'
+        rows = {f'{name} - T position {position}': {'Flag': 'Pass'} for position in (1, 2)}
+        rows[f'{name} - T position 2'] = {'Flag': 'Warning'}
+
+        assert _flagged_positions(rows, name, ['T'], 2) == {'T': {2: 'Warning'}}
+
+    def test_the_comparison_hands_the_plots_both_directions(self):
+        """One entry per direction, whether or not anything in it was flagged."""
+        stats1 = make_stats(random_sequences(300, 20, seed=40), label='a')
+        stats2 = make_stats(random_sequences(300, 20, seed=41), label='b')
+
+        _, failed = flag_significant_differences(stats1, stats2)
+
+        assert failed['Per position nucleotide content'] == {}
+        assert failed['Per position reversed nucleotide content'] == {}
 
     def test_the_curve_is_the_same_answer_at_every_point(self):
         """One question, one answer.

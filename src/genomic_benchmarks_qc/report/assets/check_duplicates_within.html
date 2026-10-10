@@ -1,0 +1,6 @@
+                <div id="{{explanation_id}}" class="explanation-text">
+                    <p>How much of the data survives deduplication, pooled over both labels. Pass only at 100%, Warning above 98%, Fail below it - so any duplication at all is at least a Warning.</p>
+                    <p>Duplicates make the dataset smaller than its row count, and copies landing on both sides of a random split inflate the score you report. {{docs_link}}</p>
+                </div>
+                <!-- Either the figure of how much deduplication removes, or a message saying there was nothing to remove -->
+                {{duplications}}
