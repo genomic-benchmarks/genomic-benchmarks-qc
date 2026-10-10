@@ -39,7 +39,8 @@ build the example reports. The README's Installation section says how to install
 ## Checks
 
 These are the commands CI runs, with the same settings from `pyproject.toml`, so a clean run
-here means a clean run on the pull request:
+here catches most failures before you push. It does not guarantee a clean pull request: CI
+also runs the tests on every supported Python version and builds the docs.
 
 ```bash
 pytest                    # the test suite
